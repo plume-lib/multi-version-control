@@ -1,10 +1,13 @@
 package org.plumelib.multiversioncontrol;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileFilter;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -13,7 +16,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.commons.exec.CommandLine;
+import org.apache.commons.exec.DefaultExecuteResultHandler;
+import org.apache.commons.exec.DefaultExecutor;
+import org.apache.commons.exec.ExecuteWatchdog;
+import org.apache.commons.exec.PumpStreamHandler;
 import org.ini4j.Ini;
+import org.plumelib.options.Option;
+import org.plumelib.options.Options;
+import org.plumelib.util.EntryReader;
+import org.plumelib.util.UtilPlume;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNURL;
 import org.tmatesoft.svn.core.auth.ISVNAuthenticationManager;
@@ -25,11 +37,13 @@ import org.tmatesoft.svn.core.wc.SVNRevision;
 import org.tmatesoft.svn.core.wc.SVNWCClient;
 
 /*>>>
+import org.checkerframework.checker.index.qual.*;
 import org.checkerframework.checker.initialization.qual.*;
 import org.checkerframework.checker.lock.qual.*;
 import org.checkerframework.checker.nullness.qual.*;
 import org.checkerframework.checker.regex.qual.*;
 import org.checkerframework.dataflow.qual.*;
+import org.checkerframework.common.value.qual.*;
 */
 
 // A related program is the "mr" program (http://kitenet.net/~joey/code/mr/).
@@ -59,14 +73,14 @@ import org.checkerframework.dataflow.qual.*;
  *   clone     -- Clone (check out) all repositories.
  *   checkout  -- Same as clone
  *   pull      -- Pull and update all clones.
- *   update    -- Same as update.
+ *   update    -- Same as pull.
  *   status    -- Show files that are changed but not committed, or committed
  *                but not pushed, or have shelved/stashed changes.
  *   list      -- List the clones/checkouts that this program is aware of.
  * </pre>
  *
- * (The <code>commit</code> action is not supported, because that is not something that should be
- * done in an automated way -- it needs a user-written commit message.)
+ * (The {@code commit} action is not supported, because that is not something that should be done in
+ * an automated way -- it needs a user-written commit message.)
  *
  * <p>You can specify the set of checkouts/clones for the program to manage, or it can search your
  * directory structure to find all of your checkouts, or both. To list all un-committed changed
@@ -82,7 +96,7 @@ import org.checkerframework.dataflow.qual.*;
  * <ul>
  *   <li id="option:home"><b>--home=</b><i>string</i>. User home directory
  *   <li id="option:checkouts"><b>--checkouts=</b><i>string</i>. File with list of checkouts. Set it
- *       to /dev/null to suppress reading. Defaults to <code>$HOME/.mvc-checkouts</code>. [default
+ *       to /dev/null to suppress reading. Defaults to {@code $HOME/.mvc-checkouts}. [default
  *       ~/.mvc-checkouts]
  *   <li id="option:dir"><b>--dir=</b><i>string</i> <code>[+]</code>. Directory under which to
  *       search for checkouts; default=home dir
@@ -131,17 +145,16 @@ import org.checkerframework.dataflow.qual.*;
  * <code>[+]</code> marked option can be specified multiple times
  * <!-- end options doc -->
  *
- * <p><b>File format for <code>.mvc-checkouts</code> file</b>
+ * <p><b>File format for {@code .mvc-checkouts} file</b>
  *
- * <p>The remainder of this document describes the file format for the <code>.mvc-checkouts</code>
- * file.
+ * <p>The remainder of this document describes the file format for the {@code .mvc-checkouts} file.
  *
- * <p>(Note: because mvc can search for all checkouts in your directory, you don't need a <code>
- * .mvc-checkouts</code> file. Using a <code>.mvc-checkouts</code> file makes the program faster
- * because it does not have to search all of your directories. It also permits you to process only a
- * certain set of checkouts.)
+ * <p>(Note: because mvc can search for all checkouts in your directory, you don't need a {@code
+ * .mvc-checkouts} file. Using a {@code .mvc-checkouts} file makes the program faster because it
+ * does not have to search all of your directories. It also permits you to process only a certain
+ * set of checkouts.)
  *
- * <p>The <code>.mvc-checkouts</code> file contains a list of <em>sections</em>. Each section names
+ * <p>The {@code .mvc-checkouts} file contains a list of <em>sections</em>. Each section names
  * either a root from which a sub-part (e.g., a module or a subdirectory) will be checked out, or a
  * repository all of which will be checked out. Examples include:
  *
@@ -251,8 +264,8 @@ public class MultiVersionControl {
   public static String home = System.getProperty("user.home");
 
   /**
-   * File with list of checkouts. Set it to /dev/null to suppress reading. Defaults to <code>
-   * $HOME/.mvc-checkouts</code>.
+   * File with list of checkouts. Set it to /dev/null to suppress reading. Defaults to {@code
+   * $HOME/.mvc-checkouts}.
    */
   @Option("File with list of checkouts.  Set it to /dev/null to suppress reading.")
   public String checkouts = "~/.mvc-checkouts";
@@ -429,15 +442,18 @@ public class MultiVersionControl {
   /*@EnsuresNonNull("action")*/
   public void parseArgs(
       /*>>> @UnknownInitialization @Raw MultiVersionControl this,*/ String[] args) {
-    @SuppressWarnings(
-        "initialization") // "new MyClass(underInitialization)" yields @UnderInitialization even when @Initialized would be safe
+    @SuppressWarnings({
+      "initialization", // new C(underInit) yields @UnderInitialization; @Initialized is safe
+      "nullness" // temporary problem with type annotations in Options jarfile
+    })
     /*@Initialized*/ Options options =
         new Options("mvc [options] {checkout,status,update,list}", this);
-    String[] remaining_args = options.parse_or_usage(args);
+    String[] remaining_args = options.parse(true, args);
     if (remaining_args.length != 1) {
-      options.print_usage(
+      System.out.printf(
           "Please supply exactly one argument (found %d)%n%s",
-          remaining_args.length, UtilMDE.join(remaining_args, " "));
+          remaining_args.length, String.join(" ", remaining_args));
+      options.printUsage();
       System.exit(1);
     }
     String action_string = remaining_args[0];
@@ -454,7 +470,8 @@ public class MultiVersionControl {
     } else if ("update".startsWith(action_string)) {
       action = PULL;
     } else {
-      options.print_usage("Unrecognized action \"%s\"", action_string);
+      System.out.printf("Unrecognized action \"%s\"", action_string);
+      options.printUsage();
       System.exit(1);
     }
 
@@ -616,6 +633,9 @@ public class MultiVersionControl {
   ///
 
   /** Read checkouts from the file (in .mvc-checkouts format), and add them to the set. */
+  @SuppressWarnings({
+    "StringSplitter" // don't add dependence on Guava
+  })
   static void readCheckouts(File file, Set<Checkout> checkouts) throws IOException {
     RepoType currentType = RepoType.BZR; // arbitrary choice
     String currentRoot = null;
@@ -790,7 +810,8 @@ public class MultiVersionControl {
     }
 
     @SuppressWarnings(
-        "nullness") // dependent: listFiles => non-null because dir is a directory, and we don't know that checkouts.add etc do not affect dir
+        "nullness") // dependent: listFiles => non-null because dir is a directory, and
+    // the checker doesn't know that checkouts.add etc do not affect dir
     File /*@NonNull*/ [] childdirs = dir.listFiles(idf);
     if (childdirs == null) {
       System.err.printf(
@@ -812,6 +833,7 @@ public class MultiVersionControl {
 
   /** Accept only directories that are not symbolic links. */
   static class IsDirectoryFilter implements FileFilter {
+    @Override
     public boolean accept(File pathname) {
       try {
         return pathname.isDirectory() && pathname.getPath().equals(pathname.getCanonicalPath());
@@ -838,8 +860,8 @@ public class MultiVersionControl {
       // apparently it wasn't a version control directory
       return;
     }
-    String pathInRepo = UtilMDE.readFile(repositoryFile).trim();
-    String repoRoot = UtilMDE.readFile(rootFile).trim();
+    String pathInRepo = UtilPlume.readFile(repositoryFile).trim();
+    String repoRoot = UtilPlume.readFile(rootFile).trim();
     /*@NonNull*/ File repoFileRoot = new File(pathInRepo);
     while (repoFileRoot.getParentFile() != null) {
       @SuppressWarnings("nullness") // just checked that parent is non-null
@@ -848,16 +870,15 @@ public class MultiVersionControl {
     }
 
     // strip common suffix off of local dir and repo url
-    Pair</*@Nullable*/ File, /*@Nullable*/ File> stripped =
-        removeCommonSuffixDirs(dir, new File(pathInRepo), repoFileRoot, "CVS");
-    File cDir = stripped.a;
+    FilePair stripped = removeCommonSuffixDirs(dir, new File(pathInRepo), repoFileRoot, "CVS");
+    File cDir = stripped.file1;
     if (cDir == null) {
       System.out.printf("dir (%s) is parent of path in repo (%s)", dir, pathInRepo);
       System.exit(1);
     }
     String pathInRepoAtCheckout;
-    if (stripped.b != null) {
-      pathInRepoAtCheckout = stripped.b.toString();
+    if (stripped.file2 != null) {
+      pathInRepoAtCheckout = stripped.file2.toString();
     } else {
       pathInRepoAtCheckout = cDir.getName();
     }
@@ -874,7 +895,7 @@ public class MultiVersionControl {
     // There also exist Hg commands that will do this same thing.
     if (hgrcFile.exists()) {
       try {
-        ini = new Ini(new FileReader(hgrcFile));
+        ini = new Ini(Files.newBufferedReader(hgrcFile.toPath(), UTF_8));
       } catch (IOException e) {
         throw new Error("Problem reading file " + hgrcFile);
       }
@@ -893,7 +914,7 @@ public class MultiVersionControl {
 
   /** Given a directory named ".git" , create a corresponding Checkout object for its parent. */
   static Checkout dirToCheckoutGit(File gitDir, File dir) {
-    String repository = UtilMDE.backticks("git", "config", "remote.origin.url");
+    String repository = UtilPlume.backticks("git", "config", "remote.origin.url");
 
     return new Checkout(RepoType.GIT, dir, repository, null);
   }
@@ -907,8 +928,8 @@ public class MultiVersionControl {
     // For SVN, do
     //   svn info
     // and grep out these lines:
-    //   URL: svn+ssh://login.csail.mit.edu/afs/csail/group/pag/projects/reCrash/repository/trunk/www
-    //   Repository Root: svn+ssh://login.csail.mit.edu/afs/csail/group/pag/projects/reCrash/repository
+    // URL: svn+ssh://login.csail.mit.edu/afs/csail/group/pag/projects/myProj/repository/trunk/www
+    // Repository Root: svn+ssh://login.csail.mit.edu/afs/csail/group/pag/projects/myProj/repository
 
     // Use SVNKit?
     // Con: introduces dependency on external library.
@@ -929,11 +950,12 @@ public class MultiVersionControl {
       return null;
     }
     // getFile is null when operating on a working copy, as I am
-    // String relativeFile = info.getPath(); // relative to repository root -- can use to determine root of checkout
+    // String relativeFile = info.getPath(); // relative to repository root; use to determine root
     // getFile is just the (absolute) local file name for local items -- same as "dir"
     // File relativeFile = info.getFile();
     SVNURL url = info.getURL();
-    // This can be null (example: dir /afs/csail.mit.edu/u/m/mernst/.snapshot/class/6170/2006-spring/3dphysics).  I don't know under what circumstances.
+    // This can be null, but I don't know under what circumstances. (example: dir
+    // /afs/csail.mit.edu/u/m/mernst/.snapshot/class/6170/2006-spring/3dphysics)
     SVNURL repoRoot = info.getRepositoryRootURL();
     if (repoRoot == null) {
       System.err.println("Problem:  old svn working copy in " + dir.toString());
@@ -950,18 +972,18 @@ public class MultiVersionControl {
     }
 
     // Strip common suffix off of local dir and repo url.
-    Pair</*@Nullable*/ File, /*@Nullable*/ File> stripped =
+    FilePair stripped =
         removeCommonSuffixDirs(dir, new File(url.getPath()), new File(repoRoot.getPath()), ".svn");
-    File cDir = stripped.a;
+    File cDir = stripped.file1;
     if (cDir == null) {
       System.out.printf("dir (%s) is parent of repository URL (%s)", dir, url.getPath());
       System.exit(1);
     }
-    if (stripped.b == null) {
+    if (stripped.file2 == null) {
       System.out.printf("dir (%s) is child of repository URL (%s)", dir, url.getPath());
       System.exit(1);
     }
-    String pathInRepoAtCheckout = stripped.b.toString();
+    String pathInRepoAtCheckout = stripped.file2.toString();
     try {
       url = url.setPath(pathInRepoAtCheckout, false);
     } catch (SVNException e) {
@@ -990,14 +1012,23 @@ public class MultiVersionControl {
 
   }
 
+  static class FilePair {
+    final /*@Nullable*/ File file1;
+    final /*@Nullable*/ File file2;
+
+    FilePair(/*@Nullable*/ File file1, /*@Nullable*/ File file2) {
+      this.file1 = file1;
+      this.file2 = file2;
+    }
+  }
+
   /**
    * Strip identical elements off the end of both paths, and then return what is left of each.
    * Returned elements can be null! If p2_limit is non-null, then it should be a parent of p2, and
    * the stripping stops when p2 becomes p2_limit. If p1_contains is non-null, then p1 must contain
    * a subdirectory of that name.
    */
-  static Pair</*@Nullable*/ File, /*@Nullable*/ File> removeCommonSuffixDirs(
-      File p1, File p2, File p2_limit, String p1_contains) {
+  static FilePair removeCommonSuffixDirs(File p1, File p2, File p2_limit, String p1_contains) {
     if (debug) {
       System.out.printf("removeCommonSuffixDirs(%s, %s, %s, %s)%n", p1, p2, p2_limit, p1_contains);
     }
@@ -1017,7 +1048,7 @@ public class MultiVersionControl {
     if (debug) {
       System.out.printf("removeCommonSuffixDirs => %s %s%n", r1, r2);
     }
-    return Pair.of(r1, r2);
+    return new FilePair(r1, r2);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -1338,7 +1369,7 @@ public class MultiVersionControl {
               replacers.add(
                   new Replacer(
                       "^\\n?comparing with .*\\nsearching for changes\\nno changes found\n", ""));
-              // TODO:  Shelve is an optional extension, and so this should make no report if it is not installed.
+              // TODO:  Shelve is an optional extension, so don't print anything if not installed.
               pb3.command(hg_executable, "shelve", "-l");
               addArgs(pb3, hg_arg);
               replacers3.add(new Replacer("^hg: unknown command 'shelve'\\n(.*\\n)+", ""));
@@ -1347,7 +1378,7 @@ public class MultiVersionControl {
               break;
             case SVN:
               // Handle some changes.
-              // "svn status" also outputs an eighth column, only if you pass the --show-updates switch: [* ]
+              // "svn status" outputs an eighth column, if you pass the --show-updates switch: [* ]
               replacers.add(
                   new Replacer("(^|\\n)([ACDIMRX?!~ ][CM ][L ][+ ][$ ]) *", "$1$2 " + dir + "/"));
               pb.command(svn_executable, "status");
@@ -1398,7 +1429,7 @@ public class MultiVersionControl {
               replacers.add(new Replacer("(^|\\n)([ACDMRU]\t)", "$1$2" + dir + "/"));
               pb.command(git_executable, "pull", "-q");
               addArgs(pb, git_arg);
-              // prune branches; alternately can do "git remote prune origin"; "git gc" does not do this.
+              // prune branches; alternately do "git remote prune origin"; "git gc" doesn't do this.
               pb2.command(git_executable, "fetch", "-p");
               break;
             case HG:
@@ -1539,79 +1570,47 @@ public class MultiVersionControl {
   // completed normally.  Ordinarily, output is displayed only if the
   // process completed erroneously.
   void perform_command(ProcessBuilder pb, List<Replacer> replacers, boolean show_normal_output) {
-    /// The redirectOutput method only exists in Java 1.7.  Sigh.
-    /// The workaround is to make TimeLimitProcess buffer its output.
-    // File tempFile;
-    // try {
-    //   tempFile = File.createTempFile("mvc", null);
-    // } catch (IOException e) {
-    //   throw new Error("File.createTempFile can't create temporary file.", e);
-    // }
-    // tempFile.deleteOnExit();
-    // pb.redirectOutput(tempFile);
-
     if (show) {
       System.out.println(command(pb));
     }
     if (dry_run) {
       return;
     }
+    // Perform the command
+
+    // For debugging
+    //  my $command_cwd_sanitized = $command_cwd;
+    //  $command_cwd_sanitized =~ s/\//_/g;
+    //  $tmpfile = "/tmp/cmd-output-$$-$command_cwd_sanitized";
+    // my $command_redirected = "$command > $tmpfile 2>&1";
+
+    // We have changed from using plume.TimeLimitProcess to using
+    // the Apache Commons Exec package.  To simplify the conversion
+    // we have kept the ProcessBuilder argument but now only use its
+    // members to construct the Commons Exec objects.
+
+    @SuppressWarnings({"index", "value"}) // ProcessBuilder.command() returns a non-empty list
+    String /*@MinLen(1)*/[] args = (pb.command()).toArray(new String[0]);
+    CommandLine cmdLine = new CommandLine(args[0]); // constructor requires executable name
+    @SuppressWarnings("nullness") // indices are in bounds, so no null values in resulting array
+    String[] argArray = Arrays.copyOfRange(args, 1, args.length);
+    cmdLine.addArguments(argArray);
+    DefaultExecuteResultHandler resultHandler = new DefaultExecuteResultHandler();
+    DefaultExecutor executor = new DefaultExecutor();
+    @SuppressWarnings("nullness") // defaults to non-null and was never reset
+    /*@NonNull*/ File defaultDirectory = pb.directory();
+    executor.setWorkingDirectory(defaultDirectory);
+
+    ExecuteWatchdog watchdog = new ExecuteWatchdog(timeout * 1000);
+    executor.setWatchdog(watchdog);
+
+    final ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+    PumpStreamHandler streamHandler =
+        new PumpStreamHandler(outStream); // send both stderr and stdout
+    executor.setStreamHandler(streamHandler);
+
     try {
-      // Perform the command
-
-      // For debugging
-      //  my $command_cwd_sanitized = $command_cwd;
-      //  $command_cwd_sanitized =~ s/\//_/g;
-      //  $tmpfile = "/tmp/cmd-output-$$-$command_cwd_sanitized";
-      // my $command_redirected = "$command > $tmpfile 2>&1";
-      TimeLimitProcess p = new TimeLimitProcess(pb.start(), timeout * 1000, true);
-      p.waitFor();
-      // For reasons that are mysterious to me, this is necessary in order to
-      // reliably capture the process's output.  I don't know why.  Calling
-      // waitFor on the result of pb.start() didn't help -- only this did.
-      Thread.sleep(10);
-      if (p.timed_out()) {
-        System.out.printf("Timed out (limit: %ss):%n", timeout);
-        System.out.println(command(pb));
-        // Don't return; also show the output
-      }
-
-      // Under what conditions should the output be printed?
-      //  * for status, always
-      //  * whenever the process exited non-normally
-      //  * when debugging
-      //  * other circumstances?
-      // Try printing always, to better understand this question.
-      if (show_normal_output || p.exitValue() != 0 || debug_replacers || debug_process_output) {
-        // Filter then print the output.
-        // String output = UtilMDE.readerContents(new BufferedReader(new InputStreamReader(p.getInputStream())));
-        // String output = UtilMDE.streamString(p.getInputStream());
-        String output = UtilMDE.streamString(p.getInputStream());
-        if (debug_replacers || debug_process_output) {
-          System.out.println("preoutput=<<<" + output + ">>>");
-        }
-        for (Replacer r : replacers) {
-          if (debug_replacers) {
-            System.out.println("midoutput_pre[" + r.regexp + "]=<<<" + output + ">>>");
-          }
-          // Don't loop, because some regexps will continue to match repeatedly
-          output = r.replaceAll(output);
-          if (debug_replacers) {
-            System.out.println("midoutput_post[" + r.regexp + "]=<<<" + output + ">>>");
-          }
-        }
-        if (debug_replacers || debug_process_output) {
-          System.out.println("postoutput=<<<" + output + ">>>");
-        }
-        if (debug_replacers) {
-          for (int i = 0; i < Math.min(100, output.length()); i++) {
-            System.out.println(
-                i + ": " + (int) output.charAt(i) + "\n        \"" + output.charAt(i) + "\"");
-          }
-        }
-        System.out.print(output);
-      }
-
+      executor.execute(cmdLine, resultHandler);
     } catch (IOException e) {
       String msg = e.toString();
       if (msg.startsWith("java.io.IOException: Cannot run program \"")
@@ -1620,13 +1619,66 @@ public class MultiVersionControl {
       } else {
         throw new Error(e);
       }
+    }
+
+    int exitValue = -1;
+    try {
+      resultHandler.waitFor();
+      exitValue = resultHandler.getExitValue();
     } catch (InterruptedException e) {
       throw new Error(e);
+    }
+    boolean timedOut = executor.isFailure(exitValue) && watchdog.killedProcess();
+
+    if (timedOut) {
+      System.out.printf("Timed out (limit: %ss):%n", timeout);
+      System.out.println(command(pb));
+      // Don't return; also show the output
+    }
+
+    // Under what conditions should the output be printed?
+    //  * for status, always
+    //  * whenever the process exited non-normally
+    //  * when debugging
+    //  * other circumstances?
+    // Try printing always, to better understand this question.
+    if (show_normal_output || exitValue != 0 || debug_replacers || debug_process_output) {
+      // Filter then print the output.
+      String output;
+      try {
+        output = outStream.toString();
+      } catch (RuntimeException e) {
+        throw new Error("Exception getting process standard output");
+      }
+
+      if (debug_replacers || debug_process_output) {
+        System.out.println("preoutput=<<<" + output + ">>>");
+      }
+      for (Replacer r : replacers) {
+        if (debug_replacers) {
+          System.out.println("midoutput_pre[" + r.regexp + "]=<<<" + output + ">>>");
+        }
+        // Don't loop, because some regexps will continue to match repeatedly
+        output = r.replaceAll(output);
+        if (debug_replacers) {
+          System.out.println("midoutput_post[" + r.regexp + "]=<<<" + output + ">>>");
+        }
+      }
+      if (debug_replacers || debug_process_output) {
+        System.out.println("postoutput=<<<" + output + ">>>");
+      }
+      if (debug_replacers) {
+        for (int i = 0; i < Math.min(100, output.length()); i++) {
+          System.out.println(
+              i + ": " + (int) output.charAt(i) + "\n        \"" + output.charAt(i) + "\"");
+        }
+      }
+      System.out.print(output);
     }
   }
 
   String command(ProcessBuilder pb) {
-    return "  cd " + pb.directory() + "\n  " + UtilMDE.join(pb.command(), " ");
+    return "  cd " + pb.directory() + "\n  " + UtilPlume.join(pb.command(), " ");
   }
 
   //     # Show the command.
@@ -1675,7 +1727,8 @@ public class MultiVersionControl {
   //       }
   //       if ($debug && $show_directory) {
   //         print "show-directory: $dir:\n";
-  //         printf "tmpfile size: %d, zeroness: %d, non-zeroness %d%n", (-s $tmpfile), (-z $tmpfile), (! -z $tmpfile);
+  //         printf "tmpfile size: %d, zeroness: %d, non-zeroness %d%n",
+  //                (-s $tmpfile), (-z $tmpfile), (! -z $tmpfile);
   //       }
   //       if ((! -z $tmpfile) && $show_directory) {
   //         print "$dir:\n";
@@ -1692,7 +1745,8 @@ public class MultiVersionControl {
    * but don't want them to simply hang.
    */
   static class StreamOfNewlines extends InputStream {
-    public int read() {
+    @Override
+    public /*@GTENegativeOne*/ int read() {
       return (int) '\n';
     }
   }
