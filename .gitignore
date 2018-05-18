@@ -7,7 +7,7 @@ build
 .mtj.tmp/
 
 # Package Files #
-*.jar
+# *.jar # Used by gradle
 *.war
 *.ear
 
