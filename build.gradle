@@ -33,10 +33,15 @@ dependencies {
 }
 
 // Define the main class for the application
-mainClassName = 'MultiVersionControl'
+mainClassName = 'org.plumelib.multiversioncontrol.MultiVersionControl'
 
 // Turn Javadoc warnings into errors.
 javadoc {
-  options.addStringOption('Xmaxwarns', '10000')
   options.addStringOption('Xwerror', '-quiet')
+}
+
+task javadocWeb(type: Javadoc) {
+  source = sourceSets.main.allJava
+  destinationDir = file("/cse/web/research/plumelib/multiversioncontrol/api")
+  classpath = project.sourceSets.main.compileClasspath
 }
