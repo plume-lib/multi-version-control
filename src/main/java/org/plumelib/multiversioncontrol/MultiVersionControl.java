@@ -375,8 +375,14 @@ public class MultiVersionControl {
     return path.replaceFirst("^~", home);
   }
 
+  /**
+   * Runs a version control command, such as "status" or "update", on a <b>set</b> of CVS/Git/Hg/SVN
+   * checkouts rather than just one.
+   *
+   * @see MultiVersionControl
+   */
   public static void main(String[] args) {
-    setupSVNKIT();
+    setupSvnkit();
     MultiVersionControl mvc = new MultiVersionControl(args);
 
     Set<Checkout> checkouts = new LinkedHashSet<Checkout>();
@@ -424,7 +430,7 @@ public class MultiVersionControl {
     mvc.process(checkouts);
   }
 
-  private static void setupSVNKIT() {
+  private static void setupSvnkit() {
     DAVRepositoryFactory.setup();
     SVNRepositoryFactoryImpl.setup();
     FSRepositoryFactory.setup();
@@ -438,6 +444,7 @@ public class MultiVersionControl {
     parseArgs(args);
   }
 
+  /** Parse the command-line arguments. */
   /*@RequiresNonNull({"dir","checkouts"})*/
   /*@EnsuresNonNull("action")*/
   public void parseArgs(
@@ -446,29 +453,29 @@ public class MultiVersionControl {
         "initialization") // new C(underInit) yields @UnderInitialization; @Initialized is safe
     /*@Initialized*/ Options options =
         new Options("mvc [options] {checkout,status,update,list}", this);
-    String[] remaining_args = options.parse(true, args);
-    if (remaining_args.length != 1) {
+    String[] remainingArgs = options.parse(true, args);
+    if (remainingArgs.length != 1) {
       System.out.printf(
           "Please supply exactly one argument (found %d)%n%s",
-          remaining_args.length, String.join(" ", remaining_args));
+          remainingArgs.length, String.join(" ", remainingArgs));
       options.printUsage();
       System.exit(1);
     }
-    String action_string = remaining_args[0];
-    if ("checkout".startsWith(action_string)) {
+    String actionString = remainingArgs[0];
+    if ("checkout".startsWith(actionString)) {
       action = CLONE;
-    } else if ("clone".startsWith(action_string)) {
+    } else if ("clone".startsWith(actionString)) {
       action = CLONE;
-    } else if ("list".startsWith(action_string)) {
+    } else if ("list".startsWith(actionString)) {
       action = LIST;
-    } else if ("pull".startsWith(action_string)) {
+    } else if ("pull".startsWith(actionString)) {
       action = PULL;
-    } else if ("status".startsWith(action_string)) {
+    } else if ("status".startsWith(actionString)) {
       action = STATUS;
-    } else if ("update".startsWith(action_string)) {
+    } else if ("update".startsWith(actionString)) {
       action = PULL;
     } else {
-      System.out.printf("Unrecognized action \"%s\"", action_string);
+      System.out.printf("Unrecognized action \"%s\"", actionString);
       options.printUsage();
       System.exit(1);
     }
@@ -488,13 +495,13 @@ public class MultiVersionControl {
       timeout = timeout * 10;
 
       // Set dry_run to true unless it was explicitly specified
-      boolean explicit_run_dry = false;
+      boolean explicitDryRun = false;
       for (String arg : args) {
         if (arg.startsWith("--dry-run") || arg.startsWith("--dry_run")) {
-          explicit_run_dry = true;
+          explicitDryRun = true;
         }
       }
-      if (!explicit_run_dry) {
+      if (!explicitDryRun) {
         if (!quiet) {
           System.out.println(
               "No --dry-run argument, so using --dry-run=true; override with --dry-run=false");
@@ -866,8 +873,8 @@ public class MultiVersionControl {
 
     // strip common suffix off of local dir and repo url
     FilePair stripped = removeCommonSuffixDirs(dir, new File(pathInRepo), repoFileRoot, "CVS");
-    File cDir = stripped.file1;
-    if (cDir == null) {
+    File dirRelative = stripped.file1;
+    if (dirRelative == null) {
       System.out.printf("dir (%s) is parent of path in repo (%s)", dir, pathInRepo);
       System.exit(1);
     }
@@ -875,10 +882,10 @@ public class MultiVersionControl {
     if (stripped.file2 != null) {
       pathInRepoAtCheckout = stripped.file2.toString();
     } else {
-      pathInRepoAtCheckout = cDir.getName();
+      pathInRepoAtCheckout = dirRelative.getName();
     }
 
-    checkouts.add(new Checkout(RepoType.CVS, cDir, repoRoot, pathInRepoAtCheckout));
+    checkouts.add(new Checkout(RepoType.CVS, dirRelative, repoRoot, pathInRepoAtCheckout));
   }
 
   /** Given a directory named ".hg" , create a corresponding Checkout object for its parent. */
@@ -969,8 +976,8 @@ public class MultiVersionControl {
     // Strip common suffix off of local dir and repo url.
     FilePair stripped =
         removeCommonSuffixDirs(dir, new File(url.getPath()), new File(repoRoot.getPath()), ".svn");
-    File cDir = stripped.file1;
-    if (cDir == null) {
+    File dirRelative = stripped.file1;
+    if (dirRelative == null) {
       System.out.printf("dir (%s) is parent of repository URL (%s)", dir, url.getPath());
       System.exit(1);
     }
@@ -989,11 +996,11 @@ public class MultiVersionControl {
       System.out.println("stripped: " + stripped);
       System.out.println("repoRoot = " + repoRoot);
       System.out.println(" repoUrl = " + url);
-      System.out.println("    cDir = " + cDir.toString());
+      System.out.println("    dirRelative = " + dirRelative.toString());
     }
 
     assert url.toString().startsWith(repoRoot.toString()) : "repoRoot=" + repoRoot + ", url=" + url;
-    return new Checkout(RepoType.SVN, cDir, url.toString(), null);
+    return new Checkout(RepoType.SVN, dirRelative, url.toString(), null);
 
     /// Old implementation
     // String module = url.toString().substring(repoRoot.toString().length());
@@ -1003,7 +1010,7 @@ public class MultiVersionControl {
     // if (module.equals("")) {
     //   module = null;
     // }
-    // return new Checkout(RepoType.SVN, cDir, repoRoot.toString(), module);
+    // return new Checkout(RepoType.SVN, dirRelative, repoRoot.toString(), module);
 
   }
 
@@ -1019,22 +1026,22 @@ public class MultiVersionControl {
 
   /**
    * Strip identical elements off the end of both paths, and then return what is left of each.
-   * Returned elements can be null! If p2_limit is non-null, then it should be a parent of p2, and
-   * the stripping stops when p2 becomes p2_limit. If p1_contains is non-null, then p1 must contain
-   * a subdirectory of that name.
+   * Returned elements can be null! If p2Limit is non-null, then it should be a parent of p2, and
+   * the stripping stops when p2 becomes p2Limit. If p1Contains is non-null, then p1 must contain a
+   * subdirectory of that name.
    */
-  static FilePair removeCommonSuffixDirs(File p1, File p2, File p2_limit, String p1_contains) {
+  static FilePair removeCommonSuffixDirs(File p1, File p2, File p2Limit, String p1Contains) {
     if (debug) {
-      System.out.printf("removeCommonSuffixDirs(%s, %s, %s, %s)%n", p1, p2, p2_limit, p1_contains);
+      System.out.printf("removeCommonSuffixDirs(%s, %s, %s, %s)%n", p1, p2, p2Limit, p1Contains);
     }
     // new names for results, because we will be side-effecting them
     File r1 = p1;
     File r2 = p2;
     while (r1 != null
         && r2 != null
-        && (p2_limit == null || !r2.equals(p2_limit))
+        && (p2Limit == null || !r2.equals(p2Limit))
         && r1.getName().equals(r2.getName())) {
-      if (p1_contains != null && !new File(r1.getParentFile(), p1_contains).isDirectory()) {
+      if (p1Contains != null && !new File(r1.getParentFile(), p1Contains).isDirectory()) {
         break;
       }
       r1 = r1.getParentFile();
@@ -1078,6 +1085,9 @@ public class MultiVersionControl {
     }
   }
 
+  /**
+   * Run the action described by field {@code action}, for each of the clones in {@code checkouts}.
+   */
   public void process(Set<Checkout> checkouts) {
     // Always run at least one command, but sometimes up to three.
     ProcessBuilder pb = new ProcessBuilder("");
@@ -1167,7 +1177,7 @@ public class MultiVersionControl {
       pb2.directory(dir);
       pb3.command(new ArrayList<String>());
       pb3.directory(dir);
-      boolean show_normal_output = false;
+      boolean showNormalOutput = false;
       // Set pb.command() to be the command to be executed.
       switch (action) {
         case LIST:
@@ -1222,7 +1232,7 @@ public class MultiVersionControl {
         case STATUS:
           // I need a replacer for other version control systems, to add
           // directory names.
-          show_normal_output = true;
+          showNormalOutput = true;
           switch (c.repoType) {
             case BZR:
               System.out.println("bzr handling not yet implemented: skipping " + c.directory);
@@ -1243,7 +1253,8 @@ public class MultiVersionControl {
               //         # For the last perl command, this also works:
               //         #   perl -p -e 'chomp(\$cwd = `pwd`); s/^Index: /\$cwd\\//'";
               //         # but the one we use is briefer and uses the abbreviated directory name.
-              //         $filter = "grep -v \"unrecognized keyword 'UseNewInfoFmtStrings'\" | grep \"^Index:\" | perl -p -e 's|^Index: |$dir\\/|'";
+              //         $filter = "grep -v \"unrecognized keyword 'UseNewInfoFmtStrings'\" | grep
+              // \"^Index:\" | perl -p -e 's|^Index: |$dir\\/|'";
               String removeRegexp =
                   ("\n=+"
                       + "\nRCS file: .*" // no trailing ,v for newly-created files
@@ -1407,7 +1418,8 @@ public class MultiVersionControl {
                   "update",
                   "-d");
               addArgs(pb, cvs_arg);
-              //         $filter = "grep -v \"config: unrecognized keyword 'UseNewInfoFmtStrings'\"";
+              //         $filter = "grep -v \"config: unrecognized keyword
+              // 'UseNewInfoFmtStrings'\"";
               replacers.add(new Replacer("(cvs update: move away )", "$1" + dir + "/"));
               replacers.add(new Replacer("(cvs \\[update aborted)(\\])", "$1 in " + dir + "$2"));
               break;
@@ -1511,12 +1523,12 @@ public class MultiVersionControl {
       if (print_directory) {
         System.out.println(dir + " :");
       }
-      perform_command(pb, replacers, show_normal_output);
+      perform_command(pb, replacers, showNormalOutput);
       if (pb2.command().size() > 0) {
-        perform_command(pb2, replacers, show_normal_output);
+        perform_command(pb2, replacers, showNormalOutput);
       }
       if (pb3.command().size() > 0) {
-        perform_command(pb3, replacers3, show_normal_output);
+        perform_command(pb3, replacers3, showNormalOutput);
       }
     }
   }
@@ -1561,10 +1573,11 @@ public class MultiVersionControl {
         || invalidCertificatePattern.matcher(defaultPath).matches());
   }
 
-  // If show_normal_output is true, then display the output even if the process
-  // completed normally.  Ordinarily, output is displayed only if the
-  // process completed erroneously.
-  void perform_command(ProcessBuilder pb, List<Replacer> replacers, boolean show_normal_output) {
+  /**
+   * If showNormalOutput is true, then display the output even if the process completed normally.
+   * Ordinarily, output is displayed only if the process completed erroneously.
+   */
+  void perform_command(ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
     if (show) {
       System.out.println(command(pb));
     }
@@ -1637,7 +1650,7 @@ public class MultiVersionControl {
     //  * when debugging
     //  * other circumstances?
     // Try printing always, to better understand this question.
-    if (show_normal_output || exitValue != 0 || debug_replacers || debug_process_output) {
+    if (showNormalOutput || exitValue != 0 || debug_replacers || debug_process_output) {
       // Filter then print the output.
       String output;
       try {
