@@ -61,10 +61,10 @@ import org.checkerframework.common.value.qual.*;
 //  * mvc's configuration files tend to be smaller & simpler
 
 /**
- * This program, mvc for Multiple Version Control, lets you run a version control command, such as
- * "status" or "update", on a <b>set</b> of CVS/Git/Hg/SVN checkouts rather than just one.
+ * This program lets you run a version control command, such as "status" or "update", on a
+ * <b>set</b> of CVS/Git/Hg/SVN clones/checkouts rather than just one.
  *
- * <p>This program simplifies managing your checkouts/clones. You might want to update/pull all of
+ * <p>This program simplifies managing your clones/checkouts. You might want to pull/update all of
  * them, or you might want to know whether any of them have uncommitted changes. When setting up a
  * new account, you might want to clone or check them all out. This program does any of those tasks.
  * In particular, it accepts these arguments:
@@ -379,6 +379,7 @@ public class MultiVersionControl {
    * Runs a version control command, such as "status" or "update", on a <b>set</b> of CVS/Git/Hg/SVN
    * checkouts rather than just one.
    *
+   * @param args the command-line arguments
    * @see MultiVersionControl
    */
   public static void main(String[] args) {
@@ -444,7 +445,12 @@ public class MultiVersionControl {
     parseArgs(args);
   }
 
-  /** Parse the command-line arguments. */
+  /**
+   * Parse the command-line arguments.
+   *
+   * @param args the command-line arguments
+   * @see MultiVersionControl
+   */
   /*@RequiresNonNull({"dir","checkouts"})*/
   /*@EnsuresNonNull("action")*/
   public void parseArgs(
@@ -1087,6 +1093,8 @@ public class MultiVersionControl {
 
   /**
    * Run the action described by field {@code action}, for each of the clones in {@code checkouts}.
+   *
+   * @param checkouts the clones and checkouts to process
    */
   public void process(Set<Checkout> checkouts) {
     // Always run at least one command, but sometimes up to three.
