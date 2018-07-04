@@ -71,7 +71,7 @@ import org.checkerframework.common.value.qual.*;
  *
  * <pre>
  *   clone     -- Clone (check out) all repositories.
- *   checkout  -- Same as clone
+ *   checkout  -- Same as clone.
  *   pull      -- Pull and update all clones.
  *   update    -- Same as pull.
  *   status    -- Show files that are changed but not committed, or committed
