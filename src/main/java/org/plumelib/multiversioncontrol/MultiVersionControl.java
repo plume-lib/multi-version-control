@@ -598,7 +598,12 @@ public class MultiVersionControl {
       }
     }
 
-    /** If the directory exists, then the subdirectory must exist too. */
+    /**
+     * If the directory exists, then the subdirectory must exist too.
+     *
+     * @param directory the directory
+     * @param subdirName a subdirectory that must exist, if {@code directory} exists
+     */
     private static void assertSubdirExists(File directory, String subdirName) {
       if (directory.exists() && !new File(directory, subdirName).isDirectory()) {
         System.err.printf(
@@ -642,7 +647,13 @@ public class MultiVersionControl {
   /// Read checkouts from a file
   ///
 
-  /** Read checkouts from the file (in .mvc-checkouts format), and add them to the set. */
+  /**
+   * Read checkouts from the file (in .mvc-checkouts format), and add them to the set.
+   *
+   * @param file the .mvc-checkouts file
+   * @param checkouts the set to populate; is side-effected by this method
+   * @throws IOException if there is trouble reading the file (or file sysetm?)
+   */
   @SuppressWarnings({
     "StringSplitter" // don't add dependence on Guava
   })
@@ -780,6 +791,10 @@ public class MultiVersionControl {
    * Find all checkouts at or under the given directory (or, as a special case, also its parent --
    * could rewrite to avoid that case), and adds them to checkouts. Works by checking whether dir or
    * any of its descendants is a version control directory.
+   *
+   * @param dir the directory under which to search for checkouts
+   * @param checkouts the set to populate; is side-effected by this method
+   * @param ignoreDirs directories not to search within
    */
   private static void findCheckouts(File dir, Set<Checkout> checkouts, List<File> ignoreDirs) {
     if (!dir.isDirectory()) {
@@ -858,10 +873,14 @@ public class MultiVersionControl {
   static IsDirectoryFilter idf = new IsDirectoryFilter();
 
   /**
-   * Given a directory named "CVS", create a corresponding Checkout object for its parent, and add
-   * it to the given set. (Google Web Toolkit does that, for example.)
+   * Given a directory named {@code CVS}, create a corresponding Checkout object for its parent, and
+   * add it to the given set. (Google Web Toolkit does that, for example.)
+   *
+   * @param cvsDir a {@code CVS} directory
+   * @param parentDir its parent
+   * @param checkouts the set to populate; is side-effected by this method
    */
-  static void addCheckoutCvs(File cvsDir, File dir, Set<Checkout> checkouts) {
+  static void addCheckoutCvs(File cvsDir, File parentDir, Set<Checkout> checkouts) {
     assert cvsDir.getName().toString().equals("CVS") : cvsDir.getName();
     // relative path within repository
     File repositoryFile = new File(cvsDir, "Repository");
@@ -878,10 +897,11 @@ public class MultiVersionControl {
     }
 
     // strip common suffix off of local dir and repo url
-    FilePair stripped = removeCommonSuffixDirs(dir, new File(pathInRepo), repoFileRoot, "CVS");
+    FilePair stripped =
+        removeCommonSuffixDirs(parentDir, new File(pathInRepo), repoFileRoot, "CVS");
     File dirRelative = stripped.file1;
     if (dirRelative == null) {
-      System.out.printf("dir (%s) is parent of path in repo (%s)", dir, pathInRepo);
+      System.out.printf("dir (%s) is parent of path in repo (%s)", parentDir, pathInRepo);
       System.exit(1);
     }
     String pathInRepoAtCheckout;
@@ -894,8 +914,14 @@ public class MultiVersionControl {
     checkouts.add(new Checkout(RepoType.CVS, dirRelative, repoRoot, pathInRepoAtCheckout));
   }
 
-  /** Given a directory named ".hg" , create a corresponding Checkout object for its parent. */
-  static Checkout dirToCheckoutHg(File hgDir, File dir) {
+  /**
+   * Given a directory named {@code .hg} , create a corresponding Checkout object for its parent.
+   *
+   * @param hgDir a {@code .hg} directory
+   * @param parentDir its parent
+   * @return a Checkout for the {@code .hg} directory
+   */
+  static Checkout dirToCheckoutHg(File hgDir, File parentDir) {
     String repository = null;
 
     File hgrcFile = new File(hgDir, "hgrc");
@@ -917,21 +943,30 @@ public class MultiVersionControl {
       }
     }
 
-    return new Checkout(RepoType.HG, dir, repository, null);
-  }
-
-  /** Given a directory named ".git" , create a corresponding Checkout object for its parent. */
-  static Checkout dirToCheckoutGit(File gitDir, File dir) {
-    String repository = UtilPlume.backticks("git", "config", "remote.origin.url");
-
-    return new Checkout(RepoType.GIT, dir, repository, null);
+    return new Checkout(RepoType.HG, parentDir, repository, null);
   }
 
   /**
-   * Given a directory that contains a .svn subdirectory, create a corresponding Checkout object.
-   * Returns null if this is not possible.
+   * Given a directory named {@code .git} , create a corresponding Checkout object for its parent.
+   *
+   * @param gitDir a {@code .git} directory
+   * @param parentDir its parent
+   * @return a Checkout for the {@code .git} directory
    */
-  static /*@Nullable*/ Checkout dirToCheckoutSvn(File dir) {
+  static Checkout dirToCheckoutGit(File gitDir, File parentDir) {
+    String repository = UtilPlume.backticks("git", "config", "remote.origin.url");
+
+    return new Checkout(RepoType.GIT, parentDir, repository, null);
+  }
+
+  /**
+   * Given a directory that contains a {@code .svn} subdirectory, create a corresponding Checkout
+   * object. Returns null if this is not possible.
+   *
+   * @param parentDir a directory containing a {@code .svn} subdirectory
+   * @return a SVN checkout for the directory, or null
+   */
+  static /*@Nullable*/ Checkout dirToCheckoutSvn(File parentDir) {
 
     // For SVN, do
     //   svn info
@@ -948,10 +983,10 @@ public class MultiVersionControl {
     SVNWCClient wcClient = new SVNWCClient((/*@Nullable*/ ISVNAuthenticationManager) null, null);
     SVNInfo info;
     try {
-      info = wcClient.doInfo(new File(dir.toString()), SVNRevision.WORKING);
+      info = wcClient.doInfo(new File(parentDir.toString()), SVNRevision.WORKING);
     } catch (SVNException e) {
-      // throw new Error("Problem in dirToCheckoutSvn(" + dir + "): ", e);
-      System.err.println("Problem in dirToCheckoutSvn(" + dir + "): " + e.getMessage());
+      // throw new Error("Problem in dirToCheckoutSvn(" + parentDir + "): ", e);
+      System.err.println("Problem in dirToCheckoutSvn(" + parentDir + "): " + e.getMessage());
       if (e.getMessage() != null && e.getMessage().contains("This client is too old")) {
         System.err.println("plume-lib needs a newer version of SVNKit.");
       }
@@ -959,14 +994,14 @@ public class MultiVersionControl {
     }
     // getFile is null when operating on a working copy, as I am
     // String relativeFile = info.getPath(); // relative to repository root; use to determine root
-    // getFile is just the (absolute) local file name for local items -- same as "dir"
+    // getFile is just the (absolute) local file name for local items -- same as "parentDir"
     // File relativeFile = info.getFile();
     SVNURL url = info.getURL();
-    // This can be null, but I don't know under what circumstances. (example: dir
+    // This can be null, but I don't know under what circumstances. (example: parentDir
     // /afs/csail.mit.edu/u/m/mernst/.snapshot/class/6170/2006-spring/3dphysics)
     SVNURL repoRoot = info.getRepositoryRootURL();
     if (repoRoot == null) {
-      System.err.println("Problem:  old svn working copy in " + dir.toString());
+      System.err.println("Problem:  old svn working copy in " + parentDir.toString());
       System.err.println(
           "Check it out again to get a 'Repository Root' entry in the svn info output.");
       System.err.println("  repoUrl = " + url);
@@ -976,19 +1011,20 @@ public class MultiVersionControl {
       System.out.println();
       System.out.println("repoRoot = " + repoRoot);
       System.out.println(" repoUrl = " + url);
-      System.out.println("     dir = " + dir.toString());
+      System.out.println("     parentDir = " + parentDir.toString());
     }
 
     // Strip common suffix off of local dir and repo url.
     FilePair stripped =
-        removeCommonSuffixDirs(dir, new File(url.getPath()), new File(repoRoot.getPath()), ".svn");
+        removeCommonSuffixDirs(
+            parentDir, new File(url.getPath()), new File(repoRoot.getPath()), ".svn");
     File dirRelative = stripped.file1;
     if (dirRelative == null) {
-      System.out.printf("dir (%s) is parent of repository URL (%s)", dir, url.getPath());
+      System.out.printf("dir (%s) is parent of repository URL (%s)", parentDir, url.getPath());
       System.exit(1);
     }
     if (stripped.file2 == null) {
-      System.out.printf("dir (%s) is child of repository URL (%s)", dir, url.getPath());
+      System.out.printf("dir (%s) is child of repository URL (%s)", parentDir, url.getPath());
       System.exit(1);
     }
     String pathInRepoAtCheckout = stripped.file2.toString();
@@ -1034,7 +1070,14 @@ public class MultiVersionControl {
    * Strip identical elements off the end of both paths, and then return what is left of each.
    * Returned elements can be null! If p2Limit is non-null, then it should be a parent of p2, and
    * the stripping stops when p2 becomes p2Limit. If p1Contains is non-null, then p1 must contain a
-   * subdirectory of that name.
+   * subdirectory of that name, and stripping stops when it is reached
+   *
+   * @param p1 the first path
+   * @param p2 the first path
+   * @param p2Limit null, or a parent of p2, which is the minimum suffix to return
+   * @param p1Contains null, or a subdirectory of p1
+   * @return p1 and p2, relative to their largest common prefix (modulo {@code p2Limit} and {@code
+   *     p1Contains})
    */
   static FilePair removeCommonSuffixDirs(File p1, File p2, File p2Limit, String p1Contains) {
     if (debug) {
@@ -1063,14 +1106,24 @@ public class MultiVersionControl {
   /// Process checkouts
   ///
 
-  /** Change pb's command by adding the given argument at the end. */
+  /**
+   * Change pb's command by adding the given argument at the end.
+   *
+   * @param pb the ProcessBuilder to modify
+   * @param arg the argument to add to {@code pb}'s command
+   */
   private void addArg(ProcessBuilder pb, String arg) {
     List<String> command = pb.command();
     command.add(arg);
     pb.command(command);
   }
 
-  /** Change pb's command by adding the given arguments at the end. */
+  /**
+   * Change pb's command by adding the given arguments at the end.
+   *
+   * @param pb the ProcessBuilder to modify
+   * @param args the arguments to add to {@code pb}'s command
+   */
   private void addArgs(ProcessBuilder pb, List<String> args) {
     List<String> command = pb.command();
     command.addAll(args);
@@ -1544,8 +1597,11 @@ public class MultiVersionControl {
   private /*@Regex(1)*/ Pattern defaultPattern = Pattern.compile("^default[ \t]*=[ \t]*(.*)");
 
   /**
-   * Given a directory containing a Mercurial checkout, return its default path. Return null
+   * Given a directory containing a Mercurial checkout/clone, return its default path. Return null
    * otherwise.
+   *
+   * @param dir a directory containing a Mercurial checkout/clone
+   * @return the path for the Mercurial checkout/clone
    */
   // This implementation is not quite right because we didn't look for the
   // [path] section.  We could fix this by using a real ini reader or
@@ -1582,8 +1638,12 @@ public class MultiVersionControl {
   }
 
   /**
-   * If showNormalOutput is true, then display the output even if the process completed normally.
-   * Ordinarily, output is displayed only if the process completed erroneously.
+   * Perform {@code pb}'s command
+   *
+   * @param pb the ProcessBuilder whose commands to run
+   * @param replacers replacement to make it the output before displaying it, to reduce verbasity
+   * @param showNormalOutput if true, then display the output even if the process completed
+   *     normally. Ordinarily, output is displayed only if the process completed erroneously.
    */
   void perform_command(ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
     if (show) {
@@ -1697,65 +1757,6 @@ public class MultiVersionControl {
     return "  cd " + pb.directory() + "\n  " + UtilPlume.join(pb.command(), " ");
   }
 
-  //     # Show the command.
-  //     if ($show) {
-  //       if (($action eq "checkout")
-  //           # Better would be to change the printed (but not executed) command
-  //           # || (($action eq "update") && defined($svnroot))
-  //           || ($action eq "update")) {
-  //         print "cd $command_cwd\n";
-  //       }
-  //       print "command: $command\n";
-  //     }
-  //
-  //     # Perform the command
-  //     if (! $dry_run) {
-  //       my $tmpfile = "/tmp/cmd-output-$$";
-  //       # For debugging
-  //       # my $command_cwd_sanitized = $command_cwd;
-  //       # $command_cwd_sanitized =~ s/\//_/g;
-  //       # my $tmpfile = "/tmp/cmd-output-$$-$command_cwd_sanitized";
-  //       my $command_redirected = "$command > $tmpfile 2>&1";
-  //       if ($debug) { print "About to execute: $command_redirected\n"; }
-  //       my $result = system("$command_redirected");
-  //       if ($debug) { print "Executed: $command_redirected\n"; }
-  //       if ($debug) { print "raw result = $result\n"; }
-  //       if ($result == -1) {
-  //         print "failed to execute: $command_redirected: $!\n";
-  //       } elsif ($result & 127) {
-  //         printf "child died with signal %d, %s coredump%n",
-  //         ($result & 127),  ($result & 128) ? 'with' : 'without';
-  //       } else {
-  //         # Problem:  diff returns failure status if there were differences
-  //         # or if there was an error, so ther's no good way to detect errors.
-  //         $result = $result >> 8;
-  //         if ($debug) { print "shifted result = $result\n"; }
-  //         if ((($action eq "status") && ($result != 0) && ($result != 1))
-  //             || (($action ne "status") && ($result != 0))) {
-  //           print "exit status $result for:\n  cd $command_cwd;\n  $command_redirected\n";
-  //           system("cat $tmpfile");
-  //         }
-  //       }
-  //       # Filter the output
-  //       if (defined($filter)) {
-  //         system("cat $tmpfile | $filter > $tmpfile-2");
-  //         rename("$tmpfile-2", "$tmpfile");
-  //       }
-  //       if ($debug && $show_directory) {
-  //         print "show-directory: $dir:\n";
-  //         printf "tmpfile size: %d, zeroness: %d, non-zeroness %d%n",
-  //                (-s $tmpfile), (-z $tmpfile), (! -z $tmpfile);
-  //       }
-  //       if ((! -z $tmpfile) && $show_directory) {
-  //         print "$dir:\n";
-  //       }
-  //       system("cat $tmpfile");
-  //       unlink($tmpfile);
-  //     }
-  //     next;
-  //   }
-  // }
-
   /**
    * A stream of newlines. Used for processes that want input, when we don't want to give them input
    * but don't want them to simply hang.
@@ -1766,66 +1767,4 @@ public class MultiVersionControl {
       return (int) '\n';
     }
   }
-
-  //   static interface BufferedReaderFilter {
-  //     void process(Stream s);
-  //   }
-  //
-  //   public static class CvsDiffFilter implements BufferedReaderFilter {
-  //
-  //     BufferedReader reader;
-  //     String directory;
-  //
-  //     public CvsDiffFilter(BufferedReader reader, String directory) {
-  //       this.reader = reader;
-  //       this.directory = directory;
-  //     }
-  //
-  //     public void close() {
-  //       reader.close();
-  //     }
-  //
-  //     public void mark(int readAheadLimit) {
-  //       reader.mark(readAheadLimit);
-  //     }
-  //
-  //     public boolean markSupported() {
-  //       reader.markSupported();
-  //     }
-  //
-  //     public int read() {
-  //       throw new UnsupportedOperationException();
-  //       // reader.read();
-  //     }
-  //
-  //     public int read(char[] cbuf, int off, int len) {
-  //       throw new UnsupportedOperationException();
-  //       // reader.read(char[] cbuf, int off, int len);
-  //     }
-  //
-  //     public String readLine() {
-  //       String result = reader.readLine();
-  //       if (result == null) {
-  //         return result;
-  //       } else if (result.startsWith("Index: ")) {
-  //         return directory + result.substring(7);
-  //       } else {
-  //         return "";
-  //       }
-  //     }
-  //
-  //     public boolean ready() {
-  //       reader.ready();
-  //     }
-  //
-  //     public void reset() {
-  //       reader.reset();
-  //     }
-  //
-  //     public long skip(long n) {
-  //       reader.skip(n);
-  //     }
-  //
-  //   }
-
 }
