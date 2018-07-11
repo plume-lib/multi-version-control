@@ -27,7 +27,7 @@ dependencies {
     compile group: 'org.ini4j', name: 'ini4j', version: '0.5.4'
 
     compile 'org.plumelib:options:0.3.1'
-    compile 'org.plumelib:plume-util:0.0.1'
+    compile 'org.plumelib:plume-util:0.1.0'
 
     compile 'org.apache.commons:commons-exec:1.3'
 }
