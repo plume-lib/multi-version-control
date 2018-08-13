@@ -769,8 +769,7 @@ public class MultiVersionControl {
   // is bad style), so we must examine every CVS/.svn directory to find all
   // the distinct checkouts.
 
-  // An alternative implementation would use Files.walkFileTree, but that
-  // is available only in Java 7.
+  // TODO: This should use Files.walkFileTree, which is available since Java 7.
 
   //   /** Find all checkouts under the given directory. */
   //   static Set<Checkout> findCheckouts(File dir) {
