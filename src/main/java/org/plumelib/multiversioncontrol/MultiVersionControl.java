@@ -263,6 +263,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
 
 public class MultiVersionControl {
 
+  /** User home directory. */
   @Option(value = "User home directory", noDocDefault = true)
   public static String home = System.getProperty("user.home");
 
@@ -273,15 +274,18 @@ public class MultiVersionControl {
   @Option("File with list of checkouts.  Set it to /dev/null to suppress reading.")
   public String checkouts = "~/.mvc-checkouts";
 
+  /** Directory under which to search for checkouts; default=home dir. */
   @Option("Directory under which to search for checkouts; default=home dir")
   public List<String> dir = new ArrayList<String>();
 
+  /** Directories under which to NOT search for checkouts. */
   @Option("Directory under which to NOT search for checkouts")
   public List<String> ignore_dir = new ArrayList<String>();
 
   private List<File> ignoreDirs = new ArrayList<File>();
 
   // Default is false because searching whole directory structure is slow.
+  /** If true, search for all checkouts, not just those listed in a file. */
   @Option("Search for all checkouts, not just those listed in a file")
   public boolean search = false;
 
