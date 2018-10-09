@@ -276,13 +276,13 @@ public class MultiVersionControl {
 
   /** Directory under which to search for checkouts; default=home dir. */
   @Option("Directory under which to search for checkouts; default=home dir")
-  public List<String> dir = new ArrayList<String>();
+  public List<String> dir = new ArrayList<>();
 
   /** Directories under which to NOT search for checkouts. */
   @Option("Directory under which to NOT search for checkouts")
-  public List<String> ignore_dir = new ArrayList<String>();
+  public List<String> ignore_dir = new ArrayList<>();
 
-  private List<File> ignoreDirs = new ArrayList<File>();
+  private List<File> ignoreDirs = new ArrayList<>();
 
   // Default is false because searching whole directory structure is slow.
   /** If true, search for all checkouts, not just those listed in a file. */
@@ -341,16 +341,16 @@ public class MultiVersionControl {
   // example, --insecure isn't applicable to "hg status".
 
   @Option("Extra argument to pass to the cvs program")
-  public List<String> cvs_arg = new ArrayList<String>();
+  public List<String> cvs_arg = new ArrayList<>();
 
   @Option("Extra argument to pass  to the git program")
-  public List<String> git_arg = new ArrayList<String>();
+  public List<String> git_arg = new ArrayList<>();
 
   @Option("Extra argument to pass  to the hg program")
-  public List<String> hg_arg = new ArrayList<String>();
+  public List<String> hg_arg = new ArrayList<>();
 
   @Option("Extra argument to pass  to the svn program")
-  public List<String> svn_arg = new ArrayList<String>();
+  public List<String> svn_arg = new ArrayList<>();
 
   // It would be good to be able to set this per-checkout.
   // This variable is static because it is used in static methods.
@@ -393,7 +393,7 @@ public class MultiVersionControl {
     setupSvnkit();
     MultiVersionControl mvc = new MultiVersionControl(args);
 
-    Set<Checkout> checkouts = new LinkedHashSet<Checkout>();
+    Set<Checkout> checkouts = new LinkedHashSet<>();
 
     try {
       readCheckouts(new File(mvc.checkouts), checkouts);
@@ -779,7 +779,7 @@ public class MultiVersionControl {
   //   static Set<Checkout> findCheckouts(File dir) {
   //     assert dir.isDirectory();
   //
-  //     Set<Checkout> checkouts = new LinkedHashSet<Checkout>();
+  //     Set<Checkout> checkouts = new LinkedHashSet<>();
   //
   //     findCheckouts(dir, checkouts);
   //
@@ -1168,8 +1168,8 @@ public class MultiVersionControl {
       }
       File dir = c.directory;
 
-      List<Replacer> replacers = new ArrayList<Replacer>();
-      List<Replacer> replacers3 = new ArrayList<Replacer>();
+      List<Replacer> replacers = new ArrayList<>();
+      List<Replacer> replacers3 = new ArrayList<>();
 
       switch (c.repoType) {
         case BZR:
