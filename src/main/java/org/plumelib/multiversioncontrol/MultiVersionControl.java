@@ -343,13 +343,13 @@ public class MultiVersionControl {
   @Option("Extra argument to pass to the cvs program")
   public List<String> cvs_arg = new ArrayList<>();
 
-  @Option("Extra argument to pass  to the git program")
+  @Option("Extra argument to pass to the git program")
   public List<String> git_arg = new ArrayList<>();
 
-  @Option("Extra argument to pass  to the hg program")
+  @Option("Extra argument to pass to the hg program")
   public List<String> hg_arg = new ArrayList<>();
 
-  @Option("Extra argument to pass  to the svn program")
+  @Option("Extra argument to pass to the svn program")
   public List<String> svn_arg = new ArrayList<>();
 
   // It would be good to be able to set this per-checkout.
