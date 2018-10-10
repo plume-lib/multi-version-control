@@ -1637,7 +1637,7 @@ public class MultiVersionControl {
   }
 
   /**
-   * Perform {@code pb}'s command
+   * Perform {@code pb}'s command.
    *
    * @param pb the ProcessBuilder whose commands to run
    * @param replacers replacement to make it the output before displaying it, to reduce verbasity
