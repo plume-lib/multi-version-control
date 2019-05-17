@@ -2,14 +2,14 @@ plugins {
   id 'application'
   id 'java'
   id 'com.github.johnrengelman.shadow' version '4.0.2'
+
+  // Checker Framework pluggable type-checking
+  id 'org.checkerframework' version '0.3.0'
 }
 
 repositories {
   mavenCentral()
 }
-
-// Checker Framework pluggable type-checking
-apply from: "gradle/checkerframework.gradle"
 
 dependencies {
   // https://mvnrepository.com/artifact/org.tmatesoft.svnkit/svnkit
@@ -28,6 +28,20 @@ targetCompatibility = 1.8
 
 // Define the main class for the application
 mainClassName = 'org.plumelib.multiversioncontrol.MultiVersionControl'
+
+// Checker Framework pluggable type-checking
+apply plugin: 'org.checkerframework'
+checkerFramework {
+  checkers = [
+    'org.checkerframework.checker.index.IndexChecker',
+    'org.checkerframework.checker.lock.LockChecker',
+    'org.checkerframework.checker.nullness.NullnessChecker',
+    'org.checkerframework.checker.regex.RegexChecker'
+  ]
+  extraJavacArgs = [
+    '-AcheckPurityAnnotations'
+  ]
+}
 
 
 /// Javadoc
