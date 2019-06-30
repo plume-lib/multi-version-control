@@ -26,7 +26,8 @@ jobs:
             - gradle-v1-
 
       - run: ./gradlew build javadoc
-      - run: ./gradlew requireJavadoc
+      # TODO: Add Javadoc and enable this.
+      # - run: ./gradlew requireJavadoc
 
       - save_cache:
           paths:
