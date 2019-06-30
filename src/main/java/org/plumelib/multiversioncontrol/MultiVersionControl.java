@@ -278,10 +278,11 @@ public class MultiVersionControl {
   @Option("Directory under which to search for checkouts; default=home dir")
   public List<String> dir = new ArrayList<>();
 
-  /** Directories under which to NOT search for checkouts. */
+  /** Directories under which to NOT search for checkouts. May include leading "~/". */
   @Option("Directory under which to NOT search for checkouts")
   public List<String> ignore_dir = new ArrayList<>();
 
+  /** Files, each a directory, corresponding to strings in {@link ignore_dir}. */
   private List<File> ignoreDirs = new ArrayList<>();
 
   // Default is false because searching whole directory structure is slow.
@@ -291,12 +292,15 @@ public class MultiVersionControl {
 
   // TODO: use consistent names: both "show" or both "print"
 
+  /** If true, display each command is it is executed. */
   @Option("Display commands as they are executed")
   public boolean show = false;
 
+  /** If true, print the directory before executing commands in it. */
   @Option("Print the directory before executing commands")
   public boolean print_directory = false;
 
+  /** Perform a "dry run": print commands but do not execute them. */
   @Option("Do not execute commands; just print them.  Implies --show --redo-existing")
   public boolean dry_run = false;
 
@@ -312,6 +316,7 @@ public class MultiVersionControl {
   @Option("Timeout for each command, in seconds")
   public int timeout = 600;
 
+  /** If true, run quietly (e.g., no output about missing directories). */
   @Option("-q Run quietly (e.g., no output about missing directories)")
   public boolean quiet = true;
 
@@ -321,6 +326,7 @@ public class MultiVersionControl {
   //  * if there is a directory of the same name as the program, and . is on
   //    your path; in that case, the command would try to execute the directory.
 
+  /** Path to the cvs program. */
   @Option("Path to the cvs program")
   public String cvs_executable = "cvs";
 
