@@ -39,6 +39,7 @@ checkerFramework {
     'org.checkerframework.checker.regex.RegexChecker'
   ]
   extraJavacArgs = [
+    '-Werror',
     '-AcheckPurityAnnotations',
     '-ArequirePrefixInWarningSuppressions',
     '-AwarnUnneededSuppressions'
