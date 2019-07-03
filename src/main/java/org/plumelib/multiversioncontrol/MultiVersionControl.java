@@ -28,7 +28,6 @@ import org.checkerframework.checker.lock.qual.GuardSatisfied;
 import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.checkerframework.checker.nullness.qual.Raw;
 import org.checkerframework.checker.nullness.qual.RequiresNonNull;
 import org.checkerframework.checker.regex.qual.Regex;
 import org.checkerframework.common.value.qual.MinLen;
@@ -466,7 +465,7 @@ public class MultiVersionControl {
    */
   @RequiresNonNull({"dir", "checkouts"})
   @EnsuresNonNull("action")
-  public void parseArgs(@UnknownInitialization @Raw MultiVersionControl this, String[] args) {
+  public void parseArgs(@UnknownInitialization MultiVersionControl this, String[] args) {
     @SuppressWarnings(
         "initialization") // new C(underInit) yields @UnderInitialization; @Initialized is safe
     @Initialized Options options = new Options("mvc [options] {checkout,status,update,list}", this);
