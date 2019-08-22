@@ -1144,7 +1144,13 @@ public class MultiVersionControl {
     }
 
     public String replaceAll(String s) {
-      return s.replaceAll(regexp, replacement);
+      // String.replaceAll uses a recursive (!) algorithm that is prone to StackOverflowError for
+      // long strings.
+      if (s.length() > 10000) {
+        return s;
+      } else {
+        return s.replaceAll(regexp, replacement);
+      }
     }
   }
 
