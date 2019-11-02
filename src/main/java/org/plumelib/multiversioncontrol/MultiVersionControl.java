@@ -35,6 +35,7 @@ import org.checkerframework.dataflow.qual.Pure;
 import org.checkerframework.dataflow.qual.SideEffectFree;
 import org.ini4j.Ini;
 import org.plumelib.options.Option;
+import org.plumelib.options.OptionGroup;
 import org.plumelib.options.Options;
 import org.plumelib.util.EntryReader;
 import org.plumelib.util.UtilPlume;
@@ -68,8 +69,8 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *
  * <p>This program simplifies managing your clones/checkouts. You might want to pull/update all of
  * them, or you might want to know whether any of them have uncommitted changes. When setting up a
- * new account, you might want to clone or check them all out. This program does any of those tasks.
- * In particular, it accepts these arguments:
+ * new account, you might want to clone or check them all out. This program does those tasks. It
+ * accepts these arguments:
  *
  * <pre>
  *   clone     -- Clone (check out) all repositories.
@@ -84,11 +85,11 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  * (The {@code commit} action is not supported, because that is not something that should be done in
  * an automated way -- it needs a user-written commit message.)
  *
- * <p>You can specify the set of checkouts/clones for the program to manage, or it can search your
- * directory structure to find all of your checkouts, or both. To list all un-committed changed
- * files under your home directory:
+ * <p>You can specify the set of clones for the program to manage in a file {@code .mvc-checkouts},
+ * or you can pass {@code --search} to make the program search your directory structure to find all
+ * of your clones. For example, to list all un-committed changed files under your home directory:
  *
- * <pre>java plume.MultiVersionControl status --search=true</pre>
+ * <pre>java org.plumelib.multiversioncontrol.MultiVersionControl status --search=true</pre>
  *
  * <b>Command-line arguments</b>
  *
@@ -96,52 +97,70 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  * <!-- start options doc (DO NOT EDIT BY HAND) -->
  *
  * <ul>
- *   <li id="option:home"><b>--home=</b><i>string</i>. User home directory
- *   <li id="option:checkouts"><b>--checkouts=</b><i>string</i>. File with list of checkouts. Set it
- *       to /dev/null to suppress reading. Defaults to {@code $HOME/.mvc-checkouts}. [default
- *       ~/.mvc-checkouts]
- *   <li id="option:dir"><b>--dir=</b><i>string</i> <code>[+]</code>. Directory under which to
- *       search for checkouts; default=home dir
- *   <li id="option:ignore-dir"><b>--ignore-dir=</b><i>string</i> <code>[+]</code>. Directory under
- *       which to NOT search for checkouts
- *   <li id="option:search"><b>--search=</b><i>boolean</i>. Search for all checkouts, not just those
- *       listed in a file [default false]
- *   <li id="option:show"><b>--show=</b><i>boolean</i>. Display commands as they are executed
- *       [default false]
- *   <li id="option:print-directory"><b>--print-directory=</b><i>boolean</i>. Print the directory
- *       before executing commands [default false]
- *   <li id="option:dry-run"><b>--dry-run=</b><i>boolean</i>. Do not execute commands; just print
- *       them. Implies --show --redo-existing [default false]
- *   <li id="option:redo-existing"><b>--redo-existing=</b><i>boolean</i>. Default is for checkout
- *       command to skip existing directories. [default false]
- *   <li id="option:timeout"><b>--timeout=</b><i>int</i>. Terminating the process can leave the
- *       repository in a bad state, so set this rather high for safety. Also, the timeout needs to
- *       account for the time to run hooks (that might recompile or run tests). [default 600]
- *   <li id="option:quiet"><b>-q</b> <b>--quiet=</b><i>boolean</i>. Run quietly (e.g., no output
- *       about missing directories) [default true]
- *   <li id="option:cvs-executable"><b>--cvs-executable=</b><i>string</i>. Path to the cvs program
- *       [default cvs]
- *   <li id="option:git-executable"><b>--git-executable=</b><i>string</i>. Path to the git program
- *       [default git]
- *   <li id="option:hg-executable"><b>--hg-executable=</b><i>string</i>. Path to the hg program
- *       [default hg]
- *   <li id="option:svn-executable"><b>--svn-executable=</b><i>string</i>. Path to the svn program
- *       [default svn]
- *   <li id="option:insecure"><b>--insecure=</b><i>boolean</i>. Pass --insecure argument to hg (and
- *       likewise for other programs) [default false]
- *   <li id="option:cvs-arg"><b>--cvs-arg=</b><i>string</i> <code>[+]</code>. Extra argument to pass
- *       to the cvs program
- *   <li id="option:git-arg"><b>--git-arg=</b><i>string</i> <code>[+]</code>. Extra argument to pass
- *       to the git program
- *   <li id="option:hg-arg"><b>--hg-arg=</b><i>string</i> <code>[+]</code>. Extra argument to pass
- *       to the hg program
- *   <li id="option:svn-arg"><b>--svn-arg=</b><i>string</i> <code>[+]</code>. Extra argument to pass
- *       to the svn program
- *   <li id="option:debug"><b>--debug=</b><i>boolean</i>. Print debugging output [default false]
- *   <li id="option:debug-replacers"><b>--debug-replacers=</b><i>boolean</i>. Debug 'replacers' that
- *       filter command output [default false]
- *   <li id="option:debug-process-output"><b>--debug-process-output=</b><i>boolean</i>. Lightweight
- *       debugging of 'replacers' that filter command output [default false]
+ *   <li id="optiongroup:Configuration-file">Configuration file
+ *       <ul>
+ *         <li id="option:home"><b>--home=</b><i>string</i>. User home directory. [default Java
+ *             {@code user.home} property]
+ *         <li id="option:checkouts"><b>--checkouts=</b><i>string</i>. File with list of clones. Set
+ *             it to /dev/null to suppress reading. [default {@code .mvc-checkouts} in home
+ *             directory]
+ *       </ul>
+ *   <li id="optiongroup:Miscellaneous-options">Miscellaneous options
+ *       <ul>
+ *         <li id="option:redo-existing"><b>--redo-existing=</b><i>boolean</i>. If false, clone
+ *             command to skips existing directories. [default false]
+ *         <li id="option:timeout"><b>--timeout=</b><i>int</i>. Terminating the process can leave
+ *             the repository in a bad state, so set this rather high for safety. Also, the timeout
+ *             needs to account for the time to run hooks (that might recompile or run tests).
+ *             [default 600]
+ *       </ul>
+ *   <li id="optiongroup:Searching-for-clones">Searching for clones
+ *       <ul>
+ *         <li id="option:search"><b>--search=</b><i>boolean</i>. If true, search for all clones,
+ *             not just those listed in a file. [default false]
+ *         <li id="option:dir"><b>--dir=</b><i>string</i> <code>[+]</code>. Directory under which to
+ *             search for clones, when using {@code --search} [default home directory]
+ *         <li id="option:ignore-dir"><b>--ignore-dir=</b><i>string</i> <code>[+]</code>.
+ *             Directories under which to NOT search for clones. May include leading "~/".
+ *       </ul>
+ *   <li id="optiongroup:Paths-to-programs">Paths to programs
+ *       <ul>
+ *         <li id="option:cvs-executable"><b>--cvs-executable=</b><i>string</i>. Path to the cvs
+ *             program. [default cvs]
+ *         <li id="option:git-executable"><b>--git-executable=</b><i>string</i>. Path to the git
+ *             program [default git]
+ *         <li id="option:hg-executable"><b>--hg-executable=</b><i>string</i>. Path to the hg
+ *             program [default hg]
+ *         <li id="option:svn-executable"><b>--svn-executable=</b><i>string</i>. Path to the svn
+ *             program [default svn]
+ *         <li id="option:insecure"><b>--insecure=</b><i>boolean</i>. Pass --insecure argument to hg
+ *             (and likewise for other programs) [default false]
+ *         <li id="option:cvs-arg"><b>--cvs-arg=</b><i>string</i> <code>[+]</code>. Extra argument
+ *             to pass to the cvs program
+ *         <li id="option:git-arg"><b>--git-arg=</b><i>string</i> <code>[+]</code>. Extra argument
+ *             to pass to the git program
+ *         <li id="option:hg-arg"><b>--hg-arg=</b><i>string</i> <code>[+]</code>. Extra argument to
+ *             pass to the hg program
+ *         <li id="option:svn-arg"><b>--svn-arg=</b><i>string</i> <code>[+]</code>. Extra argument
+ *             to pass to the svn program
+ *       </ul>
+ *   <li id="optiongroup:Diagnostics">Diagnostics
+ *       <ul>
+ *         <li id="option:show"><b>--show=</b><i>boolean</i>. If true, display each command is it is
+ *             executed. [default false]
+ *         <li id="option:print-directory"><b>--print-directory=</b><i>boolean</i>. If true, print
+ *             the directory before executing commands in it. [default false]
+ *         <li id="option:dry-run"><b>--dry-run=</b><i>boolean</i>. Perform a "dry run": print
+ *             commands but do not execute them. [default false]
+ *         <li id="option:quiet"><b>-q</b> <b>--quiet=</b><i>boolean</i>. If true, run quietly
+ *             (e.g., no output about missing directories). [default true]
+ *         <li id="option:debug"><b>--debug=</b><i>boolean</i>. Print debugging output [default
+ *             false]
+ *         <li id="option:debug-replacers"><b>--debug-replacers=</b><i>boolean</i>. Debug
+ *             'replacers' that filter command output [default false]
+ *         <li id="option:debug-process-output"><b>--debug-process-output=</b><i>boolean</i>.
+ *             Lightweight debugging of 'replacers' that filter command output [default false]
+ *       </ul>
  * </ul>
  *
  * <code>[+]</code> marked option can be specified multiple times
@@ -262,49 +281,23 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
 
 public class MultiVersionControl {
 
-  /** User home directory. */
-  @Option(value = "User home directory", noDocDefault = true)
+  /** User home directory. [default Java {@code user.home} property] */
+  @OptionGroup("Configuration file")
+  @Option(value = "User home directory.", noDocDefault = true)
   public static String home = System.getProperty("user.home");
 
   /**
-   * File with list of checkouts. Set it to /dev/null to suppress reading. Defaults to {@code
-   * $HOME/.mvc-checkouts}.
+   * File with list of clones. Set it to /dev/null to suppress reading. [default {@code
+   * .mvc-checkouts} in home directory]
    */
-  @Option("File with list of checkouts.  Set it to /dev/null to suppress reading.")
+  @Option(
+      value = "File with list of clones.  Set it to /dev/null to suppress reading.",
+      noDocDefault = true)
   public String checkouts = "~/.mvc-checkouts";
 
-  /** Directory under which to search for checkouts; default=home dir. */
-  @Option("Directory under which to search for checkouts; default=home dir")
-  public List<String> dir = new ArrayList<>();
-
-  /** Directories under which to NOT search for checkouts. May include leading "~/". */
-  @Option("Directory under which to NOT search for checkouts")
-  public List<String> ignore_dir = new ArrayList<>();
-
-  /** Files, each a directory, corresponding to strings in {@link ignore_dir}. */
-  private List<File> ignoreDirs = new ArrayList<>();
-
-  // Default is false because searching whole directory structure is slow.
-  /** If true, search for all checkouts, not just those listed in a file. */
-  @Option("Search for all checkouts, not just those listed in a file")
-  public boolean search = false;
-
-  // TODO: use consistent names: both "show" or both "print"
-
-  /** If true, display each command is it is executed. */
-  @Option("Display commands as they are executed")
-  public boolean show = false;
-
-  /** If true, print the directory before executing commands in it. */
-  @Option("Print the directory before executing commands")
-  public boolean print_directory = false;
-
-  /** Perform a "dry run": print commands but do not execute them. */
-  @Option("Do not execute commands; just print them.  Implies --show --redo-existing")
-  public boolean dry_run = false;
-
-  /** Default is for checkout command to skip existing directories. */
-  @Option("Redo existing checkouts; relevant only to checkout command")
+  /** If false, clone command to skips existing directories. */
+  @OptionGroup("Miscellaneous options")
+  @Option("Redo existing clones; relevant only to clone command")
   public boolean redo_existing = false;
 
   /**
@@ -315,9 +308,25 @@ public class MultiVersionControl {
   @Option("Timeout for each command, in seconds")
   public int timeout = 600;
 
-  /** If true, run quietly (e.g., no output about missing directories). */
-  @Option("-q Run quietly (e.g., no output about missing directories)")
-  public boolean quiet = true;
+  // Default is false because searching whole directory structure is slow.
+  /** If true, search for all clones, not just those listed in a file. */
+  @OptionGroup("Searching for clones")
+  @Option("Search for all clones, not just those listed in a file")
+  public boolean search = false;
+
+  /**
+   * Directory under which to search for clones, when using {@code --search} [default home
+   * directory]
+   */
+  @Option("Directory under which to search for clones; default=home dir")
+  public List<String> dir = new ArrayList<>();
+
+  /** Directories under which to NOT search for clones. May include leading "~/". */
+  @Option("Directory under which to NOT search for clones")
+  public List<String> ignore_dir = new ArrayList<>();
+
+  /** Files, each a directory, corresponding to strings in {@link ignore_dir}. */
+  private List<File> ignoreDirs = new ArrayList<>();
 
   // These *-executable command-line options are handy:
   //  * if you want to use a specific version of the program
@@ -326,6 +335,7 @@ public class MultiVersionControl {
   //    your path; in that case, the command would try to execute the directory.
 
   /** Path to the cvs program. */
+  @OptionGroup("Paths to programs")
   @Option("Path to the cvs program")
   public String cvs_executable = "cvs";
 
@@ -357,7 +367,26 @@ public class MultiVersionControl {
   @Option("Extra argument to pass to the svn program")
   public List<String> svn_arg = new ArrayList<>();
 
-  // It would be good to be able to set this per-checkout.
+  // TODO: use consistent names: both "show" or both "print"
+
+  /** If true, display each command is it is executed. */
+  @Option("Display commands as they are executed")
+  @OptionGroup("Diagnostics")
+  public boolean show = false;
+
+  /** If true, print the directory before executing commands in it. */
+  @Option("Print the directory before executing commands")
+  public boolean print_directory = false;
+
+  /** Perform a "dry run": print commands but do not execute them. */
+  @Option("Do not execute commands; just print them.  Implies --show --redo-existing")
+  public boolean dry_run = false;
+
+  /** If true, run quietly (e.g., no output about missing directories). */
+  @Option("-q Run quietly (e.g., no output about missing directories)")
+  public boolean quiet = true;
+
+  // It would be good to be able to set this per-clone.
   // This variable is static because it is used in static methods.
   @Option("Print debugging output")
   public static boolean debug = false;
@@ -389,7 +418,7 @@ public class MultiVersionControl {
 
   /**
    * Runs a version control command, such as "status" or "update", on a <b>set</b> of CVS/Git/Hg/SVN
-   * checkouts rather than just one.
+   * clones rather than just one.
    *
    * @param args the command-line arguments
    * @see MultiVersionControl
