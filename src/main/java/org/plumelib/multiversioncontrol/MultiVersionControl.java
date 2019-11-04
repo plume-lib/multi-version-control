@@ -314,6 +314,10 @@ public class MultiVersionControl {
   @Option("Search for all clones, not just those listed in a file")
   public boolean search = false;
 
+  /** If true, search for all clones whose directory is a prefix of one in the cofiguration file. */
+  @Option("Search for all clones whose directory is a prefix of those listed in a file")
+  public boolean search_prefix = false;
+
   /**
    * Directory under which to search for clones, when using {@code --search} [default home
    * directory]
@@ -847,7 +851,7 @@ public class MultiVersionControl {
   /// Find checkouts in a directory
   ///
 
-  /// Note:  this can be slow, because it examines every directory in your
+  /// Note:  this can be slow, because it examines every directory under your
   /// entire home directory.
 
   // Find checkouts.  These are indicated by directories named .bzr, CVS,
