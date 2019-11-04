@@ -435,7 +435,7 @@ public class MultiVersionControl {
   /**
    * Replace "~" by the expansion of "$HOME".
    *
-   * @param the input path, which might contain "~"
+   * @param path the input path, which might contain "~"
    * @return path with "~" expanded
    */
   private static String expandTilde(String path) {
@@ -1153,8 +1153,8 @@ public class MultiVersionControl {
     /**
      * Createa FilePair
      *
-     * @param the first file
-     * @param the second file
+     * @param file1 the first file
+     * @param file2 the second file
      */
     FilePair(@Nullable File file1, @Nullable File file2) {
       this.file1 = file1;
@@ -1240,7 +1240,7 @@ public class MultiVersionControl {
      * Create a new Replacer.
      *
      * @param regexp the regular expression matching text that should be replaced
-     * @param the replacement text
+     * @param replacement the replacement text
      */
     public Replacer(@Regex String regexp, String replacement) {
       this.regexp = regexp;
@@ -1750,7 +1750,7 @@ public class MultiVersionControl {
   /**
    * Returns true if there is an invalid certificate for the given directory.
    *
-   * @param the directory to test
+   * @param dir the directory to test
    * @return true if there is an invalid certificate for the given directory.
    */
   private boolean invalidCertificate(File dir) {
