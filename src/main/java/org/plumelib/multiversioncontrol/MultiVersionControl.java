@@ -64,8 +64,8 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
 //  * mvc's configuration files tend to be smaller & simpler
 
 /**
- * This program lets you run a version control command, such as "status" or "update", on a
- * <b>set</b> of CVS/Git/Hg/SVN clones/checkouts rather than just one.
+ * This program lets you run a version control command, such as "status" or "pull", on a <b>set</b>
+ * of CVS/Git/Hg/SVN clones/checkouts rather than just one.
  *
  * <p>This program simplifies managing your clones/checkouts. You might want to pull/update all of
  * them, or you might want to know whether any of them have uncommitted changes. When setting up a
@@ -497,7 +497,7 @@ public class MultiVersionControl {
   public void parseArgs(@UnknownInitialization MultiVersionControl this, String[] args) {
     @SuppressWarnings(
         "initialization") // new C(underInit) yields @UnderInitialization; @Initialized is safe
-    @Initialized Options options = new Options("mvc [options] {checkout,status,update,list}", this);
+    @Initialized Options options = new Options("mvc [options] {clone,status,pull,list}", this);
     String[] remainingArgs = options.parse(true, args);
     if (remainingArgs.length != 1) {
       System.out.printf(
