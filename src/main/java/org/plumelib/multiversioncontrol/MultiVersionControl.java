@@ -339,31 +339,39 @@ public class MultiVersionControl {
   @Option("Path to the cvs program")
   public String cvs_executable = "cvs";
 
+  /** Path to the git program. */
   @Option("Path to the git program")
   public String git_executable = "git";
 
+  /** Path to the hg program. */
   @Option("Path to the hg program")
   public String hg_executable = "hg";
 
+  /** Path to the svn program. */
   @Option("Path to the svn program")
   public String svn_executable = "svn";
 
-  @Option("Pass --insecure argument to hg (and likewise for other programs)")
+  /** If true, use --insecure when invoking programs. */
+  @Option("Pass --insecure argument to hg")
   public boolean insecure = false;
 
   // The {cvs,git,hg,svn}_arg options probably aren't very useful, because
   // there are few arguments that are applicable to every command; for
   // example, --insecure isn't applicable to "hg status".
 
+  /** Extra argument to pass to the cvs program. */
   @Option("Extra argument to pass to the cvs program")
   public List<String> cvs_arg = new ArrayList<>();
 
+  /** Extra argument to pass to the git program. */
   @Option("Extra argument to pass to the git program")
   public List<String> git_arg = new ArrayList<>();
 
+  /** Extra argument to pass to the hg program. */
   @Option("Extra argument to pass to the hg program")
   public List<String> hg_arg = new ArrayList<>();
 
+  /** Extra argument to pass to the svn program. */
   @Option("Extra argument to pass to the svn program")
   public List<String> svn_arg = new ArrayList<>();
 
@@ -388,30 +396,48 @@ public class MultiVersionControl {
 
   // It would be good to be able to set this per-clone.
   // This variable is static because it is used in static methods.
+  /** Print debugging output. */
   @Option("Print debugging output")
   public static boolean debug = false;
 
+  /** Debug 'replacers' that filter command output. */
   @Option("Debug 'replacers' that filter command output")
   public boolean debug_replacers = false;
 
+  /** Lightweight debugging of 'replacers' that filter command output. */
   @Option("Lightweight debugging of 'replacers' that filter command output")
   public boolean debug_process_output = false;
 
+  /** Actions that MultiVersionControl can perform. */
   static enum Action {
+    /** Clone a repository. */
     CLONE,
+    /** Show the working tree status. */
     STATUS,
+    /** Pull changes from upstream. */
     PULL,
+    /** List the known repositories. */
     LIST
   };
   // Shorter variants
+  /** Clone a repository. */
   private static Action CLONE = Action.CLONE;
+  /** Show the working tree status. */
   private static Action STATUS = Action.STATUS;
+  /** Pull changes from upstream. */
   private static Action PULL = Action.PULL;
+  /** List the known repositories. */
   private static Action LIST = Action.LIST;
 
+  /** Which action to perform on this run of MultiVersionControl. */
   private Action action;
 
-  // Replace "~" by the expansion of "$HOME".
+  /**
+   * Replace "~" by the expansion of "$HOME".
+   *
+   * @param the input path, which might contain "~"
+   * @return path with "~" expanded
+   */
   private static String expandTilde(String path) {
     return path.replaceFirst("^~", home);
   }
@@ -472,16 +498,22 @@ public class MultiVersionControl {
     mvc.process(checkouts);
   }
 
+  /** Set up the SVNKit library. */
   private static void setupSvnkit() {
     DAVRepositoryFactory.setup();
     SVNRepositoryFactoryImpl.setup();
     FSRepositoryFactory.setup();
   }
 
-  // OptionsDoclet requires a nullary constructor (but a private one is OK).
+  /** Nullary constructor for use by OptionsDoclet. */
   @SuppressWarnings("nullness") // initialization warning in unused constructor
   private MultiVersionControl() {}
 
+  /**
+   * Create a MultiVersionControl instance.
+   *
+   * @param args the command-line arguments to MultiVersionControl
+   */
   public MultiVersionControl(String[] args) {
     parseArgs(args);
   }
@@ -565,16 +597,23 @@ public class MultiVersionControl {
     }
   }
 
+  /** The types of repositories. */
   static enum RepoType {
+    /** Bazaar. */
     BZR,
+    /** CVS. */
     CVS,
+    /** Git. */
     GIT,
+    /** Mercurial. */
     HG,
+    /** Subversion. */
     SVN
   };
 
-  // TODO: have subclasses of Checkout for the different varieties, perhaps.
+  /** Class that represents a clone on the local file system. */
   static class Checkout {
+    /** The type of repository to clone. */
     RepoType repoType;
     /** Local directory. */
     // actually the parent directory?
@@ -593,10 +632,24 @@ public class MultiVersionControl {
      */
     @Nullable String module;
 
+    /**
+     * Create a Checkout.
+     *
+     * @param repoType the type of repository
+     * @param directory where the new clone will appear
+     */
     Checkout(RepoType repoType, File directory) {
       this(repoType, directory, null, null);
     }
 
+    /**
+     * Create a Checkout.
+     *
+     * @param repoType the type of repository
+     * @param directory where the new clone will appear
+     * @param repository the upstream repository
+     * @param module the module that is checked out (for CVS and optionally SVN)
+     */
     Checkout(
         RepoType repoType, File directory, @Nullable String repository, @Nullable String module) {
       // Directory might not exist if we are running the checkout command.
@@ -903,6 +956,7 @@ public class MultiVersionControl {
     }
   }
 
+  /** An IsDirectoryFilter. */
   static IsDirectoryFilter idf = new IsDirectoryFilter();
 
   /**
@@ -1089,10 +1143,19 @@ public class MultiVersionControl {
 
   }
 
+  /** A pair of two files. */
   static class FilePair {
+    /** The first file. */
     final @Nullable File file1;
+    /** The second file. */
     final @Nullable File file2;
 
+    /**
+     * Createa FilePair
+     *
+     * @param the first file
+     * @param the second file
+     */
     FilePair(@Nullable File file1, @Nullable File file2) {
       this.file1 = file1;
       this.file2 = file2;
@@ -1163,15 +1226,33 @@ public class MultiVersionControl {
     pb.command(command);
   }
 
+  /**
+   * A Replacer does string substitution, to make output more user-friendly. Examples are
+   * suppressing noise output or expanding relative file names.
+   */
   private static class Replacer {
+    /** The regular expression matching text that should be replaced. */
     @Regex String regexp;
+    /** The replacement text. */
     String replacement;
 
+    /**
+     * Create a new Replacer.
+     *
+     * @param regexp the regular expression matching text that should be replaced
+     * @param the replacement text
+     */
     public Replacer(@Regex String regexp, String replacement) {
       this.regexp = regexp;
       this.replacement = replacement;
     }
 
+    /**
+     * Perform replacements on the given string.
+     *
+     * @param s the string in which to perform replacements
+     * @return the string, after replacements have been performed
+     */
     public String replaceAll(String s) {
       // String.replaceAll uses a recursive (!) algorithm that is prone to StackOverflowError for
       // long strings.
@@ -1633,14 +1714,15 @@ public class MultiVersionControl {
     }
   }
 
+  /** Regex for matching the default path for a Mercurial clone. */
   private @Regex(1) Pattern defaultPattern = Pattern.compile("^default[ \t]*=[ \t]*(.*)");
 
   /**
    * Given a directory containing a Mercurial checkout/clone, return its default path. Return null
    * otherwise.
    *
-   * @param dir a directory containing a Mercurial checkout/clone
-   * @return the path for the Mercurial checkout/clone
+   * @param dir a directory containing a Mercurial clone
+   * @return the path for the Mercurial clone
    */
   // This implementation is not quite right because we didn't look for the
   // [path] section.  We could fix this by using a real ini reader or
@@ -1661,9 +1743,16 @@ public class MultiVersionControl {
     return null;
   }
 
+  /** A regular expression that matches a message about incalid certificates. */
   private Pattern invalidCertificatePattern =
       Pattern.compile("^https://[^.]*[.][^.]*[.]googlecode[.]com/hg$");
 
+  /**
+   * Returns true if there is an invalid certificate for the given directory.
+   *
+   * @param the directory to test
+   * @return true if there is an invalid certificate for the given directory.
+   */
   private boolean invalidCertificate(File dir) {
     String defaultPath = defaultPath(dir);
     if (debug) {
@@ -1792,6 +1881,12 @@ public class MultiVersionControl {
     }
   }
 
+  /**
+   * Return the shell command for a process.
+   *
+   * @param pb the process whose command to return
+   * @return the shell command for the process
+   */
   String command(ProcessBuilder pb) {
     return "  cd " + pb.directory() + "\n  " + UtilPlume.join(pb.command(), " ");
   }

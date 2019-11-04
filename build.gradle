@@ -62,29 +62,22 @@ if (project.hasProperty("cfLocal")) {
 
 /// Javadoc
 
-// Turn Javadoc warnings into errors.
+dependencies {
+  compileOnly group: 'org.plumelib', name: 'require-javadoc', version: '0.1.2'
+}
 javadoc {
+  // Turn Javadoc warnings into errors.
   options.addStringOption('Xwerror', '-Xdoclint:all')
-  options.addStringOption('private', '-quiet')
+  // Require Javadoc to be present
+  options.memberLevel = JavadocMemberLevel.PRIVATE
+  options.docletpath = project.sourceSets.main.compileClasspath as List
+  options.doclet = "org.plumelib.javadoc.RequireJavadoc"
 }
 
 task javadocWeb(type: Javadoc) {
   source = sourceSets.main.allJava
   destinationDir = file("/cse/web/research/plumelib/multiversioncontrol/api")
   classpath = project.sourceSets.main.compileClasspath
-}
-
-dependencies {
-  compileOnly group: 'org.plumelib', name: 'require-javadoc', version: '0.1.2'
-}
-task requireJavadoc(type: Javadoc) {
-  description = 'Ensures that Javadoc documentation exists.'
-  destinationDir.deleteDir()
-  source = sourceSets.main.allJava
-  classpath = project.sourceSets.main.compileClasspath
-  options.memberLevel = JavadocMemberLevel.PRIVATE
-  options.docletpath = project.sourceSets.main.compileClasspath as List
-  options.doclet = "org.plumelib.javadoc.RequireJavadoc"
 }
 
 task updateUserOptions(type: Javadoc, dependsOn: 'assemble') {
