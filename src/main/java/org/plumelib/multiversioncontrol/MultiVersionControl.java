@@ -844,6 +844,13 @@ public class MultiVersionControl {
       Checkout checkout = new Checkout(currentType, dir, root, module);
       checkouts.add(checkout);
 
+      // TODO: This can result in near-duplicates in the checkouts set.  Suppose that the
+      // .mvc-checkouts file contains two lines
+      //   /a/b/c
+      //   /a/b/c-fork-d
+      // with different repositories, and there exists a directory
+      //   /a/b/c-fork-d-branch-e
+      // Then the latter is included twice, once each with the repository of `c` and of `c-fork-d`.
       if (search_prefix) {
         String dirName = dir.getName();
         FileFilter namePrefixFilter =
@@ -866,6 +873,12 @@ public class MultiVersionControl {
         for (File sibling : siblings) {
           checkouts.add(new Checkout(currentType, sibling, root, module));
         }
+      }
+    }
+    if (debug) {
+      System.out.printf("Here are the checkouts:%n");
+      for (Checkout c : checkouts) {
+        System.out.printf("%s%n", c);
       }
     }
   }
