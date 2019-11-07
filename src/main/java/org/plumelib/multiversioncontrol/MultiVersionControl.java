@@ -741,6 +741,8 @@ public class MultiVersionControl {
    *
    * @param file the .mvc-checkouts file
    * @param checkouts the set to populate; is side-effected by this method
+   * @param search_prefix if true, search for all clones whose directory is a prefix of one in the
+   *     cofiguration file
    * @throws IOException if there is trouble reading the file (or file sysetm?)
    */
   @SuppressWarnings({
