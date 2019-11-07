@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -315,7 +316,7 @@ public class MultiVersionControl {
   public boolean search = false;
 
   /** If true, search for all clones whose directory is a prefix of one in the cofiguration file. */
-  @Option("Search for all clones whose directory is a prefix of those listed in a file")
+  @Option("Search for all clones whose directory is a prefix of one listed in a file")
   public boolean search_prefix = false;
 
   /**
@@ -460,7 +461,7 @@ public class MultiVersionControl {
     Set<Checkout> checkouts = new LinkedHashSet<>();
 
     try {
-      readCheckouts(new File(mvc.checkouts), checkouts);
+      readCheckouts(new File(mvc.checkouts), checkouts, mvc.search_prefix);
     } catch (IOException e) {
       System.err.println("Problem reading file " + mvc.checkouts + ": " + e.getMessage());
     }
@@ -712,19 +713,16 @@ public class MultiVersionControl {
         return false;
       }
       Checkout c2 = (Checkout) other;
-      return ((repoType == c2.repoType)
+      return (repoType == c2.repoType)
           && directory.equals(c2.directory)
-          && ((repository == null) ? (c2.repository == null) : repository.equals(c2.repository))
-          && ((module == null) ? (c2.module == null) : module.equals(c2.module)));
+          && Objects.equals(repository, c2.repository)
+          && Objects.equals(module, c2.module);
     }
 
     @Override
     @Pure
     public int hashCode(@GuardSatisfied Checkout this) {
-      return (repoType.hashCode()
-          + directory.hashCode()
-          + (repository == null ? 0 : repository.hashCode())
-          + (module == null ? 0 : module.hashCode()));
+      return Objects.hash(repoType, directory, repository, module);
     }
 
     @Override
@@ -739,7 +737,7 @@ public class MultiVersionControl {
   ///
 
   /**
-   * Read checkouts from the file (in .mvc-checkouts format), and add them to the set.
+   * Read checkouts from the file (in {@code .mvc-checkouts} format), and add them to the set.
    *
    * @param file the .mvc-checkouts file
    * @param checkouts the set to populate; is side-effected by this method
@@ -748,8 +746,9 @@ public class MultiVersionControl {
   @SuppressWarnings({
     "StringSplitter" // don't add dependence on Guava
   })
-  static void readCheckouts(File file, Set<Checkout> checkouts) throws IOException {
-    RepoType currentType = RepoType.BZR; // arbitrary choice
+  static void readCheckouts(File file, Set<Checkout> checkouts, boolean search_prefix)
+      throws IOException {
+    RepoType currentType = RepoType.BZR; // arbitrary choice, to avoid uninitialized variable
     String currentRoot = null;
     boolean currentRootIsRepos = false;
 
@@ -844,6 +843,30 @@ public class MultiVersionControl {
 
       Checkout checkout = new Checkout(currentType, dir, root, module);
       checkouts.add(checkout);
+
+      if (search_prefix) {
+        String dirName = dir.getName();
+        FileFilter namePrefixFilter =
+            new FileFilter() {
+              @Override
+              public boolean accept(File file) {
+                return file.isDirectory() && file.getName().startsWith(dirName);
+              }
+            };
+        File dirParent = dir.getParentFile();
+        if (dirParent == null || !dirParent.isDirectory()) {
+          continue;
+        }
+        File[] siblings = dirParent.listFiles(namePrefixFilter);
+        if (siblings == null) {
+          throw new Error(
+              String.format(
+                  "This cannot happen, because %s (parent of %s) is a directory", dirParent, dir));
+        }
+        for (File sibling : siblings) {
+          checkouts.add(new Checkout(currentType, sibling, root, module));
+        }
+      }
     }
   }
 
