@@ -733,7 +733,7 @@ public class MultiVersionControl {
   ///
 
   /**
-   * Read checkouts from the file (in .mvc-checkouts format), and add them to the set.
+   * Read checkouts from the file (in {@code .mvc-checkouts} format), and add them to the set.
    *
    * @param file the .mvc-checkouts file
    * @param checkouts the set to populate; is side-effected by this method
@@ -845,7 +845,7 @@ public class MultiVersionControl {
   /// Find checkouts in a directory
   ///
 
-  /// Note:  this can be slow, because it examines every directory in your
+  /// Note:  this can be slow, because it examines every directory under your
   /// entire home directory.
 
   // Find checkouts.  These are indicated by directories named .bzr, CVS,
