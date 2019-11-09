@@ -316,6 +316,10 @@ public class MultiVersionControl {
   @Option("Search for all clones, not just those listed in a file")
   public boolean search = false;
 
+  /** If true, search for all clones whose directory is a prefix of one in the cofiguration file. */
+  @Option("Search for all clones whose directory is a prefix of one listed in a file")
+  public boolean search_prefix = false;
+
   /**
    * Directory under which to search for clones, when using {@code --search} [default home
    * directory]
@@ -458,7 +462,7 @@ public class MultiVersionControl {
     Set<Checkout> checkouts = new LinkedHashSet<>();
 
     try {
-      readCheckouts(new File(mvc.checkouts), checkouts);
+      readCheckouts(new File(mvc.checkouts), checkouts, mvc.search_prefix);
     } catch (IOException e) {
       System.err.println("Problem reading file " + mvc.checkouts + ": " + e.getMessage());
     }
@@ -738,13 +742,16 @@ public class MultiVersionControl {
    *
    * @param file the .mvc-checkouts file
    * @param checkouts the set to populate; is side-effected by this method
+   * @param search_prefix if true, search for all clones whose directory is a prefix of one in the
+   *     cofiguration file
    * @throws IOException if there is trouble reading the file (or file sysetm?)
    */
   @SuppressWarnings({
     "StringSplitter" // don't add dependence on Guava
   })
-  static void readCheckouts(File file, Set<Checkout> checkouts) throws IOException {
-    RepoType currentType = RepoType.BZR; // arbitrary choice
+  static void readCheckouts(File file, Set<Checkout> checkouts, boolean search_prefix)
+      throws IOException {
+    RepoType currentType = RepoType.BZR; // arbitrary choice, to avoid uninitialized variable
     String currentRoot = null;
     boolean currentRootIsRepos = false;
 
@@ -839,6 +846,43 @@ public class MultiVersionControl {
 
       Checkout checkout = new Checkout(currentType, dir, root, module);
       checkouts.add(checkout);
+
+      // TODO: This can result in near-duplicates in the checkouts set.  Suppose that the
+      // .mvc-checkouts file contains two lines
+      //   /a/b/c
+      //   /a/b/c-fork-d
+      // with different repositories, and there exists a directory
+      //   /a/b/c-fork-d-branch-e
+      // Then the latter is included twice, once each with the repository of `c` and of `c-fork-d`.
+      if (search_prefix) {
+        String dirName = dir.getName();
+        FileFilter namePrefixFilter =
+            new FileFilter() {
+              @Override
+              public boolean accept(File file) {
+                return file.isDirectory() && file.getName().startsWith(dirName);
+              }
+            };
+        File dirParent = dir.getParentFile();
+        if (dirParent == null || !dirParent.isDirectory()) {
+          continue;
+        }
+        File[] siblings = dirParent.listFiles(namePrefixFilter);
+        if (siblings == null) {
+          throw new Error(
+              String.format(
+                  "This cannot happen, because %s (parent of %s) is a directory", dirParent, dir));
+        }
+        for (File sibling : siblings) {
+          checkouts.add(new Checkout(currentType, sibling, root, module));
+        }
+      }
+    }
+    if (debug) {
+      System.out.printf("Here are the checkouts:%n");
+      for (Checkout c : checkouts) {
+        System.out.printf("%s%n", c);
+      }
     }
   }
 
