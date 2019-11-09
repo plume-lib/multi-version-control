@@ -1859,13 +1859,14 @@ public class MultiVersionControl {
         System.out.println("preoutput=<<<" + output + ">>>");
       }
       for (Replacer r : replacers) {
+        String printableRegexp = r.regexp.replace("\r", "\\r").replace("\n", "\\n");
         if (debug_replacers) {
-          System.out.println("midoutput_pre[" + r.regexp + "]=<<<" + output + ">>>");
+          System.out.println("midoutput_pre[" + printableRegexp + "]=<<<" + output + ">>>");
         }
         // Don't loop, because some regexps will continue to match repeatedly
         output = r.replaceAll(output);
         if (debug_replacers) {
-          System.out.println("midoutput_post[" + r.regexp + "]=<<<" + output + ">>>");
+          System.out.println("midoutput_post[" + printableRegexp + "]=<<<" + output + ">>>");
         }
       }
       if (debug_replacers || debug_process_output) {
