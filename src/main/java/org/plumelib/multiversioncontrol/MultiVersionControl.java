@@ -23,6 +23,7 @@ import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteWatchdog;
 import org.apache.commons.exec.PumpStreamHandler;
 import org.checkerframework.checker.index.qual.GTENegativeOne;
+import org.checkerframework.checker.index.qual.IndexOrLow;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.initialization.qual.UnknownInitialization;
 import org.checkerframework.checker.lock.qual.GuardSatisfied;
@@ -1268,6 +1269,7 @@ public class MultiVersionControl {
   /**
    * Given a string, return the index of the start of a line, after {@code start}.
    *
+   * @param s the string in which to find the start of a line
    * @param start the index at which to start looking for the start of a line
    * @return the index of the start of a line, or -1 if no such exists
    */
