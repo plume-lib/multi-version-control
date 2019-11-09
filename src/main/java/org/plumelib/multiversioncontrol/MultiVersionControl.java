@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -708,19 +709,16 @@ public class MultiVersionControl {
         return false;
       }
       Checkout c2 = (Checkout) other;
-      return ((repoType == c2.repoType)
+      return (repoType == c2.repoType)
           && directory.equals(c2.directory)
-          && ((repository == null) ? (c2.repository == null) : repository.equals(c2.repository))
-          && ((module == null) ? (c2.module == null) : module.equals(c2.module)));
+          && Objects.equals(repository, c2.repository)
+          && Objects.equals(module, c2.module);
     }
 
     @Override
     @Pure
     public int hashCode(@GuardSatisfied Checkout this) {
-      return (repoType.hashCode()
-          + directory.hashCode()
-          + (repository == null ? 0 : repository.hashCode())
-          + (module == null ? 0 : module.hashCode()));
+      return Objects.hash(repoType, directory, repository, module);
     }
 
     @Override
