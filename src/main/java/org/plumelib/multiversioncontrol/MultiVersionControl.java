@@ -693,6 +693,18 @@ public class MultiVersionControl {
       }
     }
 
+    /** An error indicating a version control directory (such as .git) does not exist. */
+    static class DirectoryDoesNotExist extends Error {
+      /**
+       * Create a new DirectoryDoesNotExist.
+       *
+       * @param msg a message about the missing directory
+       */
+      DirectoryDoesNotExist(String msg) {
+        super(msg);
+      }
+    }
+
     /**
      * If the directory exists, then the subdirectory must exist too.
      *
@@ -701,9 +713,9 @@ public class MultiVersionControl {
      */
     private static void assertSubdirExists(File directory, String subdirName) {
       if (directory.exists() && !new File(directory, subdirName).isDirectory()) {
-        System.err.printf(
-            "Directory %s exists but %s subdirectory does not exist%n", directory, subdirName);
-        System.exit(2);
+        throw new DirectoryDoesNotExist(
+            String.format(
+                "Directory %s exists but %s subdirectory does not exist%n", directory, subdirName));
       }
     }
 
@@ -874,7 +886,13 @@ public class MultiVersionControl {
                   "This cannot happen, because %s (parent of %s) is a directory", dirParent, dir));
         }
         for (File sibling : siblings) {
-          checkouts.add(new Checkout(currentType, sibling, root, module));
+          try {
+            checkouts.add(new Checkout(currentType, sibling, root, module));
+          } catch (Checkout.DirectoryDoesNotExist e) {
+            // A directory is an extension of a file in
+            // .mvc-checkouts, but lacks a (eg) .git subdir.  Just
+            // skip that directory.
+          }
         }
       }
     }
@@ -1077,7 +1095,7 @@ public class MultiVersionControl {
   }
 
   /**
-   * Given a directory named {@code .git} , create a corresponding Checkout object for its parent.
+   * Given a directory named {@code .git}, create a corresponding Checkout object for its parent.
    *
    * @param gitDir a {@code .git} directory
    * @param parentDir its parent
