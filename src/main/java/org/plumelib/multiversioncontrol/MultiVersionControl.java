@@ -695,6 +695,9 @@ public class MultiVersionControl {
 
     /** An error indicating a version control directory (such as .git) does not exist. */
     static class DirectoryDoesNotExist extends Error {
+
+      static final long serialVersionUID = 20191205;
+
       /**
        * Create a new DirectoryDoesNotExist.
        *
@@ -1891,7 +1894,7 @@ public class MultiVersionControl {
     // members to construct the Commons Exec objects.
 
     @SuppressWarnings({"value"}) // ProcessBuilder.command() returns a non-empty list
-    String @MinLen(1) [] args = (String @MinLen(1) []) (pb.command()).toArray(new String[0]);
+    String @MinLen(1) [] args = (String @MinLen(1) []) pb.command().toArray(new String[0]);
     CommandLine cmdLine = new CommandLine(args[0]); // constructor requires executable name
     @SuppressWarnings("nullness") // indices are in bounds, so no null values in resulting array
     String[] argArray = Arrays.copyOfRange(args, 1, args.length);
