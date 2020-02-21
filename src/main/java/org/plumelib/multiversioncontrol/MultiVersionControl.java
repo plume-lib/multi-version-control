@@ -1989,7 +1989,7 @@ public class MultiVersionControl {
    * @return the shell command for the process
    */
   String command(ProcessBuilder pb) {
-    return "  cd " + pb.directory() + "\n  " + UtilPlume.join(pb.command(), " ");
+    return "  cd " + pb.directory() + "\n  " + UtilPlume.join(" ", pb.command());
   }
 
   /**
