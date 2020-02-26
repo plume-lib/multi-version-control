@@ -534,7 +534,8 @@ public class MultiVersionControl {
   @EnsuresNonNull("action")
   public void parseArgs(@UnknownInitialization MultiVersionControl this, String[] args) {
     @SuppressWarnings(
-        "initialization") // new C(underInit) yields @UnderInitialization; @Initialized is safe
+        "nullness:assignment.type.incompatible") // new C(underInit) yields @UnderInitialization;
+    // @Initialized is safe
     @Initialized Options options = new Options("mvc [options] {clone,status,pull,list}", this);
     String[] remainingArgs = options.parse(true, args);
     if (remainingArgs.length != 1) {
