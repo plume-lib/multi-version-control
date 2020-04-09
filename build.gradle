@@ -27,7 +27,7 @@ dependencies {
   implementation 'org.plumelib:options:1.0.4'
   implementation 'org.plumelib:plume-util:1.1.4'
 
-  compileOnly group: 'org.plumelib', name: 'require-javadoc', version: '0.1.2'
+  compileOnly group: 'org.plumelib', name: 'require-javadoc', version: '0.2.2'
 }
 
 sourceCompatibility = 1.8
