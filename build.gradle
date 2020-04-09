@@ -26,8 +26,6 @@ dependencies {
   implementation 'org.apache.commons:commons-exec:1.3'
   implementation 'org.plumelib:options:1.0.4'
   implementation 'org.plumelib:plume-util:1.1.4'
-
-  compileOnly group: 'org.plumelib', name: 'require-javadoc', version: '0.1.2'
 }
 
 sourceCompatibility = 1.8
@@ -86,6 +84,7 @@ javadoc {
   options.addStringOption('Xwerror', '-Xdoclint:all')
   options.addStringOption('private', '-quiet')
 }
+check.dependsOn javadoc
 
 task javadocWeb(type: Javadoc) {
   source = sourceSets.main.allJava
@@ -93,14 +92,17 @@ task javadocWeb(type: Javadoc) {
   classpath = project.sourceSets.main.compileClasspath
 }
 
-task requireJavadoc(type: Javadoc) {
+configurations {
+  requireJavadoc
+}
+dependencies {
+  requireJavadoc "org.plumelib:require-javadoc:0.3.0"
+}
+task requireJavadoc(type: JavaExec) {
   description = 'Ensures that Javadoc documentation exists.'
-  destinationDir.deleteDir()
-  source = sourceSets.main.allJava
-  classpath = project.sourceSets.main.compileClasspath
-  options.memberLevel = JavadocMemberLevel.PRIVATE
-  options.docletpath = project.sourceSets.main.compileClasspath as List
-  options.doclet = "org.plumelib.javadoc.RequireJavadoc"
+  main = "org.plumelib.javadoc.RequireJavadoc"
+  classpath = configurations.requireJavadoc
+  args "src/main/java"
 }
 check.dependsOn requireJavadoc
 
