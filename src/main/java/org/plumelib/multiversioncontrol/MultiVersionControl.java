@@ -1657,9 +1657,9 @@ public class MultiVersionControl {
               replacers.add(
                   new Replacer(
                       "^\\n?comparing with .*\\nsearching for changes\\nno changes found\n", ""));
-              // TODO:  Shelve is an optional extension, so don't print anything if not installed.
               pb3.command(hg_executable, "shelve", "-l");
               addArgs(pb3, hg_arg);
+              // Shelve is an optional extension, so don't print anything if not installed.
               replacers3.add(new Replacer("^hg: unknown command 'shelve'\\n(.*\\n)+", ""));
               replacers3.add(
                   new Replacer("^(.*\\n)+", "shelved changes: " + pb.directory() + "\n"));
