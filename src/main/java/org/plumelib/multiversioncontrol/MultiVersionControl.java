@@ -36,6 +36,7 @@ import org.checkerframework.common.value.qual.MinLen;
 import org.checkerframework.dataflow.qual.Pure;
 import org.checkerframework.dataflow.qual.SideEffectFree;
 import org.ini4j.Ini;
+import org.ini4j.Profile;
 import org.plumelib.options.Option;
 import org.plumelib.options.OptionGroup;
 import org.plumelib.options.Options;
@@ -1086,7 +1087,7 @@ public class MultiVersionControl {
         throw new Error("Problem reading file " + hgrcFile);
       }
 
-      Ini.Section pathsSection = ini.get("paths");
+      Profile.Section pathsSection = ini.get("paths");
       if (pathsSection != null) {
         repository = pathsSection.get("default");
         if (repository != null && repository.endsWith("/")) {
