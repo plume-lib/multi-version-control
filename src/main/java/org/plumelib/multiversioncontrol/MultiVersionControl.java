@@ -624,8 +624,9 @@ public class MultiVersionControl {
     /** The type of repository to clone. */
     RepoType repoType;
     /** Local directory. */
-    // actually the parent directory?
     File directory;
+    /** Local directory (canonical version). */
+    String canonicalDirectory;
     /**
      * Non-null for CVS and SVN. May be null for distributed version control systems (Bzr, Git, Hg).
      * For distributed systems, refers to the parent repository from which this was cloned, not the
@@ -666,6 +667,11 @@ public class MultiVersionControl {
           : "Not a directory: " + directory;
       this.repoType = repoType;
       this.directory = directory;
+      try {
+        this.canonicalDirectory = directory.getCanonicalPath();
+      } catch (IOException e) {
+        throw new Error(e);
+      }
       this.repository = repository;
       this.module = module;
       // These asserts come at the end so that the error message can be better.
@@ -732,15 +738,14 @@ public class MultiVersionControl {
       }
       Checkout c2 = (Checkout) other;
       return (repoType == c2.repoType)
-          && directory.equals(c2.directory)
-          && Objects.equals(repository, c2.repository)
+          && canonicalDirectory.equals(c2.canonicalDirectory)
           && Objects.equals(module, c2.module);
     }
 
     @Override
     @Pure
     public int hashCode(@GuardSatisfied Checkout this) {
-      return Objects.hash(repoType, directory, repository, module);
+      return Objects.hash(repoType, canonicalDirectory, module);
     }
 
     @Override
@@ -986,9 +991,10 @@ public class MultiVersionControl {
       }
     }
 
-    @SuppressWarnings(
-        "nullness") // dependent: listFiles => non-null because dir is a directory, and
-    // the checker doesn't know that checkouts.add etc do not affect dir
+    @SuppressWarnings({
+      "nullness" // dependent: listFiles => non-null because dir is a directory, and
+      // the checker doesn't know that checkouts.add etc do not affect dir
+    })
     File @NonNull [] childdirs = dir.listFiles(idf);
     if (childdirs == null) {
       System.err.printf(
