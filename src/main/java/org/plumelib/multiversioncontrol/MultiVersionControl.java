@@ -111,7 +111,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *   <li id="optiongroup:Miscellaneous-options">Miscellaneous options
  *       <ul>
  *         <li id="option:redo-existing"><b>--redo-existing=</b><i>boolean</i>. If false, clone
- *             command to skips existing directories. [default false]
+ *             command skips existing directories. [default false]
  *         <li id="option:timeout"><b>--timeout=</b><i>int</i>. Terminating the process can leave
  *             the repository in a bad state, so set this rather high for safety. Also, the timeout
  *             needs to account for the time to run hooks (that might recompile or run tests).
@@ -298,7 +298,7 @@ public class MultiVersionControl {
       noDocDefault = true)
   public String checkouts = "~/.mvc-checkouts";
 
-  /** If false, clone command to skips existing directories. */
+  /** If false, clone command skips existing directories. */
   @OptionGroup("Miscellaneous options")
   @Option("Redo existing clones; relevant only to clone command")
   public boolean redo_existing = false;
