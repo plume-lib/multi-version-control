@@ -495,12 +495,19 @@ public class MultiVersionControl {
               "Directory in which to search for checkouts is not a directory: %s%n", adir);
           System.exit(2);
         }
+        int oldCheckouts = checkouts.size();
         findCheckouts(new File(adir), checkouts, mvc.ignoreDirs);
+        if (debug) {
+          System.out.printf("Searching added %d checkouts%n", checkouts.size() - oldCheckouts);
+        }
       }
     }
 
     if (debug) {
-      System.out.println("Processing checkouts read from " + checkouts);
+      System.out.printf("About to process %d checkouts:%n", checkouts.size());
+      for (Checkout c : checkouts) {
+        System.out.println("  " + c);
+      }
     }
     mvc.process(checkouts);
   }
