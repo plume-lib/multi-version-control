@@ -964,9 +964,15 @@ public class MultiVersionControl {
     if (!dir.isDirectory()) {
       // This should never happen, unless the directory is deleted between
       // the call to findCheckouts and the test of isDirectory.
+      if (debug) {
+        System.out.println("findCheckouts: dir is not a directory: " + dir);
+      }
       return;
     }
     if (ignoreDirs.contains(dir)) {
+      if (debug) {
+        System.out.println("findCheckouts: ignoring " + dir);
+      }
       return;
     }
 
@@ -988,6 +994,9 @@ public class MultiVersionControl {
         return;
       } else if (dirName.equals(".hg")) {
         checkouts.add(dirToCheckoutHg(dir, parent));
+        return;
+      } else if (dirName.equals(".git")) {
+        checkouts.add(dirToCheckoutGit(dir, parent));
         return;
       } else if (dirName.equals(".svn")) {
         Checkout c = dirToCheckoutSvn(parent);
