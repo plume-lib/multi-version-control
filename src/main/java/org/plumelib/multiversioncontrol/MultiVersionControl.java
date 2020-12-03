@@ -32,6 +32,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.nullness.qual.RequiresNonNull;
 import org.checkerframework.checker.regex.qual.Regex;
+import org.checkerframework.common.initializedfields.qual.EnsuresInitializedFields;
 import org.checkerframework.common.value.qual.MinLen;
 import org.checkerframework.dataflow.qual.Pure;
 import org.checkerframework.dataflow.qual.SideEffectFree;
@@ -520,7 +521,11 @@ public class MultiVersionControl {
   }
 
   /** Nullary constructor for use by OptionsDoclet. */
-  @SuppressWarnings("nullness") // initialization warning in unused constructor
+  @SuppressWarnings({
+    "nullness", // initialization warning in unused constructor
+    "initializedfields:contracts.postcondition.not.satisfied" // initialization warning in unused
+    // constructor
+  })
   private MultiVersionControl() {}
 
   /**
@@ -540,6 +545,7 @@ public class MultiVersionControl {
    */
   @RequiresNonNull({"dir", "checkouts"})
   @EnsuresNonNull("action")
+  @EnsuresInitializedFields(fields = "action")
   public void parseArgs(@UnknownInitialization MultiVersionControl this, String[] args) {
     @SuppressWarnings(
         "nullness:assignment.type.incompatible") // new C(underInit) yields @UnderInitialization;
