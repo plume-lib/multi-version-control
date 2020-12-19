@@ -42,6 +42,7 @@ import org.plumelib.options.Option;
 import org.plumelib.options.OptionGroup;
 import org.plumelib.options.Options;
 import org.plumelib.util.EntryReader;
+import org.plumelib.util.StringsPlume;
 import org.plumelib.util.UtilPlume;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNURL;
@@ -2019,7 +2020,7 @@ public class MultiVersionControl {
    * @return the shell command for the process
    */
   String command(ProcessBuilder pb) {
-    return "  cd " + pb.directory() + "\n  " + UtilPlume.join(" ", pb.command());
+    return "  cd " + pb.directory() + "\n  " + StringsPlume.join(" ", pb.command());
   }
 
   /**
