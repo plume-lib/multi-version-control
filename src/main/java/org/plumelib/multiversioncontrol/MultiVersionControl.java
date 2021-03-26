@@ -480,7 +480,8 @@ public class MultiVersionControl {
               adir);
         } else if (!afile.isDirectory()) {
           System.err.printf(
-              "Warning: Directory to ignore while searching for checkouts is not a directory:%n  %s%n",
+              "Warning: Directory to ignore while searching for checkouts is not a directory:%n"
+                  + "  %s%n",
               adir);
         } else {
           mvc.ignoreDirs.add(afile);
@@ -1451,17 +1452,20 @@ public class MultiVersionControl {
           // Hack, should be replaced when googlecode certificate problems are fixed.
           replacers.add(
               new Replacer(
-                  "(^|\\n)warning: .* certificate not verified \\(check web.cacerts config setting\\)\\n",
+                  "(^|\\n)warning: .* certificate not verified"
+                      + " \\(check web.cacerts config setting\\)\\n",
                   "$1"));
           // May appear twice in output with overlapping matches, so repeat the replacer
           replacers.add(
               new Replacer(
-                  "(^|\\n)warning: .* certificate not verified \\(check web.cacerts config setting\\)\\n",
+                  "(^|\\n)warning: .* certificate not verified"
+                      + " \\(check web.cacerts config setting\\)\\n",
                   "$1"));
           // Does this mask too many errors?
           replacers.add(
               new Replacer(
-                  "(^|\\n)((comparing with default-push\\n)?abort: repository default(-push)? not found!: .*\\n)",
+                  "(^|\\n)((comparing with default-push\\n)?"
+                      + "abort: repository default(-push)? not found!: .*\\n)",
                   "$1"));
           break;
         case SVN:
@@ -1470,7 +1474,8 @@ public class MultiVersionControl {
           replacers.add(new Replacer("(svn: Repository) (UUID)", "$1 " + dir + " $2"));
           replacers.add(
               new Replacer(
-                  "(svn: E155037: Previous operation has not finished; run 'cleanup' if it was interrupted)",
+                  "(svn: E155037: Previous operation has not finished; run 'cleanup' if it was"
+                      + " interrupted)",
                   "$1; for " + dir));
           break;
         default:
@@ -1479,7 +1484,10 @@ public class MultiVersionControl {
       // The \r* is necessary here; (somtimes?) there are two carriage returns.
       replacers.add(
           new Replacer(
-              "(remote: )?Warning: untrusted X11 forwarding setup failed: xauth key data not generated\r*\n(remote: )?Warning: No xauth data; using fake authentication data for X11 forwarding\\.\r*\n",
+              "(remote: )?Warning: untrusted X11 forwarding setup failed: xauth key data not"
+                  + " generated\r*\n"
+                  + "(remote: )?Warning: No xauth data; using fake authentication data for X11"
+                  + " forwarding\\.\r*\n",
               ""));
       replacers.add(new Replacer("(working copy ')", "$1" + dir));
 
@@ -1595,17 +1603,22 @@ public class MultiVersionControl {
               addArg(pb, "--porcelain"); // experimenting with porcelain output
               replacers.add(
                   new Replacer(
-                      "(^|\\n)On branch master\\nYour branch is up-to-date with 'origin/master'.\\n\\n?",
+                      "(^|\\n)On branch master\\n"
+                          + "Your branch is up-to-date with 'origin/master'.\\n"
+                          + "\\n?",
                       "$1"));
               replacers.add(
                   new Replacer("(^|\\n)nothing to commit,? working directory clean\\n", "$1"));
               replacers.add(
                   new Replacer(
-                      "(^|\\n)no changes added to commit \\(use \"git add\" and/or \"git commit -a\"\\)\\n",
+                      "(^|\\n"
+                          + ")no changes added to commit \\(use \"git add\" and/or \"git commit"
+                          + " -a\"\\)\\n",
                       "$1"));
               replacers.add(
                   new Replacer(
-                      "(^|\\n)nothing added to commit but untracked files present \\(use \"git add\" to track\\)\\n",
+                      "(^|\\n)nothing added to commit but untracked files present"
+                          + " \\(use \"git add\" to track\\)\\n",
                       "$1"));
               replacers.add(
                   new Replacer(
@@ -1618,16 +1631,19 @@ public class MultiVersionControl {
               replacers.add(new Replacer("(^|\\n)# Changed but not updated:\\n", "$1"));
               replacers.add(
                   new Replacer(
-                      "(^|\\n)#   \\(use \"git add <file>...\" to update what will be committed\\)\\n",
+                      "(^|\\n)#   \\(use \"git add <file>...\""
+                          + " to update what will be committed\\)\\n",
                       "$1"));
               replacers.add(
                   new Replacer(
-                      "(^|\\n)#   \\(use \"git checkout -- <file>...\" to discard changes in working directory\\)\\n",
+                      "(^|\\n)#   \\(use \"git checkout -- <file>...\""
+                          + " to discard changes in working directory\\)\\n",
                       "$1"));
               replacers.add(new Replacer("(^|\\n)# Untracked files:\\n", "$1"));
               replacers.add(
                   new Replacer(
-                      "(^|\\n)#   \\(use \"git add <file>...\" to include in what will be committed\\)\\n",
+                      "(^|\\n)#   \\(use \"git add <file>...\""
+                          + " to include in what will be committed\\)\\n",
                       "$1"));
 
               replacers.add(new Replacer("(^|\\n)(#\tmodified:   )", "$1" + dir + "/"));
@@ -1740,7 +1756,8 @@ public class MultiVersionControl {
               replacers.add(new Replacer("(^|\\n)error:", "$1error in " + dir + ":"));
               replacers.add(
                   new Replacer(
-                      "(^|\\n)Please, commit your changes or stash them before you can merge.\\nAborting\\n",
+                      "(^|\\n)Please, commit your changes or stash them before you can merge.\\n"
+                          + "Aborting\\n",
                       "$1"));
               replacers.add(
                   new Replacer(
