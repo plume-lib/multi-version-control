@@ -42,6 +42,7 @@ import org.plumelib.options.Option;
 import org.plumelib.options.OptionGroup;
 import org.plumelib.options.Options;
 import org.plumelib.util.EntryReader;
+import org.plumelib.util.FilesPlume;
 import org.plumelib.util.StringsPlume;
 import org.plumelib.util.UtilPlume;
 import org.tmatesoft.svn.core.SVNException;
@@ -1072,8 +1073,8 @@ public class MultiVersionControl {
       // apparently it wasn't a version control directory
       return;
     }
-    String pathInRepo = UtilPlume.readFile(repositoryFile).trim();
-    String repoRoot = UtilPlume.readFile(rootFile).trim();
+    String pathInRepo = FilesPlume.readFile(repositoryFile).trim();
+    String repoRoot = FilesPlume.readFile(rootFile).trim();
     @NonNull File repoFileRoot = new File(pathInRepo);
     while (repoFileRoot.getParentFile() != null) {
       repoFileRoot = repoFileRoot.getParentFile();
