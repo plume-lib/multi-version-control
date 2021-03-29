@@ -1344,7 +1344,8 @@ public class MultiVersionControl {
     }
 
     /**
-     * Perform replacements on the given string.
+     * Perform replacements on the given string. This method is less prone to StackOverflowError
+     * than the JDK's {@code String.replaceAll}.
      *
      * @param s the string in which to perform replacements
      * @return the string, after replacements have been performed
