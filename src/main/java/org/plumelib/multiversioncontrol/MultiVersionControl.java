@@ -1373,13 +1373,12 @@ public class MultiVersionControl {
    * @return the index of the start of a line, or -1 if no such exists
    */
   private static @IndexOrLow("#1") int lineStartIndex(String s, int start) {
+    if (start == 0) {
+      // It doesn't make sense to call this routine with 0, so use 1.
+      start = 1;
+    }
     if (s.length() == 0) {
       return -1;
-    }
-    if (start == 0) {
-      // It doesn't make sense to call this routine with 0, but return 0 anyway.
-      // This expression can be inferred to be less than the length of s, unlike "0".
-      return s.length() - s.length();
     }
     if (start > s.length()) {
       return -1;
