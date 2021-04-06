@@ -23,7 +23,6 @@ import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteWatchdog;
 import org.apache.commons.exec.PumpStreamHandler;
 import org.checkerframework.checker.index.qual.GTENegativeOne;
-import org.checkerframework.checker.index.qual.IndexOrLow;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.initialization.qual.UnknownInitialization;
 import org.checkerframework.checker.lock.qual.GuardSatisfied;
@@ -1329,7 +1328,7 @@ public class MultiVersionControl {
    */
   private static class Replacer {
     /** The regular expression matching text that should be replaced. */
-    @Regex String regexp;
+    Pattern regexp;
     /** The replacement text. */
     String replacement;
 
@@ -1340,7 +1339,7 @@ public class MultiVersionControl {
      * @param replacement the replacement text
      */
     public Replacer(@Regex String regexp, String replacement) {
-      this.regexp = regexp;
+      this.regexp = Pattern.compile(regexp);
       this.replacement = replacement;
     }
 
@@ -1352,49 +1351,8 @@ public class MultiVersionControl {
      * @return the string, after replacements have been performed
      */
     public String replaceAll(String s) {
-      // String.replaceAll uses a recursive (!) algorithm that is prone to StackOverflowError for
-      // long strings.  This recursion should be OK because it's much less deep.
-      int lineStart = lineStartIndex(s, 10000);
-      if (lineStart == -1) {
-        return s.replaceAll(regexp, replacement);
-      } else {
-        String firstPart = s.substring(0, lineStart);
-        String lastPart = s.substring(lineStart);
-        return firstPart.replaceAll(regexp, replacement) + replaceAll(lastPart);
-      }
-    }
-  }
-
-  /**
-   * Given a string, return the index of the start of a line, after {@code start}.
-   *
-   * @param s the string in which to find the start of a line
-   * @param start the index at which to start looking for the start of a line
-   * @return the index of the start of a line, or -1 if no such exists
-   */
-  private static @IndexOrLow("#1") int lineStartIndex(String s, int start) {
-    if (start == 0) {
-      // It doesn't make sense to call this routine with 0, so use 1.
-      start = 1;
-    }
-    if (s.length() == 0) {
-      return -1;
-    }
-    if (start > s.length()) {
-      return -1;
-    }
-    // possible line terminators:  "\n", "\r\n", "\r".
-    int newlinePos = s.indexOf("\n", start - 1);
-    int afterNewline = (newlinePos == -1) ? Integer.MAX_VALUE : newlinePos + 1;
-    int returnPos1 = s.indexOf("\r\n", start - 2);
-    int returnPos2 = s.indexOf("\r", start - 1);
-    int afterReturn1 = (returnPos1 == -1) ? Integer.MAX_VALUE : returnPos1 + 2;
-    int afterReturn2 = (returnPos2 == -1) ? Integer.MAX_VALUE : returnPos2 + 1;
-    int lineStart = Math.min(afterNewline, Math.min(afterReturn1, afterReturn2));
-    if (lineStart >= s.length()) {
-      return -1;
-    } else {
-      return lineStart;
+      Matcher matcher = regexp.matcher(s);
+      return matcher.replaceAll(replacement);
     }
   }
 
@@ -2009,7 +1967,7 @@ public class MultiVersionControl {
         System.out.println("preoutput=<<<" + output + ">>>");
       }
       for (Replacer r : replacers) {
-        String printableRegexp = r.regexp.replace("\r", "\\r").replace("\n", "\\n");
+        String printableRegexp = r.regexp.toString().replace("\r", "\\r").replace("\n", "\\n");
         if (debug_replacers) {
           System.out.println("midoutput_pre[" + printableRegexp + "]=<<<" + output + ">>>");
         }
