@@ -1378,7 +1378,8 @@ public class MultiVersionControl {
     }
     if (start == 0) {
       // It doesn't make sense to call this routine with 0, but return 0 anyway.
-      return 0;
+      // This expression can be inferred to be less than the length of s, unlike "0".
+      return s.length() - s.length();
     }
     if (start > s.length()) {
       return -1;
