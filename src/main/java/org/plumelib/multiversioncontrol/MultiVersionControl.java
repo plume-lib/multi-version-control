@@ -525,8 +525,7 @@ public class MultiVersionControl {
   /** Nullary constructor for use by OptionsDoclet. */
   @SuppressWarnings({
     "nullness", // initialization warning in unused constructor
-    "initializedfields:contracts.postcondition.not.satisfied" // initialization warning in unused
-    // constructor
+    "initializedfields:contracts.postcondition" // initialization warning in unused constructor
   })
   private MultiVersionControl() {}
 
@@ -550,8 +549,8 @@ public class MultiVersionControl {
   @EnsuresInitializedFields(fields = "action")
   public void parseArgs(@UnknownInitialization MultiVersionControl this, String[] args) {
     @SuppressWarnings(
-        "nullness:assignment.type.incompatible") // new C(underInit) yields @UnderInitialization;
-    // @Initialized is safe
+        "nullness:assignment" // new C(underInit) yields @UnderInitialization; @Initialized is safe
+    )
     @Initialized Options options = new Options("mvc [options] {clone,status,pull,list}", this);
     String[] remainingArgs = options.parse(true, args);
     if (remainingArgs.length != 1) {
