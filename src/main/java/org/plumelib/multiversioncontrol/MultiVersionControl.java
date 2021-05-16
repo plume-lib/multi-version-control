@@ -1365,9 +1365,12 @@ public class MultiVersionControl {
     ProcessBuilder pb = new ProcessBuilder("");
     ProcessBuilder pb2 = new ProcessBuilder(new ArrayList<String>());
     ProcessBuilder pb3 = new ProcessBuilder(new ArrayList<String>());
+    // pb4 is only for checking whether there are no commits in this branch.
+    ProcessBuilder pb4 = new ProcessBuilder(new ArrayList<String>());
     pb.redirectErrorStream(true);
     pb2.redirectErrorStream(true);
     pb3.redirectErrorStream(true);
+    pb4.redirectErrorStream(true);
     // I really want to be able to redirect output to a Reader, but that
     // isn't possible.  I have to send it to a file.
     // I can't just use the InputStream directly, because if the process is
@@ -1456,6 +1459,8 @@ public class MultiVersionControl {
       pb2.directory(dir);
       pb3.command(new ArrayList<String>());
       pb3.directory(dir);
+      pb4.command(new ArrayList<String>());
+      pb4.directory(dir);
       boolean showNormalOutput = false;
       // Set pb.command() to be the command to be executed.
       switch (action) {
@@ -1635,7 +1640,11 @@ public class MultiVersionControl {
                   new Replacer(
                       "^commit .*(.*\\n)+", "unpushed commits: " + pb2.directory() + "\n"));
 
-              // TODO: look for stashes
+              // TODO: use pb3 to look for stashes, using `git stash list`.
+
+              // TODO: use `if git merge-base --is-ancestor origin/master HEAD ; then ...` to
+              // determine whether this branch has no changes and thus can be deleted.
+              pb4.command(git_executable, "merge-base", "--is-ancestor", "origin/master", "HEAD");
 
               break;
             case HG:
@@ -1818,6 +1827,14 @@ public class MultiVersionControl {
       if (pb3.command().size() > 0) {
         perform_command(pb3, replacers3, showNormalOutput);
       }
+      // TODO:
+      // if (pb4.command().size() > 0) {
+      //   int isAncestorStatus = perform_command(pb4, replacers4, showNormalOutput);
+      //   if (isAncestorStatus == 0) {
+      //     // TODO: Output this message only for non-master branches.
+      //     // System.out.println("No changes committed in " + dir);
+      //   }
+      // }
     }
   }
 
@@ -1879,13 +1896,14 @@ public class MultiVersionControl {
    * @param replacers replacement to make it the output before displaying it, to reduce verbasity
    * @param showNormalOutput if true, then display the output even if the process completed
    *     normally. Ordinarily, output is displayed only if the process completed erroneously.
+   * @return the status code: 0 for normal completion, non-zero for erroneous completion
    */
-  void perform_command(ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
+  int perform_command(ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
     if (show) {
       System.out.println(command(pb));
     }
     if (dry_run) {
-      return;
+      return 0;
     }
     // Perform the command
 
@@ -1932,7 +1950,7 @@ public class MultiVersionControl {
       }
     }
 
-    int exitValue = -1;
+    int exitValue;
     try {
       resultHandler.waitFor();
       exitValue = resultHandler.getExitValue();
@@ -1952,7 +1970,7 @@ public class MultiVersionControl {
     //  * whenever the process exited non-normally
     //  * when debugging
     //  * other circumstances?
-    // Try printing always, to better understand this question.
+    // I could try printing always, to better understand this question.
     if (showNormalOutput || exitValue != 0 || debug_replacers || debug_process_output) {
       // Filter then print the output.
       String output;
@@ -1965,28 +1983,32 @@ public class MultiVersionControl {
       if (debug_replacers || debug_process_output) {
         System.out.println("preoutput=<<<" + output + ">>>");
       }
-      for (Replacer r : replacers) {
-        String printableRegexp = r.regexp.toString().replace("\r", "\\r").replace("\n", "\\n");
+      if (!output.equals("")) {
+        for (Replacer r : replacers) {
+          String printableRegexp = r.regexp.toString().replace("\r", "\\r").replace("\n", "\\n");
+          if (debug_replacers) {
+            System.out.println("midoutput_pre[" + printableRegexp + "]=<<<" + output + ">>>");
+          }
+          // Don't loop, because some regexps will continue to match repeatedly
+          output = r.replaceAll(output);
+          if (debug_replacers) {
+            System.out.println("midoutput_post[" + printableRegexp + "]=<<<" + output + ">>>");
+          }
+        }
+        if (debug_replacers || debug_process_output) {
+          System.out.println("postoutput=<<<" + output + ">>>");
+        }
         if (debug_replacers) {
-          System.out.println("midoutput_pre[" + printableRegexp + "]=<<<" + output + ">>>");
+          for (int i = 0; i < Math.min(100, output.length()); i++) {
+            System.out.println(
+                i + ": " + (int) output.charAt(i) + "\n        \"" + output.charAt(i) + "\"");
+          }
         }
-        // Don't loop, because some regexps will continue to match repeatedly
-        output = r.replaceAll(output);
-        if (debug_replacers) {
-          System.out.println("midoutput_post[" + printableRegexp + "]=<<<" + output + ">>>");
-        }
+        System.out.print(output);
       }
-      if (debug_replacers || debug_process_output) {
-        System.out.println("postoutput=<<<" + output + ">>>");
-      }
-      if (debug_replacers) {
-        for (int i = 0; i < Math.min(100, output.length()); i++) {
-          System.out.println(
-              i + ": " + (int) output.charAt(i) + "\n        \"" + output.charAt(i) + "\"");
-        }
-      }
-      System.out.print(output);
     }
+
+    return exitValue;
   }
 
   /**
