@@ -721,6 +721,7 @@ public class MultiVersionControl {
     /** An error indicating a version control directory (such as .git) does not exist. */
     static class DirectoryDoesNotExist extends Error {
 
+      /** Unique identifier for serialization. If you add or remove fields, change this number. */
       static final long serialVersionUID = 20191205;
 
       /**
