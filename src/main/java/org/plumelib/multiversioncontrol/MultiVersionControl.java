@@ -1495,7 +1495,9 @@ public class MultiVersionControl {
               addArgs(pb, cvs_arg);
               break;
             case GIT:
-              pb.command(git_executable, "clone", c.repository, dirbase);
+              // "--" is to prevent the directory name from being interpreted as a command-line
+              // option, if it starts with a hyphen.
+              pb.command(git_executable, "clone", "--", c.repository, dirbase);
               addArgs(pb, git_arg);
               break;
             case HG:
