@@ -1981,7 +1981,7 @@ public class MultiVersionControl {
       // Filter then print the output.
       String output;
       try {
-        output = outStream.toString();
+        output = outStream.toString(UTF_8);
       } catch (RuntimeException e) {
         throw new Error("Exception getting process standard output");
       }
