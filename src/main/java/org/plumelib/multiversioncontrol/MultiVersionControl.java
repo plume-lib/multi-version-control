@@ -1981,7 +1981,9 @@ public class MultiVersionControl {
       // Filter then print the output.
       String output;
       try {
-        output = outStream.toString(UTF_8);
+        @SuppressWarnings("DefaultCharset") // JDK 8 version does not accept UTF_8 argument
+        String tmpOutput = outStream.toString();
+        output = tmpOutput;
       } catch (RuntimeException e) {
         throw new Error("Exception getting process standard output");
       }
