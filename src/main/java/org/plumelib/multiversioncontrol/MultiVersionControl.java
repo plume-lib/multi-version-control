@@ -1997,8 +1997,19 @@ public class MultiVersionControl {
           if (debug_replacers) {
             System.out.println("midoutput_pre[" + printableRegexp + "]=<<<" + output + ">>>");
           }
+          String orig_output = output;
           // Don't loop, because some regexps will continue to match repeatedly
-          output = r.replaceAll(output);
+          try {
+            output = r.replaceAll(output);
+          } catch (Throwable e) {
+            System.out.println("Exception in replaceAll.");
+            System.out.println("  defaultDirectory = " + defaultDirectory);
+            System.out.println("  cmdLine = " + cmdLine);
+            System.out.println("  regexp = " + printableRegexp);
+            System.out.println("  orig output = " + orig_output);
+            System.out.println("  output = " + output);
+            throw e;
+          }
           if (debug_replacers) {
             System.out.println("midoutput_post[" + printableRegexp + "]=<<<" + output + ">>>");
           }
