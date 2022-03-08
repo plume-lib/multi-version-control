@@ -62,6 +62,7 @@ checkerFramework {
     'org.checkerframework.checker.lock.LockChecker',
     'org.checkerframework.checker.nullness.NullnessChecker',
     'org.checkerframework.checker.regex.RegexChecker',
+    'org.checkerframework.checker.signedness.SignednessChecker',
     'org.checkerframework.common.initializedfields.InitializedFieldsChecker'
   ]
   extraJavacArgs = [
