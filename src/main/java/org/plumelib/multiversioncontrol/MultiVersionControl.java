@@ -2023,6 +2023,9 @@ public class MultiVersionControl {
                 i + ": " + (int) output.charAt(i) + "\n        \"" + output.charAt(i) + "\"");
           }
         }
+        if (output.startsWith("You are not currently on a branch.")) {
+          System.out.println(pb.directory() + ":");
+        }
         System.out.print(output);
       }
     }
