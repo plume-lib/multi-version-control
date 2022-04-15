@@ -1936,7 +1936,7 @@ public class MultiVersionControl {
     @NonNull File defaultDirectory = pb.directory();
     executor.setWorkingDirectory(defaultDirectory);
 
-    ExecuteWatchdog watchdog = new ExecuteWatchdog(timeout * 1000);
+    ExecuteWatchdog watchdog = new ExecuteWatchdog(timeout * 1000L);
     executor.setWatchdog(watchdog);
 
     final ByteArrayOutputStream outStream = new ByteArrayOutputStream();
