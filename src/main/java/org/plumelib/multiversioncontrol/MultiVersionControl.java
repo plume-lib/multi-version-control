@@ -299,8 +299,8 @@ public class MultiVersionControl {
    * .mvc-checkouts} in home directory]
    */
   @Option(
-      value = "File with list of clones.  Set it to /dev/null to suppress reading.",
-      noDocDefault = true)
+          value = "File with list of clones.  Set it to /dev/null to suppress reading.",
+          noDocDefault = true)
   public String checkouts = "~/.mvc-checkouts";
 
   /** If false, clone command skips existing directories. */
@@ -479,13 +479,13 @@ public class MultiVersionControl {
         File afile = new File(expandTilde(adir));
         if (!afile.exists()) {
           System.err.printf(
-              "Warning: Directory to ignore while searching for checkouts does not exist:%n  %s%n",
-              adir);
+                  "Warning: Directory to ignore while searching for checkouts does not exist:%n  %s%n",
+                  adir);
         } else if (!afile.isDirectory()) {
           System.err.printf(
-              "Warning: Directory to ignore while searching for checkouts is not a directory:%n"
-                  + "  %s%n",
-              adir);
+                  "Warning: Directory to ignore while searching for checkouts is not a directory:%n"
+                          + "  %s%n",
+                  adir);
         } else {
           mvc.ignoreDirs.add(afile);
         }
@@ -498,7 +498,7 @@ public class MultiVersionControl {
         }
         if (!new File(adir).isDirectory()) {
           System.err.printf(
-              "Directory in which to search for checkouts is not a directory: %s%n", adir);
+                  "Directory in which to search for checkouts is not a directory: %s%n", adir);
           System.exit(2);
         }
         int oldCheckouts = checkouts.size();
@@ -527,8 +527,8 @@ public class MultiVersionControl {
 
   /** Nullary constructor for use by OptionsDoclet. */
   @SuppressWarnings({
-    "nullness", // initialization warning in unused constructor
-    "initializedfields:contracts.postcondition" // initialization warning in unused constructor
+          "nullness", // initialization warning in unused constructor
+          "initializedfields:contracts.postcondition" // initialization warning in unused constructor
   })
   private MultiVersionControl() {}
 
@@ -552,14 +552,14 @@ public class MultiVersionControl {
   @EnsuresInitializedFields(fields = "action")
   public void parseArgs(@UnknownInitialization MultiVersionControl this, String[] args) {
     @SuppressWarnings(
-        "nullness:assignment" // new C(underInit) yields @UnderInitialization; @Initialized is safe
+            "nullness:assignment" // new C(underInit) yields @UnderInitialization; @Initialized is safe
     )
     @Initialized Options options = new Options("mvc [options] {clone,status,pull,list}", this);
     String[] remainingArgs = options.parse(true, args);
     if (remainingArgs.length != 1) {
       System.out.printf(
-          "Please supply exactly one argument (found %d)%n%s",
-          remainingArgs.length, String.join(" ", remainingArgs));
+              "Please supply exactly one argument (found %d)%n%s",
+              remainingArgs.length, String.join(" ", remainingArgs));
       options.printUsage();
       System.exit(1);
     }
@@ -606,7 +606,7 @@ public class MultiVersionControl {
       if (!explicitDryRun) {
         if (!quiet) {
           System.out.println(
-              "No --dry-run argument, so using --dry-run=true; override with --dry-run=false");
+                  "No --dry-run argument, so using --dry-run=true; override with --dry-run=false");
         }
         dry_run = true;
       }
@@ -677,11 +677,11 @@ public class MultiVersionControl {
      * @param module the module that is checked out (for CVS and optionally SVN)
      */
     Checkout(
-        RepoType repoType, File directory, @Nullable String repository, @Nullable String module) {
+            RepoType repoType, File directory, @Nullable String repository, @Nullable String module) {
       // Directory might not exist if we are running the checkout command.
       // If it exists, it must be a directory.
       assert (directory.exists() ? directory.isDirectory() : true)
-          : "Not a directory: " + directory;
+              : "Not a directory: " + directory;
       this.repoType = repoType;
       this.directory = directory;
       try {
@@ -743,8 +743,8 @@ public class MultiVersionControl {
     private static void assertSubdirExists(File directory, String subdirName) {
       if (directory.exists() && !new File(directory, subdirName).isDirectory()) {
         throw new DirectoryDoesNotExist(
-            String.format(
-                "Directory %s exists but %s subdirectory does not exist%n", directory, subdirName));
+                String.format(
+                        "Directory %s exists but %s subdirectory does not exist%n", directory, subdirName));
       }
     }
 
@@ -756,8 +756,8 @@ public class MultiVersionControl {
       }
       Checkout c2 = (Checkout) other;
       return (repoType == c2.repoType)
-          && canonicalDirectory.equals(c2.canonicalDirectory)
-          && Objects.equals(module, c2.module);
+              && canonicalDirectory.equals(c2.canonicalDirectory)
+              && Objects.equals(module, c2.module);
     }
 
     @Override
@@ -787,142 +787,146 @@ public class MultiVersionControl {
    * @throws IOException if there is trouble reading the file (or file sysetm?)
    */
   @SuppressWarnings({
-    "StringSplitter" // don't add dependence on Guava
+          "StringSplitter" // don't add dependence on Guava
   })
   static void readCheckouts(File file, Set<Checkout> checkouts, boolean search_prefix)
-      throws IOException {
+          throws IOException {
     RepoType currentType = RepoType.BZR; // arbitrary choice, to avoid uninitialized variable
     String currentRoot = null;
     boolean currentRootIsRepos = false;
 
-    EntryReader er = new EntryReader(file);
-    for (String line : er) {
-      if (debug) {
-        System.out.println("line: " + line);
-      }
-      line = line.trim();
-      // Skip comments and blank lines
-      if (line.equals("") || line.startsWith("#")) {
-        continue;
-      }
-
-      String[] splitTwo = line.split("[ \t]+");
-      if (debug) {
-        System.out.println("split length: " + splitTwo.length);
-      }
-      if (splitTwo.length == 2) {
-        String word1 = splitTwo[0];
-        String word2 = splitTwo[1];
-        if (word1.equals("BZRROOT:") || word1.equals("BZRREPOS:")) {
-          currentType = RepoType.BZR;
-          currentRoot = word2;
-          currentRootIsRepos = word1.equals("BZRREPOS:");
+    try (EntryReader er = new EntryReader(file)) {
+      for (String line : er) {
+        if (debug) {
+          System.out.println("line: " + line);
+        }
+        line = line.trim();
+        // Skip comments and blank lines
+        if (line.equals("") || line.startsWith("#")) {
           continue;
-        } else if (word1.equals("CVSROOT:")) {
-          currentType = RepoType.CVS;
-          currentRoot = word2;
-          currentRootIsRepos = false;
-          // If the CVSROOT is remote, try to make it local.
-          if (currentRoot.startsWith(":ext:")) {
-            String[] rootWords = currentRoot.split(":");
-            String possibleRoot = rootWords[rootWords.length - 1];
-            if (new File(possibleRoot).isDirectory()) {
-              currentRoot = possibleRoot;
+        }
+
+        String[] splitTwo = line.split("[ \t]+");
+        if (debug) {
+          System.out.println("split length: " + splitTwo.length);
+        }
+        if (splitTwo.length == 2) {
+          String word1 = splitTwo[0];
+          String word2 = splitTwo[1];
+          if (word1.equals("BZRROOT:") || word1.equals("BZRREPOS:")) {
+            currentType = RepoType.BZR;
+            currentRoot = word2;
+            currentRootIsRepos = word1.equals("BZRREPOS:");
+            continue;
+          } else if (word1.equals("CVSROOT:")) {
+            currentType = RepoType.CVS;
+            currentRoot = word2;
+            currentRootIsRepos = false;
+            // If the CVSROOT is remote, try to make it local.
+            if (currentRoot.startsWith(":ext:")) {
+              String[] rootWords = currentRoot.split(":");
+              String possibleRoot = rootWords[rootWords.length - 1];
+              if (new File(possibleRoot).isDirectory()) {
+                currentRoot = possibleRoot;
+              }
+            }
+            continue;
+          } else if (word1.equals("HGROOT:") || word1.equals("HGREPOS:")) {
+            currentType = RepoType.HG;
+            currentRoot = word2;
+            currentRootIsRepos = word1.equals("HGREPOS:");
+            continue;
+          } else if (word1.equals("GITROOT:") || word1.equals("GITREPOS:")) {
+            currentType = RepoType.GIT;
+            currentRoot = word2;
+            currentRootIsRepos = word1.equals("GITREPOS:");
+            continue;
+          } else if (word1.equals("SVNROOT:") || word1.equals("SVNREPOS:")) {
+            currentType = RepoType.SVN;
+            currentRoot = word2;
+            currentRootIsRepos = word1.equals("SVNREPOS:");
+            continue;
+          }
+        }
+
+        if (currentRoot == null) {
+          System.err.printf(
+                  "need root before directory at line %d of file %s%n",
+                  er.getLineNumber(), er.getFileName());
+          System.exit(1);
+        }
+
+        String dirname;
+        String root = currentRoot;
+        if (root.endsWith("/")) {
+          root = root.substring(0, root.length() - 1);
+        }
+        String module = null;
+
+        int spacePos = line.lastIndexOf(' ');
+        if (spacePos == -1) {
+          dirname = line;
+        } else {
+          dirname = line.substring(0, spacePos);
+          module = line.substring(spacePos + 1);
+        }
+
+        // The directory may not yet exist if we are doing a checkout.
+        File dir = new File(expandTilde(dirname));
+
+        if (module == null) {
+          module = dir.getName();
+        }
+        if (currentType != RepoType.CVS) {
+          if (!currentRootIsRepos) {
+            root = root + "/" + module;
+          }
+          module = null;
+        }
+
+        Checkout checkout = new Checkout(currentType, dir, root, module);
+        checkouts.add(checkout);
+
+        // TODO: This can result in near-duplicates in the checkouts set.  Suppose that the
+        // .mvc-checkouts file contains two lines
+        //   /a/b/c
+        //   /a/b/c-fork-d
+        // with different repositories, and there exists a directory
+        //   /a/b/c-fork-d-branch-e
+        // Then the latter is included twice, once each with the repository of `c` and of `c-fork-d`.
+        if (search_prefix) {
+          String dirName = dir.getName();
+          FileFilter namePrefixFilter =
+                  new FileFilter() {
+                    @Override
+                    public boolean accept(File file) {
+                      return file.isDirectory() && file.getName().startsWith(dirName);
+                    }
+                  };
+          File dirParent = dir.getParentFile();
+          if (dirParent == null || !dirParent.isDirectory()) {
+            continue;
+          }
+          File[] siblings = dirParent.listFiles(namePrefixFilter);
+          if (siblings == null) {
+            throw new Error(
+                    String.format(
+                            "This cannot happen, because %s (parent of %s) is a directory", dirParent, dir));
+          }
+          for (File sibling : siblings) {
+            try {
+              checkouts.add(new Checkout(currentType, sibling, root, module));
+            } catch (Checkout.DirectoryDoesNotExist e) {
+              // A directory is an extension of a file in
+              // .mvc-checkouts, but lacks a (eg) .git subdir.  Just
+              // skip that directory.
             }
           }
-          continue;
-        } else if (word1.equals("HGROOT:") || word1.equals("HGREPOS:")) {
-          currentType = RepoType.HG;
-          currentRoot = word2;
-          currentRootIsRepos = word1.equals("HGREPOS:");
-          continue;
-        } else if (word1.equals("GITROOT:") || word1.equals("GITREPOS:")) {
-          currentType = RepoType.GIT;
-          currentRoot = word2;
-          currentRootIsRepos = word1.equals("GITREPOS:");
-          continue;
-        } else if (word1.equals("SVNROOT:") || word1.equals("SVNREPOS:")) {
-          currentType = RepoType.SVN;
-          currentRoot = word2;
-          currentRootIsRepos = word1.equals("SVNREPOS:");
-          continue;
         }
       }
-
-      if (currentRoot == null) {
-        System.err.printf(
-            "need root before directory at line %d of file %s%n",
-            er.getLineNumber(), er.getFileName());
-        System.exit(1);
-      }
-
-      String dirname;
-      String root = currentRoot;
-      if (root.endsWith("/")) {
-        root = root.substring(0, root.length() - 1);
-      }
-      String module = null;
-
-      int spacePos = line.lastIndexOf(' ');
-      if (spacePos == -1) {
-        dirname = line;
-      } else {
-        dirname = line.substring(0, spacePos);
-        module = line.substring(spacePos + 1);
-      }
-
-      // The directory may not yet exist if we are doing a checkout.
-      File dir = new File(expandTilde(dirname));
-
-      if (module == null) {
-        module = dir.getName();
-      }
-      if (currentType != RepoType.CVS) {
-        if (!currentRootIsRepos) {
-          root = root + "/" + module;
-        }
-        module = null;
-      }
-
-      Checkout checkout = new Checkout(currentType, dir, root, module);
-      checkouts.add(checkout);
-
-      // TODO: This can result in near-duplicates in the checkouts set.  Suppose that the
-      // .mvc-checkouts file contains two lines
-      //   /a/b/c
-      //   /a/b/c-fork-d
-      // with different repositories, and there exists a directory
-      //   /a/b/c-fork-d-branch-e
-      // Then the latter is included twice, once each with the repository of `c` and of `c-fork-d`.
-      if (search_prefix) {
-        String dirName = dir.getName();
-        FileFilter namePrefixFilter =
-            new FileFilter() {
-              @Override
-              public boolean accept(File file) {
-                return file.isDirectory() && file.getName().startsWith(dirName);
-              }
-            };
-        File dirParent = dir.getParentFile();
-        if (dirParent == null || !dirParent.isDirectory()) {
-          continue;
-        }
-        File[] siblings = dirParent.listFiles(namePrefixFilter);
-        if (siblings == null) {
-          throw new Error(
-              String.format(
-                  "This cannot happen, because %s (parent of %s) is a directory", dirParent, dir));
-        }
-        for (File sibling : siblings) {
-          try {
-            checkouts.add(new Checkout(currentType, sibling, root, module));
-          } catch (Checkout.DirectoryDoesNotExist e) {
-            // A directory is an extension of a file in
-            // .mvc-checkouts, but lacks a (eg) .git subdir.  Just
-            // skip that directory.
-          }
-        }
-      }
+    } catch(IOException e) {
+      System.err.printf("There is a problem with reading the file %s: %s", file.getPath(), e);
+      throw new Error(e);
     }
     if (debug) {
       System.out.printf("Here are the checkouts:%n");
@@ -1019,23 +1023,23 @@ public class MultiVersionControl {
     }
 
     @SuppressWarnings({
-      "nullness" // dependent: listFiles => non-null because dir is a directory, and
-      // the checker doesn't know that checkouts.add etc do not affect dir
+            "nullness" // dependent: listFiles => non-null because dir is a directory, and
+            // the checker doesn't know that checkouts.add etc do not affect dir
     })
     File @NonNull [] childdirs = dir.listFiles(idf);
     if (childdirs == null) {
       System.err.printf(
-          "childdirs is null (permission or other I/O problem?) for %s%n", dir.toString());
+              "childdirs is null (permission or other I/O problem?) for %s%n", dir.toString());
       return;
     }
     Arrays.sort(
-        childdirs,
-        new Comparator<File>() {
-          @Override
-          public int compare(File o1, File o2) {
-            return o1.getName().compareTo(o2.getName());
-          }
-        });
+            childdirs,
+            new Comparator<File>() {
+              @Override
+              public int compare(File o1, File o2) {
+                return o1.getName().compareTo(o2.getName());
+              }
+            });
     for (File childdir : childdirs) {
       findCheckouts(childdir, checkouts, ignoreDirs);
     }
@@ -1084,7 +1088,7 @@ public class MultiVersionControl {
 
     // strip common suffix off of local dir and repo url
     FilePair stripped =
-        removeCommonSuffixDirs(parentDir, new File(pathInRepo), repoFileRoot, "CVS");
+            removeCommonSuffixDirs(parentDir, new File(pathInRepo), repoFileRoot, "CVS");
     File dirRelative = stripped.file1;
     if (dirRelative == null) {
       System.out.printf("dir (%s) is parent of path in repo (%s)", parentDir, pathInRepo);
@@ -1189,7 +1193,7 @@ public class MultiVersionControl {
     if (repoRoot == null) {
       System.err.println("Problem:  old svn working copy in " + parentDir.toString());
       System.err.println(
-          "Check it out again to get a 'Repository Root' entry in the svn info output.");
+              "Check it out again to get a 'Repository Root' entry in the svn info output.");
       System.err.println("  repoUrl = " + url);
       System.exit(2);
     }
@@ -1202,8 +1206,8 @@ public class MultiVersionControl {
 
     // Strip common suffix off of local dir and repo url.
     FilePair stripped =
-        removeCommonSuffixDirs(
-            parentDir, new File(url.getPath()), new File(repoRoot.getPath()), ".svn");
+            removeCommonSuffixDirs(
+                    parentDir, new File(url.getPath()), new File(repoRoot.getPath()), ".svn");
     File dirRelative = stripped.file1;
     if (dirRelative == null) {
       System.out.printf("dir (%s) is parent of repository URL (%s)", parentDir, url.getPath());
@@ -1282,9 +1286,9 @@ public class MultiVersionControl {
     File r1 = p1;
     File r2 = p2;
     while (r1 != null
-        && r2 != null
-        && (p2Limit == null || !r2.equals(p2Limit))
-        && r1.getName().equals(r2.getName())) {
+            && r2 != null
+            && (p2Limit == null || !r2.equals(p2Limit))
+            && r1.getName().equals(r2.getName())) {
       if (p1Contains != null && !new File(r1.getParentFile(), p1Contains).isDirectory()) {
         break;
       }
@@ -1400,11 +1404,11 @@ public class MultiVersionControl {
           replacers.add(new Replacer("(^|\\n)fatal:", "$1fatal in " + dir + ":"));
           replacers.add(new Replacer("(^|\\n)warning:", "$1warning in " + dir + ":"));
           replacers.add(
-              new Replacer(
-                  "(^|\\n)(There is no tracking information for the current branch\\.)",
-                  "$1" + dir + ": $2"));
+                  new Replacer(
+                          "(^|\\n)(There is no tracking information for the current branch\\.)",
+                          "$1" + dir + ": $2"));
           replacers.add(
-              new Replacer("(^|\\n)(Your configuration specifies to merge)", dir + ": $1$2"));
+                  new Replacer("(^|\\n)(Your configuration specifies to merge)", dir + ": $1$2"));
           break;
         case HG:
           // "real URL" is for bitbucket.org.  (Should be early in list.)
@@ -1412,49 +1416,49 @@ public class MultiVersionControl {
           replacers.add(new Replacer("(^|\\n)(abort: .*)", "$1$2: " + dir));
           replacers.add(new Replacer("(^|\\n)([MARC!?I]) ", "$1$2 " + dir + "/"));
           replacers.add(
-              new Replacer(
-                  "(^|\\n)(\\*\\*\\* failed to import extension .*: No module named demandload\\n)",
-                  "$1"));
+                  new Replacer(
+                          "(^|\\n)(\\*\\*\\* failed to import extension .*: No module named demandload\\n)",
+                          "$1"));
           // Hack, should be replaced when googlecode certificate problems are fixed.
           replacers.add(
-              new Replacer(
-                  "(^|\\n)warning: .* certificate not verified"
-                      + " \\(check web.cacerts config setting\\)\\n",
-                  "$1"));
+                  new Replacer(
+                          "(^|\\n)warning: .* certificate not verified"
+                                  + " \\(check web.cacerts config setting\\)\\n",
+                          "$1"));
           // May appear twice in output with overlapping matches, so repeat the replacer
           replacers.add(
-              new Replacer(
-                  "(^|\\n)warning: .* certificate not verified"
-                      + " \\(check web.cacerts config setting\\)\\n",
-                  "$1"));
+                  new Replacer(
+                          "(^|\\n)warning: .* certificate not verified"
+                                  + " \\(check web.cacerts config setting\\)\\n",
+                          "$1"));
           // Does this mask too many errors?
           replacers.add(
-              new Replacer(
-                  "(^|\\n)((comparing with default-push\\n)?"
-                      + "abort: repository default(-push)? not found!: .*\\n)",
-                  "$1"));
+                  new Replacer(
+                          "(^|\\n)((comparing with default-push\\n)?"
+                                  + "abort: repository default(-push)? not found!: .*\\n)",
+                          "$1"));
           break;
         case SVN:
           replacers.add(
-              new Replacer("(svn: Network connection closed unexpectedly)", "$1 for " + dir));
+                  new Replacer("(svn: Network connection closed unexpectedly)", "$1 for " + dir));
           replacers.add(new Replacer("(svn: Repository) (UUID)", "$1 " + dir + " $2"));
           replacers.add(
-              new Replacer(
-                  "(svn: E155037: Previous operation has not finished; run 'cleanup' if it was"
-                      + " interrupted)",
-                  "$1; for " + dir));
+                  new Replacer(
+                          "(svn: E155037: Previous operation has not finished; run 'cleanup' if it was"
+                                  + " interrupted)",
+                          "$1; for " + dir));
           break;
         default:
           assert false;
       }
       // The \r* is necessary here; (somtimes?) there are two carriage returns.
       replacers.add(
-          new Replacer(
-              "(remote: )?Warning: untrusted X11 forwarding setup failed: xauth key data not"
-                  + " generated\r*\n"
-                  + "(remote: )?Warning: No xauth data; using fake authentication data for X11"
-                  + " forwarding\\.\r*\n",
-              ""));
+              new Replacer(
+                      "(remote: )?Warning: untrusted X11 forwarding setup failed: xauth key data not"
+                              + " generated\r*\n"
+                              + "(remote: )?Warning: No xauth data; using fake authentication data for X11"
+                              + " forwarding\\.\r*\n",
+                      ""));
       replacers.add(new Replacer("(working copy ')", "$1" + dir));
 
       pb.command("echo", "command", "not", "set");
@@ -1485,13 +1489,13 @@ public class MultiVersionControl {
             case CVS:
               assert c.module != null : "@AssumeAssertion(nullness): dependent type CVS";
               pb.command(
-                  cvs_executable,
-                  "-d",
-                  c.repository,
-                  "checkout",
-                  "-P", // prune empty directories
-                  "-ko", // no keyword substitution
-                  c.module);
+                      cvs_executable,
+                      "-d",
+                      c.repository,
+                      "checkout",
+                      "-P", // prune empty directories
+                      "-ko", // no keyword substitution
+                      c.module);
               addArgs(pb, cvs_arg);
               break;
             case GIT:
@@ -1530,15 +1534,15 @@ public class MultiVersionControl {
             case CVS:
               assert c.repository != null;
               pb.command(
-                  cvs_executable,
-                  "-q",
-                  // Including "-d REPOS" seems to give errors when a
-                  // subdirectory is in a different CVS repository.
-                  // "-d", c.repository,
-                  "diff",
-                  "-b", // compress whitespace
-                  "--brief", // report only whether files differ, not details
-                  "-N"); // report new files
+                      cvs_executable,
+                      "-q",
+                      // Including "-d REPOS" seems to give errors when a
+                      // subdirectory is in a different CVS repository.
+                      // "-d", c.repository,
+                      "diff",
+                      "-b", // compress whitespace
+                      "--brief", // report only whether files differ, not details
+                      "-N"); // report new files
               addArgs(pb, cvs_arg);
               //         # For the last perl command, this also works:
               //         #   perl -p -e 'chomp(\$cwd = `pwd`); s/^Index: /\$cwd\\//'";
@@ -1546,21 +1550,21 @@ public class MultiVersionControl {
               //         $filter = "grep -v \"unrecognized keyword 'UseNewInfoFmtStrings'\" | grep
               // \"^Index:\" | perl -p -e 's|^Index: |$dir\\/|'";
               String removeRegexp =
-                  ("\n=+"
-                      + "\nRCS file: .*" // no trailing ,v for newly-created files
-                      + "(\nretrieving revision .*)?" // no output for newly-created files
-                      + "\ndiff .*"
-                      + "(\nFiles .* and .* differ)?" // no output if only whitespace differences
-                  );
+                      ("\n=+"
+                              + "\nRCS file: .*" // no trailing ,v for newly-created files
+                              + "(\nretrieving revision .*)?" // no output for newly-created files
+                              + "\ndiff .*"
+                              + "(\nFiles .* and .* differ)?" // no output if only whitespace differences
+                      );
               replacers.add(new Replacer(removeRegexp, ""));
               replacers.add(new Replacer("(^|\\n)Index: ", "$1" + dir + "/"));
               replacers.add(
-                  new Replacer("(^|\\n)(cvs \\[diff aborted)(\\]:)", "$1$2 in " + dir + "$3"));
+                      new Replacer("(^|\\n)(cvs \\[diff aborted)(\\]:)", "$1$2 in " + dir + "$3"));
               replacers.add(new Replacer("(^|\\n)(Permission denied)", "$1$2 in " + dir));
               replacers.add(
-                  new Replacer(
-                      "(^|\\n)(cvs diff: )(cannot find revision control)",
-                      "$1$2 in " + dir + ": $3"));
+                      new Replacer(
+                              "(^|\\n)(cvs diff: )(cannot find revision control)",
+                              "$1$2 in " + dir + ": $3"));
               replacers.add(new Replacer("(^|\\n)(cvs diff: cannot find )", "$1$2" + dir));
               replacers.add(new Replacer("(^|\\n)(cvs diff: in directory )", "$1$2" + dir + "/"));
               replacers.add(new Replacer("(^|\\n)(cvs diff: ignoring )", "$1$2" + dir + "/"));
@@ -1572,67 +1576,67 @@ public class MultiVersionControl {
               // addArg(pb, "--untracked-files=no");
               addArg(pb, "--porcelain"); // experimenting with porcelain output
               replacers.add(
-                  new Replacer(
-                      "(^|\\n)On branch master\\n"
-                          + "Your branch is up-to-date with 'origin/master'.\\n"
-                          + "\\n?",
-                      "$1"));
+                      new Replacer(
+                              "(^|\\n)On branch master\\n"
+                                      + "Your branch is up-to-date with 'origin/master'.\\n"
+                                      + "\\n?",
+                              "$1"));
               replacers.add(
-                  new Replacer("(^|\\n)nothing to commit,? working directory clean\\n", "$1"));
+                      new Replacer("(^|\\n)nothing to commit,? working directory clean\\n", "$1"));
               replacers.add(
-                  new Replacer(
-                      "(^|\\n"
-                          + ")no changes added to commit \\(use \"git add\" and/or \"git commit"
-                          + " -a\"\\)\\n",
-                      "$1"));
+                      new Replacer(
+                              "(^|\\n"
+                                      + ")no changes added to commit \\(use \"git add\" and/or \"git commit"
+                                      + " -a\"\\)\\n",
+                              "$1"));
               replacers.add(
-                  new Replacer(
-                      "(^|\\n)nothing added to commit but untracked files present"
-                          + " \\(use \"git add\" to track\\)\\n",
-                      "$1"));
+                      new Replacer(
+                              "(^|\\n)nothing added to commit but untracked files present"
+                                      + " \\(use \"git add\" to track\\)\\n",
+                              "$1"));
               replacers.add(
-                  new Replacer(
-                      "(^|\\n)nothing to commit \\(use -u to show untracked files\\)\n", "$1"));
+                      new Replacer(
+                              "(^|\\n)nothing to commit \\(use -u to show untracked files\\)\n", "$1"));
 
               replacers.add(new Replacer("(^|\\n)#\\n", "$1"));
               replacers.add(new Replacer("(^|\\n)# On branch master\\n", "$1"));
               replacers.add(
-                  new Replacer("(^|\\n)nothing to commit \\(working directory clean\\)\\n", "$1"));
+                      new Replacer("(^|\\n)nothing to commit \\(working directory clean\\)\\n", "$1"));
               replacers.add(new Replacer("(^|\\n)# Changed but not updated:\\n", "$1"));
               replacers.add(
-                  new Replacer(
-                      "(^|\\n)#   \\(use \"git add <file>...\""
-                          + " to update what will be committed\\)\\n",
-                      "$1"));
+                      new Replacer(
+                              "(^|\\n)#   \\(use \"git add <file>...\""
+                                      + " to update what will be committed\\)\\n",
+                              "$1"));
               replacers.add(
-                  new Replacer(
-                      "(^|\\n)#   \\(use \"git checkout -- <file>...\""
-                          + " to discard changes in working directory\\)\\n",
-                      "$1"));
+                      new Replacer(
+                              "(^|\\n)#   \\(use \"git checkout -- <file>...\""
+                                      + " to discard changes in working directory\\)\\n",
+                              "$1"));
               replacers.add(new Replacer("(^|\\n)# Untracked files:\\n", "$1"));
               replacers.add(
-                  new Replacer(
-                      "(^|\\n)#   \\(use \"git add <file>...\""
-                          + " to include in what will be committed\\)\\n",
-                      "$1"));
+                      new Replacer(
+                              "(^|\\n)#   \\(use \"git add <file>...\""
+                                      + " to include in what will be committed\\)\\n",
+                              "$1"));
 
               replacers.add(new Replacer("(^|\\n)(#\tmodified:   )", "$1" + dir + "/"));
               // This must come after the above, since it matches a prefix of the above
               replacers.add(new Replacer("(^|\\n)(#\t)", "$1untracked: " + dir + "/"));
               replacers.add(
-                  new Replacer(
-                      "(^|\\n)# Your branch is ahead of .*\\n",
-                      "$1unpushed changesets: " + pb.directory() + "\n"));
+                      new Replacer(
+                              "(^|\\n)# Your branch is ahead of .*\\n",
+                              "$1unpushed changesets: " + pb.directory() + "\n"));
               replacers.add(new Replacer("(^|\\n)([?][?]) ", "$1$2 " + dir + "/"));
               replacers.add(
-                  new Replacer(
-                      "(^|\\n)([ACDMRU][ ACDMRTU]|[ ACDMRU][ACDMRTU]) ", "$1$2 " + dir + "/"));
+                      new Replacer(
+                              "(^|\\n)([ACDMRU][ ACDMRTU]|[ ACDMRU][ACDMRTU]) ", "$1$2 " + dir + "/"));
 
               // Useful info, but don't bother to report it, for consistency with other VCSes
               replacers.add(
-                  new Replacer(
-                      "(^|\\n)# Your branch is behind .*\\n",
-                      "$1unpushed changesets: " + pb.directory() + "\n"));
+                      new Replacer(
+                              "(^|\\n)# Your branch is behind .*\\n",
+                              "$1unpushed changesets: " + pb.directory() + "\n"));
 
               // Could remove all other output, but this could suppress messages
               // replacers.add(new Replacer("(^|\\n)#.*\\n", "$1"));
@@ -1643,8 +1647,8 @@ public class MultiVersionControl {
               pb2.command(git_executable, "log", "--branches", "--not", "--remotes");
               addArgs(pb2, git_arg);
               replacers.add(
-                  new Replacer(
-                      "^commit .*(.*\\n)+", "unpushed commits: " + pb2.directory() + "\n"));
+                      new Replacer(
+                              "^commit .*(.*\\n)+", "unpushed commits: " + pb2.directory() + "\n"));
 
               // TODO: use pb3 to look for stashes, using `git stash list`.
 
@@ -1658,7 +1662,7 @@ public class MultiVersionControl {
               addArgs(pb, hg_arg);
               if (debug) {
                 System.out.printf(
-                    "invalidCertificate(%s) => %s%n", c.directory, invalidCertificate(c.directory));
+                        "invalidCertificate(%s) => %s%n", c.directory, invalidCertificate(c.directory));
               }
               if (invalidCertificate(c.directory)) {
                 pb2.command(hg_executable, "outgoing", "-l", "1", "--config", "web.cacerts=");
@@ -1671,24 +1675,24 @@ public class MultiVersionControl {
               }
               // The third line is either "no changes found" or "changeset".
               replacers.add(
-                  new Replacer(
-                      "^comparing with .*\\nsearching for changes\\nchangeset[^\001]*",
-                      "unpushed changesets: " + pb.directory() + "\n"));
+                      new Replacer(
+                              "^comparing with .*\\nsearching for changes\\nchangeset[^\001]*",
+                              "unpushed changesets: " + pb.directory() + "\n"));
               replacers.add(
-                  new Replacer(
-                      "^\\n?comparing with .*\\nsearching for changes\\nno changes found\n", ""));
+                      new Replacer(
+                              "^\\n?comparing with .*\\nsearching for changes\\nno changes found\n", ""));
               pb3.command(hg_executable, "shelve", "-l");
               addArgs(pb3, hg_arg);
               // Shelve is an optional extension, so don't print anything if not installed.
               replacers3.add(new Replacer("^hg: unknown command 'shelve'\\n(.*\\n)+", ""));
               replacers3.add(
-                  new Replacer("^(.*\\n)+", "shelved changes: " + pb.directory() + "\n"));
+                      new Replacer("^(.*\\n)+", "shelved changes: " + pb.directory() + "\n"));
               break;
             case SVN:
               // Handle some changes.
               // "svn status" outputs an eighth column, if you pass the --show-updates switch: [* ]
               replacers.add(
-                  new Replacer("(^|\\n)([ACDIMRX?!~ ][CM ][L ][+ ][$ ]) *", "$1$2 " + dir + "/"));
+                      new Replacer("(^|\\n)([ACDIMRX?!~ ][CM ][L ][+ ][$ ]) *", "$1$2 " + dir + "/"));
               pb.command(svn_executable, "status");
               addArgs(pb, svn_arg);
               break;
@@ -1703,22 +1707,22 @@ public class MultiVersionControl {
               break;
             case CVS:
               replacers.add(
-                  new Replacer(
-                      "(^|\\n)(cvs update: ((in|skipping) directory|conflicts found in )) +",
-                      "$1$2 " + dir + "/"));
+                      new Replacer(
+                              "(^|\\n)(cvs update: ((in|skipping) directory|conflicts found in )) +",
+                              "$1$2 " + dir + "/"));
               replacers.add(
-                  new Replacer(
-                      "(^|\\n)(Merging differences between 1.16 and 1.17 into )",
-                      "$1$2 " + dir + "/"));
+                      new Replacer(
+                              "(^|\\n)(Merging differences between 1.16 and 1.17 into )",
+                              "$1$2 " + dir + "/"));
               assert c.repository != null;
               pb.command(
-                  cvs_executable,
-                  // Including -d causes problems with CVS repositories
-                  // that are embedded inside other repositories.
-                  // "-d", c.repository,
-                  "-Q",
-                  "update",
-                  "-d");
+                      cvs_executable,
+                      // Including -d causes problems with CVS repositories
+                      // that are embedded inside other repositories.
+                      // "-d", c.repository,
+                      "-Q",
+                      "update",
+                      "-d");
               addArgs(pb, cvs_arg);
               //         $filter = "grep -v \"config: unrecognized keyword
               // 'UseNewInfoFmtStrings'\"";
@@ -1729,13 +1733,13 @@ public class MultiVersionControl {
               replacers.add(new Replacer("(^|\\n)Already up-to-date\\.\\n", "$1"));
               replacers.add(new Replacer("(^|\\n)error:", "$1error in " + dir + ":"));
               replacers.add(
-                  new Replacer(
-                      "(^|\\n)Please, commit your changes or stash them before you can merge.\\n"
-                          + "Aborting\\n",
-                      "$1"));
+                      new Replacer(
+                              "(^|\\n)Please, commit your changes or stash them before you can merge.\\n"
+                                      + "Aborting\\n",
+                              "$1"));
               replacers.add(
-                  new Replacer(
-                      "((^|\\n)CONFLICT \\(content\\): Merge conflict in )", "$1" + dir + "/"));
+                      new Replacer(
+                              "((^|\\n)CONFLICT \\(content\\): Merge conflict in )", "$1" + dir + "/"));
               replacers.add(new Replacer("(^|\\n)([ACDMRU]\t)", "$1$2" + dir + "/"));
               pb.command(git_executable, "pull", "-q");
               addArgs(pb, git_arg);
@@ -1797,8 +1801,8 @@ public class MultiVersionControl {
               if (show) {
                 if (!dry_run) {
                   System.out.printf(
-                      "Parent directory %s does not exist%s%n",
-                      parent, (dry_run ? "" : " (creating)"));
+                          "Parent directory %s does not exist%s%n",
+                          parent, (dry_run ? "" : " (creating)"));
                 } else {
                   System.out.printf("  mkdir -p %s%n", parent);
                 }
@@ -1875,7 +1879,7 @@ public class MultiVersionControl {
 
   /** A regular expression that matches a message about incalid certificates. */
   private Pattern invalidCertificatePattern =
-      Pattern.compile("^https://[^.]*[.][^.]*[.]googlecode[.]com/hg$");
+          Pattern.compile("^https://[^.]*[.][^.]*[.]googlecode[.]com/hg$");
 
   /**
    * Returns true if there is an invalid certificate for the given directory.
@@ -1892,7 +1896,7 @@ public class MultiVersionControl {
       return false;
     }
     return (defaultPath.startsWith("https://hg.codespot.com/")
-        || invalidCertificatePattern.matcher(defaultPath).matches());
+            || invalidCertificatePattern.matcher(defaultPath).matches());
   }
 
   /**
@@ -1941,7 +1945,7 @@ public class MultiVersionControl {
 
     final ByteArrayOutputStream outStream = new ByteArrayOutputStream();
     PumpStreamHandler streamHandler =
-        new PumpStreamHandler(outStream); // send both stderr and stdout
+            new PumpStreamHandler(outStream); // send both stderr and stdout
     executor.setStreamHandler(streamHandler);
 
     try {
@@ -1949,7 +1953,7 @@ public class MultiVersionControl {
     } catch (IOException e) {
       String msg = e.toString();
       if (msg.startsWith("java.io.IOException: Cannot run program \"")
-          && msg.endsWith(", No such file or directory")) {
+              && msg.endsWith(", No such file or directory")) {
         System.err.println(msg.substring(21));
       } else {
         throw new Error(e);
@@ -2020,7 +2024,7 @@ public class MultiVersionControl {
         if (debug_replacers) {
           for (int i = 0; i < Math.min(100, output.length()); i++) {
             System.out.println(
-                i + ": " + (int) output.charAt(i) + "\n        \"" + output.charAt(i) + "\"");
+                    i + ": " + (int) output.charAt(i) + "\n        \"" + output.charAt(i) + "\"");
           }
         }
         if (output.startsWith("You are not currently on a branch.")) {
