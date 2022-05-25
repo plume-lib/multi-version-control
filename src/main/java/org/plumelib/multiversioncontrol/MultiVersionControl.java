@@ -897,12 +897,12 @@ public class MultiVersionControl {
       if (search_prefix) {
         String dirName = dir.getName();
         FileFilter namePrefixFilter =
-                new FileFilter() {
-                  @Override
-                  public boolean accept(File file) {
-                    return file.isDirectory() && file.getName().startsWith(dirName);
-                  }
-                };
+            new FileFilter() {
+              @Override
+              public boolean accept(File file) {
+                return file.isDirectory() && file.getName().startsWith(dirName);
+              }
+            };
         File dirParent = dir.getParentFile();
         if (dirParent == null || !dirParent.isDirectory()) {
           continue;
@@ -910,7 +910,7 @@ public class MultiVersionControl {
         File[] siblings = dirParent.listFiles(namePrefixFilter);
         if (siblings == null) {
           throw new Error(
-                  String.format(
+              String.format(
                   "This cannot happen, because %s (parent of %s) is a directory", dirParent, dir));
         }
         for (File sibling : siblings) {
