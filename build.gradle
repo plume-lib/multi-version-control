@@ -18,7 +18,7 @@ repositories {
 
 dependencies {
   // https://mvnrepository.com/artifact/org.tmatesoft.svnkit/svnkit
-  implementation group: 'org.tmatesoft.svnkit', name: 'svnkit', version: '1.10.5'
+  implementation group: 'org.tmatesoft.svnkit', name: 'svnkit', version: '1.10.6'
 
   // https://mvnrepository.com/artifact/org.ini4j/ini4j
   implementation group: 'org.ini4j', name: 'ini4j', version: '0.5.4'
@@ -42,7 +42,7 @@ targetCompatibility = 1.8
 /// Error Prone linter
 
 dependencies {
-  errorprone("com.google.errorprone:error_prone_core:2.13.1")
+  errorprone("com.google.errorprone:error_prone_core:2.14.0")
 }
 tasks.withType(JavaCompile).configureEach {
   options.compilerArgs << "-Xlint:all,-processing" << "-Werror"
@@ -58,19 +58,19 @@ apply plugin: 'org.checkerframework'
 
 checkerFramework {
   checkers = [
-    'org.checkerframework.checker.index.IndexChecker',
-    'org.checkerframework.checker.lock.LockChecker',
-    'org.checkerframework.checker.nullness.NullnessChecker',
-    'org.checkerframework.checker.regex.RegexChecker',
-    'org.checkerframework.checker.signedness.SignednessChecker',
-    'org.checkerframework.common.initializedfields.InitializedFieldsChecker',
-    'org.checkerframework.checker.resourceleak.ResourceLeakChecker'
+          'org.checkerframework.checker.index.IndexChecker',
+          'org.checkerframework.checker.lock.LockChecker',
+          'org.checkerframework.checker.nullness.NullnessChecker',
+          'org.checkerframework.checker.regex.RegexChecker',
+          'org.checkerframework.checker.signedness.SignednessChecker',
+          'org.checkerframework.common.initializedfields.InitializedFieldsChecker',
+          'org.checkerframework.checker.resourceleak.ResourceLeakChecker'
   ]
   extraJavacArgs = [
-    '-Werror',
-    '-AcheckPurityAnnotations',
-    '-ArequirePrefixInWarningSuppressions',
-    '-AwarnUnneededSuppressions',
+          '-Werror',
+          '-AcheckPurityAnnotations',
+          '-ArequirePrefixInWarningSuppressions',
+          '-AwarnUnneededSuppressions',
   ]
 }
 
@@ -91,12 +91,12 @@ javadoc {
   options.addStringOption('Xwerror', '-Xdoclint:all')
   options.addStringOption('private', '-quiet')
   if (JavaVersion.current().compareTo(org.gradle.api.JavaVersion.VERSION_1_9) >= 0) {
-     options.addStringOption("-release", "8");
+    options.addStringOption("-release", "8");
   }
   doLast {
     if (JavaVersion.current() == JavaVersion.VERSION_1_8) {
       ant.replaceregexp(match:"@import url\\('resources/fonts/dejavu.css'\\);\\s*", replace:'',
-        flags:'g', byline:true) {
+              flags:'g', byline:true) {
         fileset(dir: destinationDir)
       }
     }
@@ -110,12 +110,12 @@ task javadocWeb(type: Javadoc) {
   destinationDir = file("/cse/web/research/plumelib/${project.name}/api")
   classpath = project.sourceSets.main.compileClasspath
   if (JavaVersion.current().compareTo(org.gradle.api.JavaVersion.VERSION_1_9) >= 0) {
-     options.addStringOption("-release", "8");
+    options.addStringOption("-release", "8");
   }
   doLast {
     if (JavaVersion.current() == JavaVersion.VERSION_1_8) {
       ant.replaceregexp(match:"@import url\\('resources/fonts/dejavu.css'\\);\\s*", replace:'',
-        flags:'g', byline:true) {
+              flags:'g', byline:true) {
         fileset(dir: destinationDir)
       }
     }

@@ -925,8 +925,8 @@ public class MultiVersionControl {
         }
       }
     } catch(IOException e) {
-      System.err.printf("There is a problem with reading the file %s: %s", file.getPath(), e);
-      throw new Error(e);
+        System.err.printf("There is a problem with reading the file %s: %s", file.getPath(), e);
+        throw new Error(e);
     }
     if (debug) {
       System.out.printf("Here are the checkouts:%n");
