@@ -796,137 +796,139 @@ public class MultiVersionControl {
     boolean currentRootIsRepos = false;
 
     try (EntryReader er = new EntryReader(file)) {
-    for (String line : er) {
-      if (debug) {
-        System.out.println("line: " + line);
-      }
-      line = line.trim();
-      // Skip comments and blank lines
-      if (line.equals("") || line.startsWith("#")) {
-        continue;
-      }
-
-      String[] splitTwo = line.split("[ \t]+");
-      if (debug) {
-        System.out.println("split length: " + splitTwo.length);
-      }
-      if (splitTwo.length == 2) {
-        String word1 = splitTwo[0];
-        String word2 = splitTwo[1];
-        if (word1.equals("BZRROOT:") || word1.equals("BZRREPOS:")) {
-          currentType = RepoType.BZR;
-          currentRoot = word2;
-          currentRootIsRepos = word1.equals("BZRREPOS:");
+      for (String line : er) {
+        if (debug) {
+          System.out.println("line: " + line);
+        }
+        line = line.trim();
+        // Skip comments and blank lines
+        if (line.equals("") || line.startsWith("#")) {
           continue;
-        } else if (word1.equals("CVSROOT:")) {
-          currentType = RepoType.CVS;
-          currentRoot = word2;
-          currentRootIsRepos = false;
-          // If the CVSROOT is remote, try to make it local.
-          if (currentRoot.startsWith(":ext:")) {
-            String[] rootWords = currentRoot.split(":");
-            String possibleRoot = rootWords[rootWords.length - 1];
-            if (new File(possibleRoot).isDirectory()) {
-              currentRoot = possibleRoot;
+        }
+
+        String[] splitTwo = line.split("[ \t]+");
+        if (debug) {
+          System.out.println("split length: " + splitTwo.length);
+        }
+        if (splitTwo.length == 2) {
+          String word1 = splitTwo[0];
+          String word2 = splitTwo[1];
+          if (word1.equals("BZRROOT:") || word1.equals("BZRREPOS:")) {
+            currentType = RepoType.BZR;
+            currentRoot = word2;
+            currentRootIsRepos = word1.equals("BZRREPOS:");
+            continue;
+          } else if (word1.equals("CVSROOT:")) {
+            currentType = RepoType.CVS;
+            currentRoot = word2;
+            currentRootIsRepos = false;
+            // If the CVSROOT is remote, try to make it local.
+            if (currentRoot.startsWith(":ext:")) {
+              String[] rootWords = currentRoot.split(":");
+              String possibleRoot = rootWords[rootWords.length - 1];
+              if (new File(possibleRoot).isDirectory()) {
+                currentRoot = possibleRoot;
+              }
+            }
+            continue;
+          } else if (word1.equals("HGROOT:") || word1.equals("HGREPOS:")) {
+            currentType = RepoType.HG;
+            currentRoot = word2;
+            currentRootIsRepos = word1.equals("HGREPOS:");
+            continue;
+          } else if (word1.equals("GITROOT:") || word1.equals("GITREPOS:")) {
+            currentType = RepoType.GIT;
+            currentRoot = word2;
+            currentRootIsRepos = word1.equals("GITREPOS:");
+            continue;
+          } else if (word1.equals("SVNROOT:") || word1.equals("SVNREPOS:")) {
+            currentType = RepoType.SVN;
+            currentRoot = word2;
+            currentRootIsRepos = word1.equals("SVNREPOS:");
+            continue;
+          }
+        }
+
+        if (currentRoot == null) {
+          System.err.printf(
+              "need root before directory at line %d of file %s%n",
+              er.getLineNumber(), er.getFileName());
+          System.exit(1);
+        }
+
+        String dirname;
+        String root = currentRoot;
+        if (root.endsWith("/")) {
+          root = root.substring(0, root.length() - 1);
+        }
+        String module = null;
+
+        int spacePos = line.lastIndexOf(' ');
+        if (spacePos == -1) {
+          dirname = line;
+        } else {
+          dirname = line.substring(0, spacePos);
+          module = line.substring(spacePos + 1);
+        }
+
+        // The directory may not yet exist if we are doing a checkout.
+        File dir = new File(expandTilde(dirname));
+
+        if (module == null) {
+          module = dir.getName();
+        }
+        if (currentType != RepoType.CVS) {
+          if (!currentRootIsRepos) {
+            root = root + "/" + module;
+          }
+          module = null;
+        }
+
+        Checkout checkout = new Checkout(currentType, dir, root, module);
+        checkouts.add(checkout);
+
+        // TODO: This can result in near-duplicates in the checkouts set.  Suppose that the
+        // .mvc-checkouts file contains two lines
+        //   /a/b/c
+        //   /a/b/c-fork-d
+        // with different repositories, and there exists a directory
+        //   /a/b/c-fork-d-branch-e
+        // Then the latter is included twice, once each with the repository of `c` and of
+        // `c-fork-d`.
+        if (search_prefix) {
+          String dirName = dir.getName();
+          FileFilter namePrefixFilter =
+              new FileFilter() {
+                @Override
+                public boolean accept(File file) {
+                  return file.isDirectory() && file.getName().startsWith(dirName);
+                }
+              };
+          File dirParent = dir.getParentFile();
+          if (dirParent == null || !dirParent.isDirectory()) {
+            continue;
+          }
+          File[] siblings = dirParent.listFiles(namePrefixFilter);
+          if (siblings == null) {
+            throw new Error(
+                String.format(
+                    "This cannot happen, because %s (parent of %s) is a directory",
+                    dirParent, dir));
+          }
+          for (File sibling : siblings) {
+            try {
+              checkouts.add(new Checkout(currentType, sibling, root, module));
+            } catch (Checkout.DirectoryDoesNotExist e) {
+              // A directory is an extension of a file in
+              // .mvc-checkouts, but lacks a (eg) .git subdir.  Just
+              // skip that directory.
             }
           }
-          continue;
-        } else if (word1.equals("HGROOT:") || word1.equals("HGREPOS:")) {
-          currentType = RepoType.HG;
-          currentRoot = word2;
-          currentRootIsRepos = word1.equals("HGREPOS:");
-          continue;
-        } else if (word1.equals("GITROOT:") || word1.equals("GITREPOS:")) {
-          currentType = RepoType.GIT;
-          currentRoot = word2;
-          currentRootIsRepos = word1.equals("GITREPOS:");
-          continue;
-        } else if (word1.equals("SVNROOT:") || word1.equals("SVNREPOS:")) {
-          currentType = RepoType.SVN;
-          currentRoot = word2;
-          currentRootIsRepos = word1.equals("SVNREPOS:");
-          continue;
         }
       }
-
-      if (currentRoot == null) {
-        System.err.printf(
-            "need root before directory at line %d of file %s%n",
-            er.getLineNumber(), er.getFileName());
-        System.exit(1);
-      }
-
-      String dirname;
-      String root = currentRoot;
-      if (root.endsWith("/")) {
-        root = root.substring(0, root.length() - 1);
-      }
-      String module = null;
-
-      int spacePos = line.lastIndexOf(' ');
-      if (spacePos == -1) {
-        dirname = line;
-      } else {
-        dirname = line.substring(0, spacePos);
-        module = line.substring(spacePos + 1);
-      }
-
-      // The directory may not yet exist if we are doing a checkout.
-      File dir = new File(expandTilde(dirname));
-
-      if (module == null) {
-        module = dir.getName();
-      }
-      if (currentType != RepoType.CVS) {
-        if (!currentRootIsRepos) {
-          root = root + "/" + module;
-        }
-        module = null;
-      }
-
-      Checkout checkout = new Checkout(currentType, dir, root, module);
-      checkouts.add(checkout);
-
-      // TODO: This can result in near-duplicates in the checkouts set.  Suppose that the
-      // .mvc-checkouts file contains two lines
-      //   /a/b/c
-      //   /a/b/c-fork-d
-      // with different repositories, and there exists a directory
-      //   /a/b/c-fork-d-branch-e
-      // Then the latter is included twice, once each with the repository of `c` and of `c-fork-d`.
-      if (search_prefix) {
-        String dirName = dir.getName();
-        FileFilter namePrefixFilter =
-            new FileFilter() {
-              @Override
-              public boolean accept(File file) {
-                return file.isDirectory() && file.getName().startsWith(dirName);
-              }
-            };
-        File dirParent = dir.getParentFile();
-        if (dirParent == null || !dirParent.isDirectory()) {
-          continue;
-        }
-        File[] siblings = dirParent.listFiles(namePrefixFilter);
-        if (siblings == null) {
-          throw new Error(
-              String.format(
-                  "This cannot happen, because %s (parent of %s) is a directory", dirParent, dir));
-        }
-        for (File sibling : siblings) {
-          try {
-            checkouts.add(new Checkout(currentType, sibling, root, module));
-          } catch (Checkout.DirectoryDoesNotExist e) {
-            // A directory is an extension of a file in
-            // .mvc-checkouts, but lacks a (eg) .git subdir.  Just
-            // skip that directory.
-          }
-        }
-      }
-    }
-    } catch(IOException e) {
-       System.err.printf("There is a problem with reading the file %s: %s", file.getPath(), e);
-       throw new Error(e);
+    } catch (IOException e) {
+      System.err.printf("There is a problem with reading the file %s: %s", file.getPath(), e);
+      throw new Error(e);
     }
     if (debug) {
       System.out.printf("Here are the checkouts:%n");
