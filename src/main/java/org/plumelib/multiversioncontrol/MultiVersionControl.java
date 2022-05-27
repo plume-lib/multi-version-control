@@ -2,11 +2,7 @@ package org.plumelib.multiversioncontrol;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1118,18 +1114,17 @@ public class MultiVersionControl {
     Ini ini;
     // There also exist Hg commands that will do this same thing.
     if (hgrcFile.exists()) {
-      try {
-        ini = new Ini(Files.newBufferedReader(hgrcFile.toPath(), UTF_8));
-      } catch (IOException e) {
-        throw new Error("Problem reading file " + hgrcFile);
-      }
-
-      Profile.Section pathsSection = ini.get("paths");
-      if (pathsSection != null) {
-        repository = pathsSection.get("default");
-        if (repository != null && repository.endsWith("/")) {
-          repository = repository.substring(0, repository.length() - 1);
+      try (BufferedReader bufferReader = Files.newBufferedReader(hgrcFile.toPath(), UTF_8)) {
+        ini = new Ini(bufferReader);
+        Profile.Section pathsSection = ini.get("paths");
+        if (pathsSection != null) {
+          repository = pathsSection.get("default");
+          if (repository != null && repository.endsWith("/")) {
+            repository = repository.substring(0, repository.length() - 1);
+          }
         }
+      } catch (IOException e) {
+          throw new Error("Problem reading file " + hgrcFile);
       }
     }
 
