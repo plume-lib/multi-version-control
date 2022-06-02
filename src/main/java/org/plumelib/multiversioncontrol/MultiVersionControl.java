@@ -2,7 +2,12 @@ package org.plumelib.multiversioncontrol;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.BufferedReader;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
