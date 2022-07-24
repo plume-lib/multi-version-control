@@ -2,12 +2,12 @@ package org.plumelib.multiversioncontrol;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.BufferedReader;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1131,7 +1131,7 @@ public class MultiVersionControl {
           }
         }
       } catch (IOException e) {
-          throw new Error("Problem reading file " + hgrcFile);
+        throw new Error("Problem reading file " + hgrcFile);
       }
     }
 
@@ -1887,7 +1887,7 @@ public class MultiVersionControl {
    * Returns true if there is an invalid certificate for the given directory.
    *
    * @param dir the directory to test
-   * @return true if there is an invalid certificate for the given directory.
+   * @return true if there is an invalid certificate for the given directory
    */
   private boolean invalidCertificate(File dir) {
     String defaultPath = defaultPath(dir);
