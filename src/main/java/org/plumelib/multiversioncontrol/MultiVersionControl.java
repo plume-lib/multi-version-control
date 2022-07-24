@@ -2007,13 +2007,17 @@ public class MultiVersionControl {
           // Don't loop, because some regexps will continue to match repeatedly
           try {
             output = r.replaceAll(output);
+          } catch (StackOverflowError soe) {
+            System.out.println(
+                "No replacement done in = " + defaultDirectory + " because output is too long.");
           } catch (Throwable e) {
             System.out.println("Exception in replaceAll.");
             System.out.println("  defaultDirectory = " + defaultDirectory);
             System.out.println("  cmdLine = " + cmdLine);
             System.out.println("  regexp = " + printableRegexp);
-            System.out.println("  orig output = " + orig_output);
-            System.out.println("  output = " + output);
+            System.out.println(
+                "  orig output (size " + orig_output.length() + ") = " + orig_output);
+            System.out.println("  output (size " + output.length() + ") = " + output);
             throw e;
           }
           if (debug_replacers) {
