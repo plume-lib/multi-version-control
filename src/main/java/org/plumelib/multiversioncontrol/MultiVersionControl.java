@@ -2009,7 +2009,7 @@ public class MultiVersionControl {
             output = r.replaceAll(output);
           } catch (StackOverflowError soe) {
             System.out.println(
-                "No replacement done in = " + defaultDirectory + " because output is too long.");
+                "No replacement done in " + defaultDirectory + " because output is too long.");
           } catch (Throwable e) {
             System.out.println("Exception in replaceAll.");
             System.out.println("  defaultDirectory = " + defaultDirectory);
