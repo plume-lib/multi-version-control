@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -688,7 +689,7 @@ public class MultiVersionControl {
       try {
         this.canonicalDirectory = directory.getCanonicalPath();
       } catch (IOException e) {
-        throw new Error(e);
+        throw new UncheckedIOException(e);
       }
       this.repository = repository;
       this.module = module;
@@ -1131,7 +1132,7 @@ public class MultiVersionControl {
           }
         }
       } catch (IOException e) {
-        throw new Error("Problem reading file " + hgrcFile);
+        throw new UncheckedIOException("Problem reading file " + hgrcFile, e);
       }
     }
 
