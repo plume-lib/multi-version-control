@@ -948,10 +948,10 @@ public class MultiVersionControl {
   /// entire home directory.
 
   // Find checkouts.  These are indicated by directories named .bzr, CVS,
-  // .hg, or .svn.
+  // .hg, .git, or .svn.
   //
   // With some version control systems, this task is easy:  there is
-  // exactly one .bzr or .hg directory per checkout.  With CVS and SVN,
+  // exactly one .bzr, .hg, or .git directory per checkout.  With CVS and SVN,
   // there is one CVS/.svn directory per directory of the checkout.  It is
   // permitted for one checkout to be made inside another one (though that
   // is bad style), so we must examine every CVS/.svn directory to find all
@@ -1000,7 +1000,7 @@ public class MultiVersionControl {
     if (parent != null) {
       // The "return" statements below cause the code not to look for
       // checkouts inside version control directories.  (But it does look
-      // for checkouts inside other checkouts.)  If someone checks in (say)
+      // for checkouts inside other checkouts.)  If someone checks in
       // a .svn file into a Mercurial repository, then removes it, the .svn
       // file remains in the repository even if not in the working copy.
       // That .svn file will cause an exception in dirToCheckoutSvn,
@@ -1257,7 +1257,7 @@ public class MultiVersionControl {
     final @Nullable File file2;
 
     /**
-     * Createa FilePair
+     * Create a FilePair.
      *
      * @param file1 the first file
      * @param file2 the second file
