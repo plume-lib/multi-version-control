@@ -90,7 +90,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  * </pre>
  *
  * (The {@code commit} action is not supported, because that is not something that should be done in
- * an automated way -- it needs a user-written commit message.)
+ * an automated way &mdash; it needs a user-written commit message.)
  *
  * <p>You can specify the set of clones for the program to manage in a file {@code .mvc-checkouts},
  * or you can pass {@code --search} to make the program search your directory structure to find all
@@ -1999,6 +1999,7 @@ public class MultiVersionControl {
         System.out.println("preoutput=<<<" + output + ">>>");
       }
       if (!output.equals("")) {
+        boolean noReplacement = false;
         for (Replacer r : replacers) {
           String printableRegexp = r.regexp.toString().replace("\r", "\\r").replace("\n", "\\n");
           if (debug_replacers) {
@@ -2009,8 +2010,7 @@ public class MultiVersionControl {
           try {
             output = r.replaceAll(output);
           } catch (StackOverflowError soe) {
-            System.out.println(
-                "No replacement done in " + defaultDirectory + " because output is too long.");
+            noReplacement = true;
           } catch (Throwable e) {
             System.out.println("Exception in replaceAll.");
             System.out.println("  defaultDirectory = " + defaultDirectory);
@@ -2034,10 +2034,17 @@ public class MultiVersionControl {
                 i + ": " + (int) output.charAt(i) + "\n        \"" + output.charAt(i) + "\"");
           }
         }
+        if (noReplacement) {
+          System.out.println(
+              "No replacement done in " + defaultDirectory + " because output is too long.");
+        }
         if (output.startsWith("You are not currently on a branch.")) {
           System.out.println(pb.directory() + ":");
         }
         System.out.print(output);
+        if (noReplacement) {
+          System.out.println("End of output for " + defaultDirectory + ".");
+        }
       }
     }
 
