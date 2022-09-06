@@ -9,7 +9,7 @@ plugins {
   id("net.ltgt.errorprone") version "2.0.2"
 
   // Checker Framework pluggable type-checking
-  id 'org.checkerframework' version '0.6.14'
+  id 'org.checkerframework' version '0.6.16'
 }
 
 repositories {
@@ -18,7 +18,7 @@ repositories {
 
 dependencies {
   // https://mvnrepository.com/artifact/org.tmatesoft.svnkit/svnkit
-  implementation group: 'org.tmatesoft.svnkit', name: 'svnkit', version: '1.10.7'
+  implementation group: 'org.tmatesoft.svnkit', name: 'svnkit', version: '1.10.8'
 
   // https://mvnrepository.com/artifact/org.ini4j/ini4j
   implementation group: 'org.ini4j', name: 'ini4j', version: '0.5.4'
@@ -42,7 +42,7 @@ targetCompatibility = 1.8
 /// Error Prone linter
 
 dependencies {
-  errorprone("com.google.errorprone:error_prone_core:2.14.0")
+  errorprone("com.google.errorprone:error_prone_core:2.15.0")
 }
 tasks.withType(JavaCompile).configureEach {
   options.compilerArgs << "-Xlint:all,-processing" << "-Werror"

@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -89,7 +90,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  * </pre>
  *
  * (The {@code commit} action is not supported, because that is not something that should be done in
- * an automated way -- it needs a user-written commit message.)
+ * an automated way &mdash; it needs a user-written commit message.)
  *
  * <p>You can specify the set of clones for the program to manage in a file {@code .mvc-checkouts},
  * or you can pass {@code --search} to make the program search your directory structure to find all
@@ -688,7 +689,7 @@ public class MultiVersionControl {
       try {
         this.canonicalDirectory = directory.getCanonicalPath();
       } catch (IOException e) {
-        throw new Error(e);
+        throw new UncheckedIOException(e);
       }
       this.repository = repository;
       this.module = module;
@@ -947,10 +948,10 @@ public class MultiVersionControl {
   /// entire home directory.
 
   // Find checkouts.  These are indicated by directories named .bzr, CVS,
-  // .hg, or .svn.
+  // .hg, .git, or .svn.
   //
   // With some version control systems, this task is easy:  there is
-  // exactly one .bzr or .hg directory per checkout.  With CVS and SVN,
+  // exactly one .bzr, .hg, or .git directory per checkout.  With CVS and SVN,
   // there is one CVS/.svn directory per directory of the checkout.  It is
   // permitted for one checkout to be made inside another one (though that
   // is bad style), so we must examine every CVS/.svn directory to find all
@@ -999,7 +1000,7 @@ public class MultiVersionControl {
     if (parent != null) {
       // The "return" statements below cause the code not to look for
       // checkouts inside version control directories.  (But it does look
-      // for checkouts inside other checkouts.)  If someone checks in (say)
+      // for checkouts inside other checkouts.)  If someone checks in
       // a .svn file into a Mercurial repository, then removes it, the .svn
       // file remains in the repository even if not in the working copy.
       // That .svn file will cause an exception in dirToCheckoutSvn,
@@ -1131,7 +1132,7 @@ public class MultiVersionControl {
           }
         }
       } catch (IOException e) {
-        throw new Error("Problem reading file " + hgrcFile);
+        throw new UncheckedIOException("Problem reading file " + hgrcFile, e);
       }
     }
 
@@ -1256,7 +1257,7 @@ public class MultiVersionControl {
     final @Nullable File file2;
 
     /**
-     * Createa FilePair
+     * Create a FilePair.
      *
      * @param file1 the first file
      * @param file2 the second file
@@ -1998,6 +1999,7 @@ public class MultiVersionControl {
         System.out.println("preoutput=<<<" + output + ">>>");
       }
       if (!output.equals("")) {
+        boolean noReplacement = false;
         for (Replacer r : replacers) {
           String printableRegexp = r.regexp.toString().replace("\r", "\\r").replace("\n", "\\n");
           if (debug_replacers) {
@@ -2007,13 +2009,16 @@ public class MultiVersionControl {
           // Don't loop, because some regexps will continue to match repeatedly
           try {
             output = r.replaceAll(output);
+          } catch (StackOverflowError soe) {
+            noReplacement = true;
           } catch (Throwable e) {
             System.out.println("Exception in replaceAll.");
             System.out.println("  defaultDirectory = " + defaultDirectory);
             System.out.println("  cmdLine = " + cmdLine);
             System.out.println("  regexp = " + printableRegexp);
-            System.out.println("  orig output = " + orig_output);
-            System.out.println("  output = " + output);
+            System.out.println(
+                "  orig output (size " + orig_output.length() + ") = " + orig_output);
+            System.out.println("  output (size " + output.length() + ") = " + output);
             throw e;
           }
           if (debug_replacers) {
@@ -2029,10 +2034,17 @@ public class MultiVersionControl {
                 i + ": " + (int) output.charAt(i) + "\n        \"" + output.charAt(i) + "\"");
           }
         }
+        if (noReplacement) {
+          System.out.println(
+              "No replacement done in " + defaultDirectory + " because output is too long.");
+        }
         if (output.startsWith("You are not currently on a branch.")) {
           System.out.println(pb.directory() + ":");
         }
         System.out.print(output);
+        if (noReplacement) {
+          System.out.println("End of output for " + defaultDirectory + ".");
+        }
       }
     }
 
