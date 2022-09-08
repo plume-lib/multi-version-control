@@ -560,7 +560,7 @@ public class MultiVersionControl {
     String[] remainingArgs = options.parse(true, args);
     if (remainingArgs.length != 1) {
       System.out.printf(
-          "Please supply exactly one argument (found %d)%n%s",
+          "Please supply exactly one argument (found %d)%n  %s%n",
           remainingArgs.length, String.join(" ", remainingArgs));
       options.printUsage();
       System.exit(1);
