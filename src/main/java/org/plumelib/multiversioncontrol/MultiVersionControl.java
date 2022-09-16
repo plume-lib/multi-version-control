@@ -71,13 +71,19 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
 //  * mvc's configuration files tend to be smaller & simpler
 
 /**
- * This program lets you run a version control command, such as "status" or "pull", on a <b>set</b>
- * of CVS/Git/Hg/SVN clones/checkouts rather than just one.
+ * This program simplifies managing your clones/checkouts. This program lets you run a version
+ * control command, such as "status" or "pull", on a <b>set</b> of CVS/Git/Hg/SVN clones/checkouts
+ * rather than just one. You might want to pull/update all of them, or you might want to know
+ * whether any of them have uncommitted changes. When setting up a new account, you might want to
+ * clone them all. This program does those tasks.
  *
- * <p>This program simplifies managing your clones/checkouts. You might want to pull/update all of
- * them, or you might want to know whether any of them have uncommitted changes. When setting up a
- * new account, you might want to clone or check them all out. This program does those tasks. It
- * accepts these arguments:
+ * <p>You can specify the set of clones for the program to manage in a file {@code .mvc-checkouts},
+ * or you can pass {@code --search} to make the program search your directory structure to find all
+ * of your clones. For example, to list all un-committed changed files under your home directory:
+ *
+ * <pre>java org.plumelib.multiversioncontrol.MultiVersionControl status --search=true</pre>
+ *
+ * This program accepts these arguments:
  *
  * <pre>
  *   clone     -- Clone (check out) all repositories.
@@ -92,13 +98,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  * (The {@code commit} action is not supported, because that is not something that should be done in
  * an automated way &mdash; it needs a user-written commit message.)
  *
- * <p>You can specify the set of clones for the program to manage in a file {@code .mvc-checkouts},
- * or you can pass {@code --search} to make the program search your directory structure to find all
- * of your clones. For example, to list all un-committed changed files under your home directory:
- *
- * <pre>java org.plumelib.multiversioncontrol.MultiVersionControl status --search=true</pre>
- *
- * <b>Command-line arguments</b>
+ * <p><b>Command-line arguments</b>
  *
  * <p>The command-line options are as follows:
  * <!-- start options doc (DO NOT EDIT BY HAND) -->
