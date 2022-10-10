@@ -1051,6 +1051,9 @@ public class MultiVersionControl {
 
   /** Accept only directories that are not symbolic links. */
   static class IsDirectoryFilter implements FileFilter {
+    /** Creates a new IsDirectoryFilter. */
+    public IsDirectoryFilter() {}
+
     @Override
     public boolean accept(File pathname) {
       try {
@@ -2066,6 +2069,9 @@ public class MultiVersionControl {
    * but don't want them to simply hang.
    */
   static class StreamOfNewlines extends InputStream {
+    /** Creates a new StreamOfNewlines. */
+    public StreamOfNewlines() {}
+
     @Override
     public @GTENegativeOne int read() {
       return (int) '\n';
