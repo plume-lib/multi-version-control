@@ -328,8 +328,8 @@ public class MultiVersionControl {
   public boolean searchPrefix = false;
 
   /**
-   * Directory under which to search for clones, when using {@code --search} [default home
-   * directory]
+   * Directory under which to search for clones, when using {@code --search} [default = home
+   * directory].
    */
   @Option("Directory under which to search for clones; default=home dir")
   public List<String> dir = new ArrayList<>();
@@ -431,7 +431,8 @@ public class MultiVersionControl {
     PULL,
     /** List the known repositories. */
     LIST
-  };
+  }
+
   // Shorter variants
   /** Clone a repository. */
   private static Action CLONE = Action.CLONE;
@@ -635,7 +636,7 @@ public class MultiVersionControl {
     HG,
     /** Subversion. */
     SVN
-  };
+  }
 
   /** Class that represents a clone on the local file system. */
   static class Checkout {
@@ -1086,7 +1087,6 @@ public class MultiVersionControl {
       return;
     }
     String pathInRepo = FilesPlume.readFile(repositoryFile).trim();
-    String repoRoot = FilesPlume.readFile(rootFile).trim();
     @NonNull File repoFileRoot = new File(pathInRepo);
     while (repoFileRoot.getParentFile() != null) {
       repoFileRoot = repoFileRoot.getParentFile();
@@ -1107,6 +1107,7 @@ public class MultiVersionControl {
       pathInRepoAtCheckout = dirRelative.getName();
     }
 
+    String repoRoot = FilesPlume.readFile(rootFile).trim();
     checkouts.add(new Checkout(RepoType.CVS, dirRelative, repoRoot, pathInRepoAtCheckout));
   }
 
@@ -1376,14 +1377,15 @@ public class MultiVersionControl {
   public void process(Set<Checkout> checkouts) {
     // Always run at least one command, but sometimes up to three.
     ProcessBuilder pb = new ProcessBuilder("");
+    pb.redirectErrorStream(true);
     ProcessBuilder pb2 = new ProcessBuilder(new ArrayList<String>());
+    pb2.redirectErrorStream(true);
     ProcessBuilder pb3 = new ProcessBuilder(new ArrayList<String>());
+    pb3.redirectErrorStream(true);
     // pb4 is only for checking whether there are no commits in this branch.
     ProcessBuilder pb4 = new ProcessBuilder(new ArrayList<String>());
-    pb.redirectErrorStream(true);
-    pb2.redirectErrorStream(true);
-    pb3.redirectErrorStream(true);
     pb4.redirectErrorStream(true);
+
     // I really want to be able to redirect output to a Reader, but that
     // isn't possible.  I have to send it to a file.
     // I can't just use the InputStream directly, because if the process is
@@ -2007,7 +2009,7 @@ public class MultiVersionControl {
           if (debugReplacers) {
             System.out.println("midoutput_pre[" + printableRegexp + "]=<<<" + output + ">>>");
           }
-          String orig_output = output;
+          String origOutput = output;
           // Don't loop, because some regexps will continue to match repeatedly
           try {
             output = r.replaceAll(output);
@@ -2018,8 +2020,7 @@ public class MultiVersionControl {
             System.out.println("  defaultDirectory = " + defaultDirectory);
             System.out.println("  cmdLine = " + cmdLine);
             System.out.println("  regexp = " + printableRegexp);
-            System.out.println(
-                "  orig output (size " + orig_output.length() + ") = " + orig_output);
+            System.out.println("  orig output (size " + origOutput.length() + ") = " + origOutput);
             System.out.println("  output (size " + output.length() + ") = " + output);
             throw e;
           }
