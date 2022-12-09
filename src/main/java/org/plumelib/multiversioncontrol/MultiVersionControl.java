@@ -307,7 +307,7 @@ public class MultiVersionControl {
   /** If false, clone command skips existing directories. */
   @OptionGroup("Miscellaneous options")
   @Option("Redo existing clones; relevant only to clone command")
-  public boolean redo_existing = false;
+  public boolean redoExisting = false;
 
   /**
    * Terminating the process can leave the repository in a bad state, so set this rather high for
@@ -325,7 +325,7 @@ public class MultiVersionControl {
 
   /** If true, search for all clones whose directory is a prefix of one in the cofiguration file. */
   @Option("Search for all clones whose directory is a prefix of one listed in a file")
-  public boolean search_prefix = false;
+  public boolean searchPrefix = false;
 
   /**
    * Directory under which to search for clones, when using {@code --search} [default home
@@ -336,9 +336,9 @@ public class MultiVersionControl {
 
   /** Directories under which to NOT search for clones. May include leading "~/". */
   @Option("Directory under which to NOT search for clones")
-  public List<String> ignore_dir = new ArrayList<>();
+  public List<String> ignoreDir = new ArrayList<>();
 
-  /** Files, each a directory, corresponding to strings in {@link ignore_dir}. */
+  /** Files, each a directory, corresponding to strings in {@link ignoreDir}. */
   private List<File> ignoreDirs = new ArrayList<>();
 
   // These *-executable command-line options are handy:
@@ -350,19 +350,19 @@ public class MultiVersionControl {
   /** Path to the cvs program. */
   @OptionGroup("Paths to programs")
   @Option("Path to the cvs program")
-  public String cvs_executable = "cvs";
+  public String cvsExecutable = "cvs";
 
   /** Path to the git program. */
   @Option("Path to the git program")
-  public String git_executable = "git";
+  public String gitExecutable = "git";
 
   /** Path to the hg program. */
   @Option("Path to the hg program")
-  public String hg_executable = "hg";
+  public String hgExecutable = "hg";
 
   /** Path to the svn program. */
   @Option("Path to the svn program")
-  public String svn_executable = "svn";
+  public String svnExecutable = "svn";
 
   /** If true, use --insecure when invoking programs. */
   @Option("Pass --insecure argument to hg")
@@ -374,19 +374,19 @@ public class MultiVersionControl {
 
   /** Extra argument to pass to the cvs program. */
   @Option("Extra argument to pass to the cvs program")
-  public List<String> cvs_arg = new ArrayList<>();
+  public List<String> cvsArg = new ArrayList<>();
 
   /** Extra argument to pass to the git program. */
   @Option("Extra argument to pass to the git program")
-  public List<String> git_arg = new ArrayList<>();
+  public List<String> gitArg = new ArrayList<>();
 
   /** Extra argument to pass to the hg program. */
   @Option("Extra argument to pass to the hg program")
-  public List<String> hg_arg = new ArrayList<>();
+  public List<String> hgArg = new ArrayList<>();
 
   /** Extra argument to pass to the svn program. */
   @Option("Extra argument to pass to the svn program")
-  public List<String> svn_arg = new ArrayList<>();
+  public List<String> svnArg = new ArrayList<>();
 
   // TODO: use consistent names: both "show" or both "print"
 
@@ -397,11 +397,11 @@ public class MultiVersionControl {
 
   /** If true, print the directory before executing commands in it. */
   @Option("Print the directory before executing commands")
-  public boolean print_directory = false;
+  public boolean printDirectory = false;
 
   /** Perform a "dry run": print commands but do not execute them. */
   @Option("Do not execute commands; just print them.  Implies --show --redo-existing")
-  public boolean dry_run = false;
+  public boolean dryRun = false;
 
   /** If true, run quietly (e.g., no output about missing directories). */
   @Option("-q Run quietly (e.g., no output about missing directories)")
@@ -415,11 +415,11 @@ public class MultiVersionControl {
 
   /** Debug 'replacers' that filter command output. */
   @Option("Debug 'replacers' that filter command output")
-  public boolean debug_replacers = false;
+  public boolean debugReplacers = false;
 
   /** Lightweight debugging of 'replacers' that filter command output. */
   @Option("Lightweight debugging of 'replacers' that filter command output")
-  public boolean debug_process_output = false;
+  public boolean debugProcessOutput = false;
 
   /** Actions that MultiVersionControl can perform. */
   static enum Action {
@@ -469,14 +469,14 @@ public class MultiVersionControl {
     Set<Checkout> checkouts = new LinkedHashSet<>();
 
     try {
-      readCheckouts(new File(mvc.checkouts), checkouts, mvc.search_prefix);
+      readCheckouts(new File(mvc.checkouts), checkouts, mvc.searchPrefix);
     } catch (IOException e) {
       System.err.println("Problem reading file " + mvc.checkouts + ": " + e.getMessage());
     }
 
     if (mvc.search) {
       // Postprocess command-line arguments
-      for (String adir : mvc.ignore_dir) {
+      for (String adir : mvc.ignoreDir) {
         File afile = new File(expandTilde(adir));
         if (!afile.exists()) {
           System.err.printf(
@@ -597,10 +597,10 @@ public class MultiVersionControl {
       // Checkouts can be much slower than other operations.
       timeout = timeout * 10;
 
-      // Set dry_run to true unless it was explicitly specified
+      // Set dryRun to true unless it was explicitly specified
       boolean explicitDryRun = false;
       for (String arg : args) {
-        if (arg.startsWith("--dry-run") || arg.startsWith("--dry_run")) {
+        if (arg.startsWith("--dry-run") || arg.startsWith("--dryRun")) {
           explicitDryRun = true;
         }
       }
@@ -609,13 +609,13 @@ public class MultiVersionControl {
           System.out.println(
               "No --dry-run argument, so using --dry-run=true; override with --dry-run=false");
         }
-        dry_run = true;
+        dryRun = true;
       }
     }
 
-    if (dry_run) {
+    if (dryRun) {
       show = true;
-      redo_existing = true;
+      redoExisting = true;
     }
 
     if (debug) {
@@ -783,14 +783,14 @@ public class MultiVersionControl {
    *
    * @param file the .mvc-checkouts file
    * @param checkouts the set to populate; is side-effected by this method
-   * @param search_prefix if true, search for all clones whose directory is a prefix of one in the
+   * @param searchPrefix if true, search for all clones whose directory is a prefix of one in the
    *     cofiguration file
    * @throws IOException if there is trouble reading the file (or file sysetm?)
    */
   @SuppressWarnings({
     "StringSplitter" // don't add dependence on Guava
   })
-  static void readCheckouts(File file, Set<Checkout> checkouts, boolean search_prefix)
+  static void readCheckouts(File file, Set<Checkout> checkouts, boolean searchPrefix)
       throws IOException {
     RepoType currentType = RepoType.BZR; // arbitrary choice, to avoid uninitialized variable
     String currentRoot = null;
@@ -896,7 +896,7 @@ public class MultiVersionControl {
         //   /a/b/c-fork-d-branch-e
         // Then the latter is included twice, once each with the repository of `c` and of
         // `c-fork-d`.
-        if (search_prefix) {
+        if (searchPrefix) {
           String dirName = dir.getName();
           FileFilter namePrefixFilter =
               new FileFilter() {
@@ -1494,35 +1494,35 @@ public class MultiVersionControl {
             case CVS:
               assert c.module != null : "@AssumeAssertion(nullness): dependent type CVS";
               pb.command(
-                  cvs_executable,
+                  cvsExecutable,
                   "-d",
                   c.repository,
                   "checkout",
                   "-P", // prune empty directories
                   "-ko", // no keyword substitution
                   c.module);
-              addArgs(pb, cvs_arg);
+              addArgs(pb, cvsArg);
               break;
             case GIT:
               // "--" is to prevent the directory name from being interpreted as a command-line
               // option, if it starts with a hyphen.
-              pb.command(git_executable, "clone", "--", c.repository, dirbase);
-              addArgs(pb, git_arg);
+              pb.command(gitExecutable, "clone", "--", c.repository, dirbase);
+              addArgs(pb, gitArg);
               break;
             case HG:
-              pb.command(hg_executable, "clone", c.repository, dirbase);
-              addArgs(pb, hg_arg);
+              pb.command(hgExecutable, "clone", c.repository, dirbase);
+              addArgs(pb, hgArg);
               if (insecure) {
                 addArg(pb, "--insecure");
               }
               break;
             case SVN:
               if (c.module != null) {
-                pb.command(svn_executable, "checkout", c.repository, c.module);
+                pb.command(svnExecutable, "checkout", c.repository, c.module);
               } else {
-                pb.command(svn_executable, "checkout", c.repository);
+                pb.command(svnExecutable, "checkout", c.repository);
               }
-              addArgs(pb, svn_arg);
+              addArgs(pb, svnArg);
               break;
             default:
               assert false;
@@ -1539,7 +1539,7 @@ public class MultiVersionControl {
             case CVS:
               assert c.repository != null;
               pb.command(
-                  cvs_executable,
+                  cvsExecutable,
                   "-q",
                   // Including "-d REPOS" seems to give errors when a
                   // subdirectory is in a different CVS repository.
@@ -1548,7 +1548,7 @@ public class MultiVersionControl {
                   "-b", // compress whitespace
                   "--brief", // report only whether files differ, not details
                   "-N"); // report new files
-              addArgs(pb, cvs_arg);
+              addArgs(pb, cvsArg);
               //         # For the last perl command, this also works:
               //         #   perl -p -e 'chomp(\$cwd = `pwd`); s/^Index: /\$cwd\\//'";
               //         # but the one we use is briefer and uses the abbreviated directory name.
@@ -1575,8 +1575,8 @@ public class MultiVersionControl {
               replacers.add(new Replacer("(^|\\n)(cvs diff: ignoring )", "$1$2" + dir + "/"));
               break;
             case GIT:
-              pb.command(git_executable, "status");
-              addArgs(pb, git_arg);
+              pb.command(gitExecutable, "status");
+              addArgs(pb, gitArg);
               // Why was I using this option??
               // addArg(pb, "--untracked-files=no");
               addArg(pb, "--porcelain"); // experimenting with porcelain output
@@ -1649,8 +1649,8 @@ public class MultiVersionControl {
               // Necessary because "git status --porcelain" does not report:
               //   # Your branch is ahead of 'origin/master' by 1 commit.
               // If you have pushed but not pulled, then this will report
-              pb2.command(git_executable, "log", "--branches", "--not", "--remotes");
-              addArgs(pb2, git_arg);
+              pb2.command(gitExecutable, "log", "--branches", "--not", "--remotes");
+              addArgs(pb2, gitArg);
               replacers.add(
                   new Replacer(
                       "^commit .*(.*\\n)+", "unpushed commits: " + pb2.directory() + "\n"));
@@ -1659,22 +1659,22 @@ public class MultiVersionControl {
 
               // TODO: use `if git merge-base --is-ancestor origin/master HEAD ; then ...` to
               // determine whether this branch has no changes and thus can be deleted.
-              pb4.command(git_executable, "merge-base", "--is-ancestor", "origin/master", "HEAD");
+              pb4.command(gitExecutable, "merge-base", "--is-ancestor", "origin/master", "HEAD");
 
               break;
             case HG:
-              pb.command(hg_executable, "status");
-              addArgs(pb, hg_arg);
+              pb.command(hgExecutable, "status");
+              addArgs(pb, hgArg);
               if (debug) {
                 System.out.printf(
                     "invalidCertificate(%s) => %s%n", c.directory, invalidCertificate(c.directory));
               }
               if (invalidCertificate(c.directory)) {
-                pb2.command(hg_executable, "outgoing", "-l", "1", "--config", "web.cacerts=");
+                pb2.command(hgExecutable, "outgoing", "-l", "1", "--config", "web.cacerts=");
               } else {
-                pb2.command(hg_executable, "outgoing", "-l", "1");
+                pb2.command(hgExecutable, "outgoing", "-l", "1");
               }
-              addArgs(pb2, hg_arg);
+              addArgs(pb2, hgArg);
               if (insecure) {
                 addArg(pb2, "--insecure");
               }
@@ -1686,8 +1686,8 @@ public class MultiVersionControl {
               replacers.add(
                   new Replacer(
                       "^\\n?comparing with .*\\nsearching for changes\\nno changes found\n", ""));
-              pb3.command(hg_executable, "shelve", "-l");
-              addArgs(pb3, hg_arg);
+              pb3.command(hgExecutable, "shelve", "-l");
+              addArgs(pb3, hgArg);
               // Shelve is an optional extension, so don't print anything if not installed.
               replacers3.add(new Replacer("^hg: unknown command 'shelve'\\n(.*\\n)+", ""));
               replacers3.add(
@@ -1698,8 +1698,8 @@ public class MultiVersionControl {
               // "svn status" outputs an eighth column, if you pass the --show-updates switch: [* ]
               replacers.add(
                   new Replacer("(^|\\n)([ACDIMRX?!~ ][CM ][L ][+ ][$ ]) *", "$1$2 " + dir + "/"));
-              pb.command(svn_executable, "status");
-              addArgs(pb, svn_arg);
+              pb.command(svnExecutable, "status");
+              addArgs(pb, svnArg);
               break;
             default:
               assert false;
@@ -1721,14 +1721,14 @@ public class MultiVersionControl {
                       "$1$2 " + dir + "/"));
               assert c.repository != null;
               pb.command(
-                  cvs_executable,
+                  cvsExecutable,
                   // Including -d causes problems with CVS repositories
                   // that are embedded inside other repositories.
                   // "-d", c.repository,
                   "-Q",
                   "update",
                   "-d");
-              addArgs(pb, cvs_arg);
+              addArgs(pb, cvsArg);
               //         $filter = "grep -v \"config: unrecognized keyword
               // 'UseNewInfoFmtStrings'\"";
               replacers.add(new Replacer("(cvs update: move away )", "$1" + dir + "/"));
@@ -1746,22 +1746,22 @@ public class MultiVersionControl {
                   new Replacer(
                       "((^|\\n)CONFLICT \\(content\\): Merge conflict in )", "$1" + dir + "/"));
               replacers.add(new Replacer("(^|\\n)([ACDMRU]\t)", "$1$2" + dir + "/"));
-              pb.command(git_executable, "pull", "-q");
-              addArgs(pb, git_arg);
+              pb.command(gitExecutable, "pull", "-q");
+              addArgs(pb, gitArg);
               // prune branches; alternately do "git remote prune origin"; "git gc" doesn't do this.
-              pb2.command(git_executable, "fetch", "-p");
+              pb2.command(gitExecutable, "fetch", "-p");
               break;
             case HG:
               replacers.add(new Replacer("(^|\\n)([?!AMR] ) +", "$1$2 " + dir + "/"));
               replacers.add(new Replacer("(^|\\n)abort: ", "$1"));
-              pb.command(hg_executable, "-q", "update");
-              addArgs(pb, hg_arg);
+              pb.command(hgExecutable, "-q", "update");
+              addArgs(pb, hgArg);
               if (invalidCertificate(c.directory)) {
-                pb2.command(hg_executable, "-q", "fetch", "--config", "web.cacerts=");
+                pb2.command(hgExecutable, "-q", "fetch", "--config", "web.cacerts=");
               } else {
-                pb2.command(hg_executable, "-q", "fetch");
+                pb2.command(hgExecutable, "-q", "fetch");
               }
-              addArgs(pb2, hg_arg);
+              addArgs(pb2, hgArg);
               if (insecure) {
                 addArg(pb2, "--insecure");
               }
@@ -1770,8 +1770,8 @@ public class MultiVersionControl {
               replacers.add(new Replacer("(^|\\n)([?!AMR] ) +", "$1$2 " + dir + "/"));
               replacers.add(new Replacer("(svn: Failed to add file ')(.*')", "$1" + dir + "/$2"));
               assert c.repository != null;
-              pb.command(svn_executable, "-q", "update");
-              addArgs(pb, svn_arg);
+              pb.command(svnExecutable, "-q", "update");
+              addArgs(pb, svnArg);
               //         $filter = "grep -v \"Killed by signal 15.\"";
               break;
             default:
@@ -1787,7 +1787,7 @@ public class MultiVersionControl {
         System.out.println(dir + ":");
       }
       if (dir.exists()) {
-        if (action == CLONE && !redo_existing && !quiet) {
+        if (action == CLONE && !redoExisting && !quiet) {
           System.out.println("Skipping checkout (dir already exists): " + dir);
           continue;
         }
@@ -1804,15 +1804,15 @@ public class MultiVersionControl {
           case CLONE:
             if (!parent.exists()) {
               if (show) {
-                if (!dry_run) {
+                if (!dryRun) {
                   System.out.printf(
                       "Parent directory %s does not exist%s%n",
-                      parent, (dry_run ? "" : " (creating)"));
+                      parent, (dryRun ? "" : " (creating)"));
                 } else {
                   System.out.printf("  mkdir -p %s%n", parent);
                 }
               }
-              if (!dry_run) {
+              if (!dryRun) {
                 if (!parent.mkdirs()) {
                   System.err.println("Could not create directory: " + parent);
                   System.exit(1);
@@ -1832,7 +1832,7 @@ public class MultiVersionControl {
         }
       }
 
-      if (print_directory) {
+      if (printDirectory) {
         System.out.println(dir + " :");
       }
       perform_command(pb, replacers, showNormalOutput);
@@ -1917,7 +1917,7 @@ public class MultiVersionControl {
     if (show) {
       System.out.println(command(pb));
     }
-    if (dry_run) {
+    if (dryRun) {
       return 0;
     }
     // Perform the command
@@ -1986,7 +1986,7 @@ public class MultiVersionControl {
     //  * when debugging
     //  * other circumstances?
     // I could try printing always, to better understand this question.
-    if (showNormalOutput || exitValue != 0 || debug_replacers || debug_process_output) {
+    if (showNormalOutput || exitValue != 0 || debugReplacers || debugProcessOutput) {
       // Filter then print the output.
       String output;
       try {
@@ -1997,14 +1997,14 @@ public class MultiVersionControl {
         throw new Error("Exception getting process standard output");
       }
 
-      if (debug_replacers || debug_process_output) {
+      if (debugReplacers || debugProcessOutput) {
         System.out.println("preoutput=<<<" + output + ">>>");
       }
       if (!output.equals("")) {
         boolean noReplacement = false;
         for (Replacer r : replacers) {
           String printableRegexp = r.regexp.toString().replace("\r", "\\r").replace("\n", "\\n");
-          if (debug_replacers) {
+          if (debugReplacers) {
             System.out.println("midoutput_pre[" + printableRegexp + "]=<<<" + output + ">>>");
           }
           String orig_output = output;
@@ -2023,14 +2023,14 @@ public class MultiVersionControl {
             System.out.println("  output (size " + output.length() + ") = " + output);
             throw e;
           }
-          if (debug_replacers) {
+          if (debugReplacers) {
             System.out.println("midoutput_post[" + printableRegexp + "]=<<<" + output + ">>>");
           }
         }
-        if (debug_replacers || debug_process_output) {
+        if (debugReplacers || debugProcessOutput) {
           System.out.println("postoutput=<<<" + output + ">>>");
         }
-        if (debug_replacers) {
+        if (debugReplacers) {
           for (int i = 0; i < Math.min(100, output.length()); i++) {
             System.out.println(
                 i + ": " + (int) output.charAt(i) + "\n        \"" + output.charAt(i) + "\"");
