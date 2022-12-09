@@ -83,7 +83,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *
  * <pre>java org.plumelib.multiversioncontrol.MultiVersionControl status --search=true</pre>
  *
- * This program accepts these arguments:
+ * <p>This program accepts these arguments:
  *
  * <pre>
  *   clone     -- Clone (check out) all repositories.
@@ -95,8 +95,8 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *   list      -- List the clones/checkouts that this program is aware of.
  * </pre>
  *
- * (The {@code commit} action is not supported, because that is not something that should be done in
- * an automated way &mdash; it needs a user-written commit message.)
+ * <p>(The {@code commit} action is not supported, because that is not something that should be done
+ * in an automated way &mdash; it needs a user-written commit message.)
  *
  * <p><b>Command-line arguments</b>
  *
@@ -192,11 +192,11 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  * <pre>
  * CVSROOT: :ext:login.csail.mit.edu:/afs/csail.mit.edu/u/m/mernst/.CVS/.CVS-mernst
  * SVNROOT: svn+ssh://tricycle.cs.washington.edu/cse/courses/cse403/09sp
- * SVNREPOS: svn+ssh://login.csail.mit.edu/afs/csail/u/a/akiezun/.SVN/papers/parameterization-paper/trunk
+ * SVNREPOS: svn+ssh://login.csail.mit.edu/afs/csail/u/a/user/.SVN/papers/parameterize-paper/trunk
  * HGREPOS: https://jsr308-langtools.googlecode.com/hg</pre>
  *
- * Within each section is a list of directories that contain a checkout from that repository. If the
- * section names a root, then a module or subdirectory is needed. By default, the directory's
+ * <p>Within each section is a list of directories that contain a checkout from that repository. If
+ * the section names a root, then a module or subdirectory is needed. By default, the directory's
  * basename is used. This can be overridden by specifying the module/subdirectory on the same line,
  * after a space. If the section names a repository, then no module information is needed or used.
  *
@@ -224,10 +224,9 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *
  * SVNROOT: svn+ssh://login.csail.mit.edu/afs/csail/u/d/dannydig/REPOS/
  * ~/research/concurrency/concurrentPaper
- * ~/research/concurrency/mit.edu.concurrencyRefactorings concurrencyRefactorings/project/mit.edu.concurrencyRefactorings
- * </pre>
+ * ~/research/concurrency/mit.edu.refactorings concRefactor/project/mit.edu.refactorings</pre>
  *
- * Furthermore, these 2 sections have identical effects:
+ * <p>Furthermore, these 2 sections have identical effects:
  *
  * <pre>
  * SVNROOT: https://crashma.googlecode.com/svn/
@@ -236,7 +235,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  * SVNREPOS: https://crashma.googlecode.com/svn/trunk
  * ~/research/crashma</pre>
  *
- * and, all 3 of these sections have identical effects:
+ * <p>and, all 3 of these sections have identical effects:
  *
  * <pre>
  * SVNROOT: svn+ssh://login.csail.mit.edu/afs/csail/group/pag/projects/

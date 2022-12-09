@@ -30,7 +30,7 @@ dependencies {
   if (JavaVersion.current() == JavaVersion.VERSION_1_8) {
     implementation 'org.plumelib:options:1.0.6'
   } else {
-    implementation 'org.plumelib:options:2.0.2'
+    implementation 'org.plumelib:options:2.0.3'
   }
   implementation 'org.plumelib:plume-util:1.6.0'
 }
@@ -70,6 +70,25 @@ tasks.withType(JavaCompile).configureEach {
   options.errorprone {
     enabled = JavaVersion.current() != JavaVersion.VERSION_1_8
     disable("ReferenceEquality") // Use Interning Checker instead.
+  }
+}
+
+/// Checkstyle linter
+
+// Run by `gradle check`, which is run by `gradle build`
+if (JavaVersion.current() != JavaVersion.VERSION_1_8) {
+  apply plugin: 'checkstyle'
+  ext.checkstyleVersion = '10.5.0'
+  configurations {
+    checkstyleConfig
+  }
+  dependencies {
+    checkstyleConfig("com.puppycrawl.tools:checkstyle:${checkstyleVersion}") { transitive = false }
+  }
+  checkstyle {
+    toolVersion "${checkstyleVersion}"
+    config = resources.text.fromArchiveEntry(configurations.checkstyleConfig, 'google_checks.xml')
+    ignoreFailures = false
   }
 }
 
