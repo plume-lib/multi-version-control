@@ -83,7 +83,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *
  * <pre>java org.plumelib.multiversioncontrol.MultiVersionControl status --search=true</pre>
  *
- * This program accepts these arguments:
+ * <p>This program accepts these arguments:
  *
  * <pre>
  *   clone     -- Clone (check out) all repositories.
@@ -95,8 +95,8 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *   list      -- List the clones/checkouts that this program is aware of.
  * </pre>
  *
- * (The {@code commit} action is not supported, because that is not something that should be done in
- * an automated way &mdash; it needs a user-written commit message.)
+ * <p>(The {@code commit} action is not supported, because that is not something that should be done
+ * in an automated way &mdash; it needs a user-written commit message.)
  *
  * <p><b>Command-line arguments</b>
  *
@@ -192,11 +192,11 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  * <pre>
  * CVSROOT: :ext:login.csail.mit.edu:/afs/csail.mit.edu/u/m/mernst/.CVS/.CVS-mernst
  * SVNROOT: svn+ssh://tricycle.cs.washington.edu/cse/courses/cse403/09sp
- * SVNREPOS: svn+ssh://login.csail.mit.edu/afs/csail/u/a/akiezun/.SVN/papers/parameterization-paper/trunk
+ * SVNREPOS: svn+ssh://login.csail.mit.edu/afs/csail/u/a/user/.SVN/papers/parameterize-paper/trunk
  * HGREPOS: https://jsr308-langtools.googlecode.com/hg</pre>
  *
- * Within each section is a list of directories that contain a checkout from that repository. If the
- * section names a root, then a module or subdirectory is needed. By default, the directory's
+ * <p>Within each section is a list of directories that contain a checkout from that repository. If
+ * the section names a root, then a module or subdirectory is needed. By default, the directory's
  * basename is used. This can be overridden by specifying the module/subdirectory on the same line,
  * after a space. If the section names a repository, then no module information is needed or used.
  *
@@ -224,10 +224,9 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *
  * SVNROOT: svn+ssh://login.csail.mit.edu/afs/csail/u/d/dannydig/REPOS/
  * ~/research/concurrency/concurrentPaper
- * ~/research/concurrency/mit.edu.concurrencyRefactorings concurrencyRefactorings/project/mit.edu.concurrencyRefactorings
- * </pre>
+ * ~/research/concurrency/mit.edu.refactorings concRefactor/project/mit.edu.refactorings</pre>
  *
- * Furthermore, these 2 sections have identical effects:
+ * <p>Furthermore, these 2 sections have identical effects:
  *
  * <pre>
  * SVNROOT: https://crashma.googlecode.com/svn/
@@ -236,7 +235,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  * SVNREPOS: https://crashma.googlecode.com/svn/trunk
  * ~/research/crashma</pre>
  *
- * and, all 3 of these sections have identical effects:
+ * <p>and, all 3 of these sections have identical effects:
  *
  * <pre>
  * SVNROOT: svn+ssh://login.csail.mit.edu/afs/csail/group/pag/projects/
@@ -329,8 +328,8 @@ public class MultiVersionControl {
   public boolean searchPrefix = false;
 
   /**
-   * Directory under which to search for clones, when using {@code --search} [default home
-   * directory]
+   * Directory under which to search for clones, when using {@code --search} [default = home
+   * directory].
    */
   @Option("Directory under which to search for clones; default=home dir")
   public List<String> dir = new ArrayList<>();
@@ -432,7 +431,8 @@ public class MultiVersionControl {
     PULL,
     /** List the known repositories. */
     LIST
-  };
+  }
+
   // Shorter variants
   /** Clone a repository. */
   private static Action CLONE = Action.CLONE;
@@ -636,7 +636,7 @@ public class MultiVersionControl {
     HG,
     /** Subversion. */
     SVN
-  };
+  }
 
   /** Class that represents a clone on the local file system. */
   static class Checkout {
@@ -1087,7 +1087,6 @@ public class MultiVersionControl {
       return;
     }
     String pathInRepo = FilesPlume.readFile(repositoryFile).trim();
-    String repoRoot = FilesPlume.readFile(rootFile).trim();
     @NonNull File repoFileRoot = new File(pathInRepo);
     while (repoFileRoot.getParentFile() != null) {
       repoFileRoot = repoFileRoot.getParentFile();
@@ -1108,6 +1107,7 @@ public class MultiVersionControl {
       pathInRepoAtCheckout = dirRelative.getName();
     }
 
+    String repoRoot = FilesPlume.readFile(rootFile).trim();
     checkouts.add(new Checkout(RepoType.CVS, dirRelative, repoRoot, pathInRepoAtCheckout));
   }
 
@@ -1377,14 +1377,15 @@ public class MultiVersionControl {
   public void process(Set<Checkout> checkouts) {
     // Always run at least one command, but sometimes up to three.
     ProcessBuilder pb = new ProcessBuilder("");
+    pb.redirectErrorStream(true);
     ProcessBuilder pb2 = new ProcessBuilder(new ArrayList<String>());
+    pb2.redirectErrorStream(true);
     ProcessBuilder pb3 = new ProcessBuilder(new ArrayList<String>());
+    pb3.redirectErrorStream(true);
     // pb4 is only for checking whether there are no commits in this branch.
     ProcessBuilder pb4 = new ProcessBuilder(new ArrayList<String>());
-    pb.redirectErrorStream(true);
-    pb2.redirectErrorStream(true);
-    pb3.redirectErrorStream(true);
     pb4.redirectErrorStream(true);
+
     // I really want to be able to redirect output to a Reader, but that
     // isn't possible.  I have to send it to a file.
     // I can't just use the InputStream directly, because if the process is
@@ -2008,7 +2009,7 @@ public class MultiVersionControl {
           if (debugReplacers) {
             System.out.println("midoutput_pre[" + printableRegexp + "]=<<<" + output + ">>>");
           }
-          String orig_output = output;
+          String origOutput = output;
           // Don't loop, because some regexps will continue to match repeatedly
           try {
             output = r.replaceAll(output);
@@ -2019,8 +2020,7 @@ public class MultiVersionControl {
             System.out.println("  defaultDirectory = " + defaultDirectory);
             System.out.println("  cmdLine = " + cmdLine);
             System.out.println("  regexp = " + printableRegexp);
-            System.out.println(
-                "  orig output (size " + orig_output.length() + ") = " + orig_output);
+            System.out.println("  orig output (size " + origOutput.length() + ") = " + origOutput);
             System.out.println("  output (size " + output.length() + ") = " + output);
             throw e;
           }
