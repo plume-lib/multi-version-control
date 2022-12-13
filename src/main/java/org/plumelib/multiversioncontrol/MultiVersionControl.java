@@ -79,9 +79,11 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *
  * <p>You can specify the set of clones for the program to manage in a file {@code .mvc-checkouts},
  * or you can pass {@code --search} to make the program search your directory structure to find all
- * of your clones. For example, to list all un-committed changed files under your home directory:
+ * of your clones. For example (assuming you have a <a href="#installation"><tt>mvc</tt> alias</a>),
+ * to list all un-committed changed files under your home directory:
  *
- * <pre>java org.plumelib.multiversioncontrol.MultiVersionControl status --search=true</pre>
+ * <pre>
+ * mvc status --search=true</pre>
  *
  * <p>This program accepts these arguments:
  *
@@ -246,6 +248,16 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *
  * SVNREPOS: svn+ssh://login.csail.mit.edu/afs/csail/group/pag/projects/annotations
  * ~/research/typequals/annotations</pre>
+ *
+ * <p id="installation"><b>Installation</b>
+ *
+ * <pre>
+ * git clone https://github.com/plume-lib/multi-version-control
+ * cd multi-version-control
+ * ./gradlew shadowJar
+ *
+ * alias mvc='java -ea -cp CURRENT_DIR/build/libs/multi-version-control-all.jar org.plumelib.multiversioncontrol.MultiVersionControl'
+ * </pre>
  */
 
 // TODO:
