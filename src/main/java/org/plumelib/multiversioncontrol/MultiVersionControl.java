@@ -79,7 +79,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *
  * <p>You can specify the set of clones for the program to manage in a file {@code .mvc-checkouts},
  * or you can pass {@code --search} to make the program search your directory structure to find all
- * of your clones. For example (assuming you have a <a href="#installation"><tt>mvc</tt> alias</a>),
+ * of your clones. For example (assuming you have a <a href="#installation">{@code mvc} alias</a>),
  * to list all un-committed changed files under your home directory:
  *
  * <pre>
