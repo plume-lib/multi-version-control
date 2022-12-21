@@ -138,7 +138,6 @@ task javadocWeb(type: Javadoc) {
       flags:'g', byline:true) {
       fileset(dir: destinationDir)
     }
-    }
   }
 }
 
