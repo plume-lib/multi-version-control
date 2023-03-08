@@ -30,7 +30,7 @@ dependencies {
     implementation 'org.plumelib:options:2.0.3'
   }
   implementation 'org.plumelib:plume-util:1.6.5'
-  implementation 'org.tmatesoft.svnkit:svnkit:1.10.10'
+  implementation 'org.tmatesoft.svnkit:svnkit:1.10.11'
 }
 
 application {
