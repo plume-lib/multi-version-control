@@ -3,16 +3,17 @@ plugins {
   id 'application'
 
   // To create a fat jar build/libs/...-all.jar, run: ./gradlew shadowJar
-  id 'com.github.johnrengelman.shadow' version '7.1.2'
+  id 'com.github.johnrengelman.shadow' version '8.1.0'
 
   // Code formatting; defines targets "spotlessApply" and "spotlessCheck"
-  id 'com.diffplug.spotless' version '6.13.0'
+  // Requires JDK 11 or higher; the plugin crashes under JDK 8.
+  id 'com.diffplug.spotless' version '6.16.0'
 
   // Error Prone linter
   id('net.ltgt.errorprone') version '3.0.1'
 
   // Checker Framework pluggable type-checking
-  id 'org.checkerframework' version '0.6.21'
+  id 'org.checkerframework' version '0.6.25'
 }
 
 repositories {
@@ -22,13 +23,14 @@ repositories {
 dependencies {
   implementation 'org.apache.commons:commons-exec:1.3'
   implementation 'org.ini4j:ini4j:0.5.4'
+  // TODO: Shouldn't this depend on targetCompatibility instead?
   if (JavaVersion.current() == JavaVersion.VERSION_1_8) {
     implementation 'org.plumelib:options:1.0.6'
   } else {
     implementation 'org.plumelib:options:2.0.3'
   }
   implementation 'org.plumelib:plume-util:1.6.5'
-  implementation 'org.tmatesoft.svnkit:svnkit:1.10.9'
+  implementation 'org.tmatesoft.svnkit:svnkit:1.10.11'
 }
 
 application {
@@ -42,7 +44,7 @@ targetCompatibility = 1.8
 spotless {
   format 'misc', {
     // define the files to apply `misc` to
-    target '*.gradle', '*.md', '.gitignore'
+    target '*.md', '.gitignore'
 
     // define the steps to apply to those files
     trimTrailingWhitespace()
@@ -53,6 +55,13 @@ spotless {
     targetExclude('**/WeakIdentityHashMap.java')
     googleJavaFormat()
     formatAnnotations()
+  }
+  groovyGradle {
+    target '**/*.gradle'
+    greclipse()  // which formatter Spotless should use to format .gradle files.
+    indentWithSpaces(2)
+    trimTrailingWhitespace()
+    // endWithNewline() // Don't want to end empty files with a newline
   }
 }
 
@@ -119,7 +128,7 @@ javadoc {
   }
   doLast {
     ant.replaceregexp(match:"@import url\\('resources/fonts/dejavu.css'\\);\\s*", replace:'',
-      flags:'g', byline:true) {
+    flags:'g', byline:true) {
       fileset(dir: destinationDir)
     }
   }
@@ -136,7 +145,7 @@ task javadocWeb(type: Javadoc) {
   }
   doLast {
     ant.replaceregexp(match:"@import url\\('resources/fonts/dejavu.css'\\);\\s*", replace:'',
-      flags:'g', byline:true) {
+    flags:'g', byline:true) {
       fileset(dir: destinationDir)
     }
   }
