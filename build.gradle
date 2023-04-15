@@ -25,7 +25,7 @@ dependencies {
   implementation 'org.ini4j:ini4j:0.5.4'
   // TODO: Shouldn't this depend on targetCompatibility instead?
   if (JavaVersion.current() == JavaVersion.VERSION_1_8) {
-    implementation 'org.plumelib:options:1.0.6'
+    implementation 'org.plumelib:options:2.0.3'
   } else {
     implementation 'org.plumelib:options:2.0.3'
   }
