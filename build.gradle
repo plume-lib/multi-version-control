@@ -18,6 +18,7 @@ plugins {
 
 repositories {
   mavenCentral()
+  maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
 }
 
 dependencies {
@@ -72,11 +73,14 @@ dependencies {
 }
 tasks.withType(JavaCompile).configureEach {
   // "-processing" avoids javac warning "No processor claimed any of these annotations".
-  options.compilerArgs << '-Xlint:all,-processing' << '-Werror'
+  // "-options" is because starting in JDK 20, javac warns about using -source 8.
+  options.compilerArgs << '-Xlint:all,-processing,-options' << '-Werror'
   options.errorprone {
     enabled = JavaVersion.current() != JavaVersion.VERSION_1_8
     disable('ReferenceEquality') // Use Interning Checker instead.
   }
+  options.forkOptions.jvmArgs += '-Xmx2g'
+  options.release = 8
 }
 
 /// Checker Framework pluggable type-checking
@@ -100,13 +104,27 @@ checkerFramework {
   ]
   extraJavacArgs = [
     '-Werror',
+    // '-Aversion',
+    // '-verbose',
     '-AcheckPurityAnnotations',
     '-ArequirePrefixInWarningSuppressions',
     '-AwarnRedundantAnnotations',
     '-AwarnUnneededSuppressions',
   ]
 }
-
+// To use a snapshot version of the Checker Framework.
+if (true) {
+  // TODO: change the above test to false when CF is released
+  ext.checkerFrameworkVersion = '3.34.1-SNAPSHOT'
+  dependencies {
+    compileOnly "org.checkerframework:checker-qual:${checkerFrameworkVersion}"
+    testCompileOnly "org.checkerframework:checker-qual:${checkerFrameworkVersion}"
+    checkerFramework "org.checkerframework:checker:${checkerFrameworkVersion}"
+  }
+  configurations.all {
+    resolutionStrategy.cacheChangingModulesFor 0, 'minutes'
+  }
+}
 // To use a locally-built Checker Framework, run gradle with "-PcfLocal".
 if (project.hasProperty('cfLocal')) {
   def cfHome = String.valueOf(System.getenv('CHECKERFRAMEWORK'))
