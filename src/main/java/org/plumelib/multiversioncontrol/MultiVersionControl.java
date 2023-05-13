@@ -33,7 +33,6 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.nullness.qual.RequiresNonNull;
 import org.checkerframework.checker.regex.qual.Regex;
-import org.checkerframework.checker.signedness.qual.UnknownSignedness;
 import org.checkerframework.common.initializedfields.qual.EnsuresInitializedFields;
 import org.checkerframework.common.value.qual.MinLen;
 import org.checkerframework.dataflow.qual.Pure;
@@ -777,7 +776,7 @@ public class MultiVersionControl {
 
     @Override
     @Pure
-    public int hashCode(@GuardSatisfied @UnknownSignedness Checkout this) {
+    public int hashCode(@GuardSatisfied Checkout this) {
       return Objects.hash(repoType, canonicalDirectory, module);
     }
 
