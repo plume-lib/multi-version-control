@@ -448,10 +448,13 @@ public class MultiVersionControl {
   // Shorter variants
   /** Clone a repository. */
   private static Action CLONE = Action.CLONE;
+
   /** Show the working tree status. */
   private static Action STATUS = Action.STATUS;
+
   /** Pull changes from upstream. */
   private static Action PULL = Action.PULL;
+
   /** List the known repositories. */
   private static Action LIST = Action.LIST;
 
@@ -654,10 +657,13 @@ public class MultiVersionControl {
   static class Checkout {
     /** The type of repository to clone. */
     RepoType repoType;
+
     /** Local directory. */
     File directory;
+
     /** Local directory (canonical version). */
     String canonicalDirectory;
+
     /**
      * Non-null for CVS and SVN. May be null for distributed version control systems (Bzr, Git, Hg).
      * For distributed systems, refers to the parent repository from which this was cloned, not the
@@ -666,6 +672,7 @@ public class MultiVersionControl {
      * <p>Most operations don't need this. It is needed for checkout, though.
      */
     @Nullable String repository;
+
     /**
      * Null if no module, just whole thing. Non-null for CVS and, optionally, for SVN. Null for
      * distributed version control systems (Bzr, Git, Hg).
@@ -1268,6 +1275,7 @@ public class MultiVersionControl {
   static class FilePair {
     /** The first file. */
     final @Nullable File file1;
+
     /** The second file. */
     final @Nullable File file2;
 
@@ -1354,6 +1362,7 @@ public class MultiVersionControl {
   private static class Replacer {
     /** The regular expression matching text that should be replaced. */
     Pattern regexp;
+
     /** The replacement text. */
     String replacement;
 
