@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -1965,12 +1966,13 @@ public class MultiVersionControl {
     String[] argArray = Arrays.copyOfRange(args, 1, args.length);
     cmdLine.addArguments(argArray);
     DefaultExecuteResultHandler resultHandler = new DefaultExecuteResultHandler();
-    DefaultExecutor executor = new DefaultExecutor();
     @SuppressWarnings("nullness") // defaults to non-null and was never reset
     @NonNull File defaultDirectory = pb.directory();
-    executor.setWorkingDirectory(defaultDirectory);
+    DefaultExecutor executor =
+        DefaultExecutor.builder().setWorkingDirectory(defaultDirectory).get();
 
-    ExecuteWatchdog watchdog = new ExecuteWatchdog(timeout * 1000L);
+    ExecuteWatchdog watchdog =
+        ExecuteWatchdog.builder().setTimeout(Duration.ofSeconds(timeout)).get();
     executor.setWatchdog(watchdog);
 
     final ByteArrayOutputStream outStream = new ByteArrayOutputStream();
