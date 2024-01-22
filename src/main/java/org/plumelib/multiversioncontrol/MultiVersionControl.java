@@ -1530,8 +1530,9 @@ public class MultiVersionControl {
             case GIT:
               // "--" is to prevent the directory name from being interpreted as a command-line
               // option, if it starts with a hyphen.
-              // "--filter=blob:none" makes cloning fast and reduces disk space.  It makes some git
-              // commands slower, if they have to retrieve information from the remote repository.
+              // "--filter=blob:none" makes cloning fast and reduces disk space.  It makes some
+              // subsequent git commands slower, if they have to retrieve information from the
+              // remote repository.
               pb.command(gitExecutable, "clone", "--filter=blob:none", "--", c.repository, dirbase);
               addArgs(pb, gitArg);
               break;
