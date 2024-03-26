@@ -21,6 +21,8 @@ repositories {
   maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
 }
 
+ext.errorproneVersion = '2.26.1'
+
 ext {
   isJava21orHigher = JavaVersion.current() >= JavaVersion.VERSION_21
 }
@@ -31,15 +33,18 @@ dependencies {
   implementation 'org.plumelib:options:2.0.3'
   implementation 'org.plumelib:plume-util:1.9.0'
   implementation 'org.tmatesoft.svnkit:svnkit:1.10.11'
+
+  compileOnly "com.google.errorprone:error_prone_annotations:${errorproneVersion}"
 }
 
 application {
   mainClass = 'org.plumelib.multiversioncontrol.MultiVersionControl'
 }
 
-sourceCompatibility = 11
-targetCompatibility = 11
-
+java {
+  sourceCompatibility = JavaVersion.VERSION_11
+  targetCompatibility = JavaVersion.VERSION_11
+}
 
 spotless {
   format 'misc', {
@@ -78,6 +83,7 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs << '-Xlint:-this-escape,-options'
   }
   options.errorprone {
+    disable('ExtendsObject')  // Incorrect when using the Checker Framework
     disable('ReferenceEquality') // Use Interning Checker instead.
   }
   options.forkOptions.jvmArgs += '-Xmx2g'
@@ -105,8 +111,6 @@ checkerFramework {
   ]
   extraJavacArgs = [
     '-Werror',
-    // '-Aversion',
-    // '-verbose',
     '-AcheckPurityAnnotations',
     '-ArequirePrefixInWarningSuppressions',
     '-AwarnRedundantAnnotations',
@@ -114,9 +118,9 @@ checkerFramework {
   ]
 }
 // To use a snapshot version of the Checker Framework.
-if (true) {
-  // TODO: change the above test to false when CF is released
-  ext.checkerFrameworkVersion = '3.42.0'
+if (false) {
+  // TODO: Change the above test to false when CF is released.
+  ext.checkerFrameworkVersion = '3.43.0-SNAPSHOT'
   dependencies {
     compileOnly "org.checkerframework:checker-qual:${checkerFrameworkVersion}"
     testCompileOnly "org.checkerframework:checker-qual:${checkerFrameworkVersion}"
@@ -163,6 +167,13 @@ task javadocWeb(type: Javadoc) {
     flags:'g', byline:true) {
       fileset(dir: destinationDir)
     }
+    // Set permissions
+    project.exec {
+      commandLine('chgrp', '-R',  'plse_www', "/cse/web/research/plumelib/${project.name}/api")
+    }
+    project.exec {
+      commandLine('chmod', '-R',  'g+w', "/cse/web/research/plumelib/${project.name}/api")
+    }
   }
 }
 
@@ -173,6 +184,7 @@ dependencies {
   requireJavadoc 'org.plumelib:require-javadoc:1.0.6'
 }
 task requireJavadoc(type: JavaExec) {
+  group = 'Documentation'
   description = 'Ensures that Javadoc documentation exists.'
   mainClass = 'org.plumelib.javadoc.RequireJavadoc'
   classpath = configurations.requireJavadoc
