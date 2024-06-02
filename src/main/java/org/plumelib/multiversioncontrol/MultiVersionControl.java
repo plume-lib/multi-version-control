@@ -1106,7 +1106,8 @@ public class MultiVersionControl {
       // apparently it wasn't a version control directory
       return;
     }
-    String pathInRepo = FilesPlume.fileContents(repositoryFile).trim();
+
+    String pathInRepo = FilesPlume.readString(repositoryFile.toPath()).trim();
     @NonNull File repoFileRoot = new File(pathInRepo);
     while (repoFileRoot.getParentFile() != null) {
       repoFileRoot = repoFileRoot.getParentFile();
@@ -1127,7 +1128,7 @@ public class MultiVersionControl {
       pathInRepoAtCheckout = dirRelative.getName();
     }
 
-    String repoRoot = FilesPlume.fileContents(rootFile).trim();
+    String repoRoot = FilesPlume.readString(rootFile.toPath()).trim();
     checkouts.add(new Checkout(RepoType.CVS, dirRelative, repoRoot, pathInRepoAtCheckout));
   }
 
@@ -1533,7 +1534,14 @@ public class MultiVersionControl {
               // "--filter=blob:none" makes cloning fast and reduces disk space.  It makes some
               // subsequent git commands slower, if they have to retrieve information from the
               // remote repository.
-              pb.command(gitExecutable, "clone", "--filter=blob:none", "--", c.repository, dirbase);
+              pb.command(
+                  gitExecutable,
+                  "clone",
+                  "--recursive",
+                  "--filter=blob:none",
+                  "--",
+                  c.repository,
+                  dirbase);
               addArgs(pb, gitArg);
               break;
             case HG:
