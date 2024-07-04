@@ -1534,14 +1534,7 @@ public class MultiVersionControl {
               // "--filter=blob:none" makes cloning fast and reduces disk space.  It makes a
               // subsequent `git blame` command slower, since it has retrieve information from the
               // remote repository.  It makes pulling from the cloned repository impossible.
-              pb.command(
-                  gitExecutable,
-                  "clone",
-                  "--recursive",
-                  // "--filter=blob:none",
-                  "--",
-                  c.repository,
-                  dirbase);
+              pb.command(gitExecutable, "clone", "--recursive", "--", c.repository, dirbase);
               addArgs(pb, gitArg);
               break;
             case HG:
