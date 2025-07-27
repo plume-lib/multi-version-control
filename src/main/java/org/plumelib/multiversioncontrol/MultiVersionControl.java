@@ -131,10 +131,10 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *         <li id="option:search-prefix"><b>--search-prefix=</b><i>boolean</i>. If true, search for
  *             all clones whose directory is a prefix of one in the cofiguration file. [default:
  *             false]
- *         <li id="option:dir"><b>--dir=</b><i>string</i> <code>[+]</code>. Directory under which to
+ *         <li id="option:dir"><b>--dir=</b><i>string</i> {@code [+]}. Directory under which to
  *             search for clones, when using {@code --search} [default home directory]
- *         <li id="option:ignore-dir"><b>--ignore-dir=</b><i>string</i> <code>[+]</code>.
- *             Directories under which to NOT search for clones. May include leading "~/".
+ *         <li id="option:ignore-dir"><b>--ignore-dir=</b><i>string</i> {@code [+]}. Directories
+ *             under which to NOT search for clones. May include leading "~/".
  *       </ul>
  *   <li id="optiongroup:Paths-to-programs">Paths to programs
  *       <ul>
@@ -148,14 +148,14 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *             program. [default: svn]
  *         <li id="option:insecure"><b>--insecure=</b><i>boolean</i>. If true, use --insecure when
  *             invoking programs. [default: false]
- *         <li id="option:cvs-arg"><b>--cvs-arg=</b><i>string</i> <code>[+]</code>. Extra argument
- *             to pass to the cvs program.
- *         <li id="option:git-arg"><b>--git-arg=</b><i>string</i> <code>[+]</code>. Extra argument
- *             to pass to the git program.
- *         <li id="option:hg-arg"><b>--hg-arg=</b><i>string</i> <code>[+]</code>. Extra argument to
- *             pass to the hg program.
- *         <li id="option:svn-arg"><b>--svn-arg=</b><i>string</i> <code>[+]</code>. Extra argument
- *             to pass to the svn program.
+ *         <li id="option:cvs-arg"><b>--cvs-arg=</b><i>string</i> {@code [+]}. Extra argument to
+ *             pass to the cvs program.
+ *         <li id="option:git-arg"><b>--git-arg=</b><i>string</i> {@code [+]}. Extra argument to
+ *             pass to the git program.
+ *         <li id="option:hg-arg"><b>--hg-arg=</b><i>string</i> {@code [+]}. Extra argument to pass
+ *             to the hg program.
+ *         <li id="option:svn-arg"><b>--svn-arg=</b><i>string</i> {@code [+]}. Extra argument to
+ *             pass to the svn program.
  *       </ul>
  *   <li id="optiongroup:Diagnostics">Diagnostics
  *       <ul>
@@ -176,7 +176,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *       </ul>
  * </ul>
  *
- * <code>[+]</code> means option can be specified multiple times
+ * {@code [+]} means option can be specified multiple times
  * <!-- end options doc -->
  *
  * <p><b>File format for {@code .mvc-checkouts} file</b>
@@ -303,7 +303,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
 
 public class MultiVersionControl {
 
-  /** User home directory. [default Java {@code user.home} property] */
+  /** User home directory. [default Java {@code user.home} property]. */
   @OptionGroup("Configuration file")
   @Option(value = "User home directory.", noDocDefault = true)
   public static String home = System.getProperty("user.home");
@@ -2081,7 +2081,7 @@ public class MultiVersionControl {
   }
 
   /**
-   * Return the shell command for a process.
+   * Returns the shell command for a process.
    *
    * @param pb the process whose command to return
    * @return the shell command for the process
