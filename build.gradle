@@ -83,8 +83,9 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs << '-Xlint:-this-escape,-options'
   }
   options.errorprone {
-    disable('ExtendsObject')  // Incorrect when using the Checker Framework
+    disable('ExtendsObject')  // Incorrect when using the Checker Framework.
     disable('ReferenceEquality') // Use Interning Checker instead.
+    disable('EffectivelyPrivate') // Loses information about the abstraction.
   }
   options.errorprone.enabled = isJava17orHigher
 }
