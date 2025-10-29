@@ -301,6 +301,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
 //       '*' a newer revision exists on the server
 //       ' ' the working copy is up to date
 
+@SuppressWarnings("PMD.TooManyFields")
 public class MultiVersionControl {
 
   /** User home directory. [default Java {@code user.home} property]. */
@@ -509,8 +510,8 @@ public class MultiVersionControl {
         }
       }
 
-      for (String adir : mvc.dir) {
-        adir = expandTilde(adir);
+      for (String adir_unexpanded : mvc.dir) {
+        String adir = expandTilde(adir_unexpanded);
         if (debug) {
           System.out.println("Searching for checkouts under " + adir);
         }
@@ -568,7 +569,7 @@ public class MultiVersionControl {
   @RequiresNonNull({"dir", "checkouts"})
   @EnsuresNonNull("action")
   @EnsuresInitializedFields(fields = "action")
-  public void parseArgs(@UnknownInitialization MultiVersionControl this, String[] args) {
+  public final void parseArgs(@UnknownInitialization MultiVersionControl this, String[] args) {
     @SuppressWarnings(
         "nullness:assignment" // new C(underInit) yields @UnderInitialization; @Initialized is safe
     )
@@ -685,8 +686,9 @@ public class MultiVersionControl {
      *
      * @param repoType the type of repository
      * @param directory where the new clone will appear
+     * @throws DirectoryDoesNotExist if the directory does not exist
      */
-    Checkout(RepoType repoType, File directory) {
+    Checkout(RepoType repoType, File directory) throws DirectoryDoesNotExist {
       this(repoType, directory, null, null);
     }
 
@@ -697,13 +699,14 @@ public class MultiVersionControl {
      * @param directory where the new clone will appear
      * @param repository the upstream repository
      * @param module the module that is checked out (for CVS and optionally SVN)
+     * @throws DirectoryDoesNotExist if the directory does not exist
      */
     Checkout(
-        RepoType repoType, File directory, @Nullable String repository, @Nullable String module) {
+        RepoType repoType, File directory, @Nullable String repository, @Nullable String module)
+        throws DirectoryDoesNotExist {
       // Directory might not exist if we are running the checkout command.
       // If it exists, it must be a directory.
-      assert (directory.exists() ? directory.isDirectory() : true)
-          : "Not a directory: " + directory;
+      assert !directory.exists() || directory.isDirectory() : "Not a directory: " + directory;
       this.repoType = repoType;
       this.directory = directory;
       try {
@@ -740,29 +743,15 @@ public class MultiVersionControl {
       }
     }
 
-    /** An error indicating a version control directory (such as .git) does not exist. */
-    static class DirectoryDoesNotExist extends Error {
-
-      /** Unique identifier for serialization. If you add or remove fields, change this number. */
-      static final long serialVersionUID = 20191205;
-
-      /**
-       * Create a new DirectoryDoesNotExist.
-       *
-       * @param msg a message about the missing directory
-       */
-      DirectoryDoesNotExist(String msg) {
-        super(msg);
-      }
-    }
-
     /**
      * If the directory exists, then the subdirectory must exist too.
      *
      * @param directory the directory
      * @param subdirName a subdirectory that must exist, if {@code directory} exists
+     * @throws DirectoryDoesNotExist if the directory does not exist
      */
-    private static void assertSubdirExists(File directory, String subdirName) {
+    private static void assertSubdirExists(File directory, String subdirName)
+        throws DirectoryDoesNotExist {
       if (directory.exists() && !new File(directory, subdirName).isDirectory()) {
         throw new DirectoryDoesNotExist(
             String.format(
@@ -795,6 +784,22 @@ public class MultiVersionControl {
     }
   }
 
+  /** An exception indicating a version control directory (such as .git) does not exist. */
+  static class DirectoryDoesNotExist extends IOException {
+
+    /** Unique identifier for serialization. If you add or remove fields, change this number. */
+    static final long serialVersionUID = 20191205;
+
+    /**
+     * Create a new DirectoryDoesNotExist.
+     *
+     * @param msg a message about the missing directory
+     */
+    DirectoryDoesNotExist(String msg) {
+      super(msg);
+    }
+  }
+
   // //////////////////////////////////////////////////////////////////////
   // Read checkouts from a file
   //
@@ -806,7 +811,7 @@ public class MultiVersionControl {
    * @param checkouts the set to populate; is side-effected by this method
    * @param searchPrefix if true, search for all clones whose directory is a prefix of one in the
    *     cofiguration file
-   * @throws IOException if there is trouble reading the file (or file sysetm?)
+   * @throws IOException if there is trouble reading the file (or file system?)
    */
   @SuppressWarnings({
     "StringSplitter" // don't add dependence on Guava
@@ -818,11 +823,11 @@ public class MultiVersionControl {
     boolean currentRootIsRepos = false;
 
     try (EntryReader er = new EntryReader(file)) {
-      for (String line : er) {
+      for (String line_untrimmed : er) {
         if (debug) {
-          System.out.println("line: " + line);
+          System.out.println("line: " + line_untrimmed);
         }
-        line = line.trim();
+        String line = line_untrimmed.trim();
         // Skip comments and blank lines
         if (line.equals("") || line.startsWith("#")) {
           continue;
@@ -940,7 +945,7 @@ public class MultiVersionControl {
           for (File sibling : siblings) {
             try {
               checkouts.add(new Checkout(currentType, sibling, root, module));
-            } catch (Checkout.DirectoryDoesNotExist e) {
+            } catch (DirectoryDoesNotExist e) {
               // A directory is an extension of a file in
               // .mvc-checkouts, but lacks a (eg) .git subdir.  Just
               // skip that directory.
@@ -1015,34 +1020,38 @@ public class MultiVersionControl {
       return;
     }
 
-    String dirName = dir.getName().toString();
+    String dirName = dir.getName();
     File parent = dir.getParentFile();
     if (parent != null) {
-      // The "return" statements below cause the code not to look for
-      // checkouts inside version control directories.  (But it does look
-      // for checkouts inside other checkouts.)  If someone checks in
-      // a .svn file into a Mercurial repository, then removes it, the .svn
-      // file remains in the repository even if not in the working copy.
-      // That .svn file will cause an exception in dirToCheckoutSvn,
-      // because it is not associated with a working copy.
-      if (dirName.equals(".bzr")) {
-        checkouts.add(new Checkout(RepoType.BZR, parent, null, null));
-        return;
-      } else if (dirName.equals("CVS")) {
-        addCheckoutCvs(dir, parent, checkouts);
-        return;
-      } else if (dirName.equals(".hg")) {
-        checkouts.add(dirToCheckoutHg(dir, parent));
-        return;
-      } else if (dirName.equals(".git")) {
-        checkouts.add(dirToCheckoutGit(dir, parent));
-        return;
-      } else if (dirName.equals(".svn")) {
-        Checkout c = dirToCheckoutSvn(parent);
-        if (c != null) {
-          checkouts.add(c);
+      try {
+        // The "return" statements below cause the code not to look for
+        // checkouts inside version control directories.  (But it does look
+        // for checkouts inside other checkouts.)  If someone checks in
+        // a .svn file into a Mercurial repository, then removes it, the .svn
+        // file remains in the repository even if not in the working copy.
+        // That .svn file will cause an exception in dirToCheckoutSvn,
+        // because it is not associated with a working copy.
+        if (dirName.equals(".bzr")) {
+          checkouts.add(new Checkout(RepoType.BZR, parent, null, null));
+          return;
+        } else if (dirName.equals("CVS")) {
+          addCheckoutCvs(dir, parent, checkouts);
+          return;
+        } else if (dirName.equals(".hg")) {
+          checkouts.add(dirToCheckoutHg(dir, parent));
+          return;
+        } else if (dirName.equals(".git")) {
+          checkouts.add(dirToCheckoutGit(dir, parent));
+          return;
+        } else if (dirName.equals(".svn")) {
+          Checkout c = dirToCheckoutSvn(parent);
+          if (c != null) {
+            checkouts.add(c);
+          }
+          return;
         }
-        return;
+      } catch (DirectoryDoesNotExist e) {
+        throw new Error("This can't happen", e);
       }
     }
 
@@ -1058,7 +1067,7 @@ public class MultiVersionControl {
     }
     Arrays.sort(
         childdirs,
-        new Comparator<File>() {
+        new Comparator<>() {
           @Override
           public int compare(File o1, File o2) {
             return o1.getName().compareTo(o2.getName());
@@ -1096,9 +1105,11 @@ public class MultiVersionControl {
    * @param cvsDir a {@code CVS} directory
    * @param parentDir its parent
    * @param checkouts the set to populate; is side-effected by this method
+   * @throws DirectoryDoesNotExist if the directory does not exist
    */
-  static void addCheckoutCvs(File cvsDir, File parentDir, Set<Checkout> checkouts) {
-    assert cvsDir.getName().toString().equals("CVS") : cvsDir.getName();
+  static void addCheckoutCvs(File cvsDir, File parentDir, Set<Checkout> checkouts)
+      throws DirectoryDoesNotExist {
+    assert cvsDir.getName().equals("CVS") : cvsDir.getName();
     // relative path within repository
     File repositoryFile = new File(cvsDir, "Repository");
     File rootFile = new File(cvsDir, "Root");
@@ -1138,8 +1149,9 @@ public class MultiVersionControl {
    * @param hgDir a {@code .hg} directory
    * @param parentDir its parent
    * @return a Checkout for the {@code .hg} directory
+   * @throws DirectoryDoesNotExist if the directory does not exist
    */
-  static Checkout dirToCheckoutHg(File hgDir, File parentDir) {
+  static Checkout dirToCheckoutHg(File hgDir, File parentDir) throws DirectoryDoesNotExist {
     String repository = null;
 
     File hgrcFile = new File(hgDir, "hgrc");
@@ -1169,8 +1181,9 @@ public class MultiVersionControl {
    * @param gitDir a {@code .git} directory
    * @param parentDir its parent
    * @return a Checkout for the {@code .git} directory
+   * @throws DirectoryDoesNotExist if the directory does not exist
    */
-  static Checkout dirToCheckoutGit(File gitDir, File parentDir) {
+  static Checkout dirToCheckoutGit(File gitDir, File parentDir) throws DirectoryDoesNotExist {
     String repository = UtilPlume.backticks("git", "config", "remote.origin.url");
 
     return new Checkout(RepoType.GIT, parentDir, repository, null);
@@ -1182,8 +1195,9 @@ public class MultiVersionControl {
    *
    * @param parentDir a directory containing a {@code .svn} subdirectory
    * @return a SVN checkout for the directory, or null
+   * @throws DirectoryDoesNotExist if the directory does not exist
    */
-  static @Nullable Checkout dirToCheckoutSvn(File parentDir) {
+  static @Nullable Checkout dirToCheckoutSvn(File parentDir) throws DirectoryDoesNotExist {
 
     // For SVN, do
     //   svn info
@@ -1397,16 +1411,17 @@ public class MultiVersionControl {
    *
    * @param checkouts the clones and checkouts to process
    */
+  @SuppressWarnings("PMD.SwitchDensity")
   public void process(Set<Checkout> checkouts) {
     // Always run at least one command, but sometimes up to three.
     ProcessBuilder pb = new ProcessBuilder("");
     pb.redirectErrorStream(true);
-    ProcessBuilder pb2 = new ProcessBuilder(new ArrayList<String>());
+    ProcessBuilder pb2 = new ProcessBuilder(new ArrayList<>());
     pb2.redirectErrorStream(true);
-    ProcessBuilder pb3 = new ProcessBuilder(new ArrayList<String>());
+    ProcessBuilder pb3 = new ProcessBuilder(new ArrayList<>());
     pb3.redirectErrorStream(true);
     // pb4 is only for checking whether there are no commits in this branch.
-    ProcessBuilder pb4 = new ProcessBuilder(new ArrayList<String>());
+    ProcessBuilder pb4 = new ProcessBuilder(new ArrayList<>());
     pb4.redirectErrorStream(true);
 
     // I really want to be able to redirect output to a Reader, but that
@@ -1493,11 +1508,11 @@ public class MultiVersionControl {
 
       pb.command("echo", "command", "not", "set");
       pb.directory(dir);
-      pb2.command(new ArrayList<String>());
+      pb2.command(new ArrayList<>());
       pb2.directory(dir);
-      pb3.command(new ArrayList<String>());
+      pb3.command(new ArrayList<>());
       pb3.directory(dir);
-      pb4.command(new ArrayList<String>());
+      pb4.command(new ArrayList<>());
       pb4.directory(dir);
       boolean showNormalOutput = false;
       // Set pb.command() to be the command to be executed.
@@ -1864,10 +1879,10 @@ public class MultiVersionControl {
         System.out.println(dir + " :");
       }
       perform_command(pb, replacers, showNormalOutput);
-      if (pb2.command().size() > 0) {
+      if (!pb2.command().isEmpty()) {
         perform_command(pb2, replacers, showNormalOutput);
       }
-      if (pb3.command().size() > 0) {
+      if (!pb3.command().isEmpty()) {
         perform_command(pb3, replacers3, showNormalOutput);
       }
       // TODO:
