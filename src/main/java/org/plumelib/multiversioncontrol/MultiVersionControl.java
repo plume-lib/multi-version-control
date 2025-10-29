@@ -556,7 +556,6 @@ public class MultiVersionControl {
    *
    * @param args the command-line arguments to MultiVersionControl
    */
-  @SuppressWarnings("PMD.ConstructorCallsOverridableMethod")
   public MultiVersionControl(String[] args) {
     parseArgs(args);
   }
@@ -570,7 +569,7 @@ public class MultiVersionControl {
   @RequiresNonNull({"dir", "checkouts"})
   @EnsuresNonNull("action")
   @EnsuresInitializedFields(fields = "action")
-  public void parseArgs(@UnknownInitialization MultiVersionControl this, String[] args) {
+  public final void parseArgs(@UnknownInitialization MultiVersionControl this, String[] args) {
     @SuppressWarnings(
         "nullness:assignment" // new C(underInit) yields @UnderInitialization; @Initialized is safe
     )
