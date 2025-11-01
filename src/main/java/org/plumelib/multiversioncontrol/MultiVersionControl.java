@@ -1886,7 +1886,7 @@ public class MultiVersionControl {
         perform_command(pb3, replacers3, showNormalOutput);
       }
       // TODO:
-      // if (pb4.command().size() > 0) {
+      // if (!pb4.command().isEmpty()) {
       //   int isAncestorStatus = perform_command(pb4, replacers4, showNormalOutput);
       //   if (isAncestorStatus == 0) {
       //     // TODO: Output this message only for non-master branches.
