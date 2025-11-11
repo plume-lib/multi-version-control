@@ -813,9 +813,6 @@ public class MultiVersionControl {
    *     cofiguration file
    * @throws IOException if there is trouble reading the file (or file system?)
    */
-  @SuppressWarnings({
-    "StringSplitter" // don't add dependence on Guava
-  })
   static void readCheckouts(File file, Set<Checkout> checkouts, boolean searchPrefix)
       throws IOException {
     RepoType currentType = RepoType.BZR; // arbitrary choice, to avoid uninitialized variable
@@ -833,7 +830,7 @@ public class MultiVersionControl {
           continue;
         }
 
-        String[] splitTwo = line.split("[ \t]+");
+        String[] splitTwo = line.split("[ \t]+", -1);
         if (debug) {
           System.out.println("split length: " + splitTwo.length);
         }
@@ -851,7 +848,7 @@ public class MultiVersionControl {
             currentRootIsRepos = false;
             // If the CVSROOT is remote, try to make it local.
             if (currentRoot.startsWith(":ext:")) {
-              String[] rootWords = currentRoot.split(":");
+              String[] rootWords = currentRoot.split(":", -1);
               String possibleRoot = rootWords[rootWords.length - 1];
               if (new File(possibleRoot).isDirectory()) {
                 currentRoot = possibleRoot;
