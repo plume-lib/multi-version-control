@@ -337,7 +337,11 @@ public class MultiVersionControl {
   @Option("Search for all clones, not just those listed in a file")
   public boolean search = false;
 
-  /** If true, search for all clones whose directory is a prefix of one in the cofiguration file. */
+  /**
+   * If true, search for all clones whose directory is a prefix of one in the cofiguration file.
+   * This is especially useful when working with <a
+   * href="https://github.com/plume-lib/manage-git-branches">manage-git-branches</a>.
+   */
   @Option("Search for all clones whose directory is a prefix of one listed in a file")
   public boolean searchPrefix = false;
 
