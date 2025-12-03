@@ -35,7 +35,7 @@ ext {
 }
 
 dependencies {
-  implementation("org.apache.commons:commons-exec:1.5.0")
+  implementation("org.apache.commons:commons-exec:1.6.0")
   implementation("org.ini4j:ini4j:0.5.4")
   implementation("org.plumelib:options:2.0.3")
   implementation("org.plumelib:plume-util:1.12.3")
