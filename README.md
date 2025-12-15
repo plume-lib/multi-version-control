@@ -18,13 +18,11 @@ cd multi-version-control
 
 Add to your shell startup file, such as `~/.profile`:
 
-<!-- markdownlint-disable MD013 --><!-- long lines -->
 ```sh
 alias mvc='java -ea
  -cp SOME_DIRECTORY/multi-version-control/build/libs/multi-version-control-all.jar
  org.plumelib.multiversioncontrol.MultiVersionControl'
 ```
-<!-- markdownlint-enable MD013 --><!-- long lines -->
 
 ## Other scripts for managing multiple git clones and branches
 
