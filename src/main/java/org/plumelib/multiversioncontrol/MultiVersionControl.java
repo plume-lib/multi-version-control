@@ -1912,7 +1912,7 @@ public class MultiVersionControl {
   // calling "hg showconfig".  This hack is good enough for now.
   private @Nullable String defaultPath(File dir) {
     File hgrc = new File(new File(dir, ".hg"), "hgrc");
-    try (EntryReader er = new EntryReader(hgrc, "^#.*", null)) {
+    try (EntryReader er = new EntryReader(hgrc, false, "^#.*", null)) {
       for (String line : er) {
         Matcher m = defaultPattern.matcher(line);
         if (m.matches()) {
