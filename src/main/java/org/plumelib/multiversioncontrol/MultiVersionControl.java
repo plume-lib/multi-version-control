@@ -956,7 +956,7 @@ public class MultiVersionControl {
       }
     } catch (IOException e) {
       System.err.printf("There is a problem with reading the file %s: %s", file.getPath(), e);
-      throw new Error(e);
+      throw new UncheckedIOException(e);
     }
     if (debug) {
       System.out.printf("Here are the checkouts:%n");
@@ -1090,7 +1090,7 @@ public class MultiVersionControl {
         return pathname.isDirectory() && pathname.getPath().equals(pathname.getCanonicalPath());
       } catch (IOException e) {
         System.err.printf("Exception in IsDirectoryFilter.accept(%s): %s%n", pathname, e);
-        throw new Error(e);
+        throw new UncheckedIOException(e);
         // return false;
       }
     }
@@ -2006,7 +2006,7 @@ public class MultiVersionControl {
           && msg.endsWith(", No such file or directory")) {
         System.err.println(msg.substring(21));
       } else {
-        throw new Error(e);
+        throw new UncheckedIOException(e);
       }
     }
 
