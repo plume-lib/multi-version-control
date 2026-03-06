@@ -722,28 +722,29 @@ public class MultiVersionControl {
       this.module = module;
       // These asserts come at the end so that the error message can be better.
       switch (repoType) {
-        case BZR:
+        case BZR -> {
           assertSubdirExists(directory, ".bzr");
           assert module == null;
-          break;
-        case CVS:
+        }
+        case CVS -> {
           assertSubdirExists(directory, "CVS");
           assert module != null : "No module for CVS checkout at: " + directory;
-          break;
-        case GIT:
+        }
+        case GIT -> {
           assertSubdirExists(directory, ".git");
           assert module == null;
-          break;
-        case HG:
+        }
+        case HG -> {
           assertSubdirExists(directory, ".hg");
           assert module == null;
-          break;
-        case SVN:
+        }
+        case SVN -> {
           assertSubdirExists(directory, ".svn");
           assert module == null;
-          break;
-        default:
+        }
+        default -> {
           assert false;
+        }
       }
     }
 
@@ -763,16 +764,16 @@ public class MultiVersionControl {
       }
     }
 
+    @SuppressWarnings("lock:instanceof.pattern.unsafe") // todo
     @Override
     @Pure
-    public boolean equals(@GuardSatisfied Checkout this, @GuardSatisfied @Nullable Object other) {
-      if (!(other instanceof Checkout)) {
+    public boolean equals(@GuardSatisfied Checkout this, @GuardSatisfied @Nullable Object o) {
+      if (!(o instanceof Checkout other)) {
         return false;
       }
-      Checkout c2 = (Checkout) other;
-      return (repoType == c2.repoType)
-          && canonicalDirectory.equals(c2.canonicalDirectory)
-          && Objects.equals(module, c2.module);
+      return repoType == other.repoType
+          && canonicalDirectory.equals(other.canonicalDirectory)
+          && Objects.equals(module, other.module);
     }
 
     @Override
@@ -1441,12 +1442,11 @@ public class MultiVersionControl {
       List<Replacer> replacers3 = new ArrayList<>();
 
       switch (c.repoType) {
-        case BZR:
-          break;
-        case CVS:
+        case BZR -> {}
+        case CVS -> {
           replacers.add(new Replacer("(^|\\n)([?]) ", "$1$2 " + dir + "/"));
-          break;
-        case GIT:
+        }
+        case GIT -> {
           replacers.add(new Replacer("(^|\\n)fatal:", "$1fatal in " + dir + ":"));
           replacers.add(new Replacer("(^|\\n)warning:", "$1warning in " + dir + ":"));
           replacers.add(
@@ -1455,8 +1455,8 @@ public class MultiVersionControl {
                   "$1" + dir + ": $2"));
           replacers.add(
               new Replacer("(^|\\n)(Your configuration specifies to merge)", dir + ": $1$2"));
-          break;
-        case HG:
+        }
+        case HG -> {
           // "real URL" is for bitbucket.org.  (Should be early in list.)
           replacers.add(new Replacer("(^|\\n)real URL is .*\\n", "$1"));
           replacers.add(new Replacer("(^|\\n)(abort: .*)", "$1$2: " + dir));
@@ -1483,8 +1483,8 @@ public class MultiVersionControl {
                   "(^|\\n)((comparing with default-push\\n)?"
                       + "abort: repository default(-push)? not found!: .*\\n)",
                   "$1"));
-          break;
-        case SVN:
+        }
+        case SVN -> {
           replacers.add(
               new Replacer("(svn: Network connection closed unexpectedly)", "$1 for " + dir));
           replacers.add(new Replacer("(svn: Repository) (UUID)", "$1 " + dir + " $2"));
@@ -1493,9 +1493,10 @@ public class MultiVersionControl {
                   "(svn: E155037: Previous operation has not finished; run 'cleanup' if it was"
                       + " interrupted)",
                   "$1; for " + dir));
-          break;
-        default:
+        }
+        default -> {
           assert false;
+        }
       }
       // The \r* is necessary here; (somtimes?) there are two carriage returns.
       replacers.add(
@@ -1518,10 +1519,11 @@ public class MultiVersionControl {
       boolean showNormalOutput = false;
       // Set pb.command() to be the command to be executed.
       switch (action) {
-        case LIST:
+        case LIST -> {
           System.out.println(c);
           continue CLONELOOP;
-        case CLONE:
+        }
+        case CLONE -> {
           pb.directory(dir.getParentFile());
           String dirbase = dir.getName();
           if (c.repository == null) {
@@ -1571,8 +1573,8 @@ public class MultiVersionControl {
             default:
               assert false;
           }
-          break;
-        case STATUS:
+        }
+        case STATUS -> {
           // I need a replacer for other version control systems, to add
           // directory names.
           showNormalOutput = true;
@@ -1748,8 +1750,8 @@ public class MultiVersionControl {
             default:
               assert false;
           }
-          break;
-        case PULL:
+        }
+        case PULL -> {
           switch (c.repoType) {
             case BZR:
               System.out.println("bzr handling not yet implemented: skipping " + c.directory);
@@ -1821,9 +1823,10 @@ public class MultiVersionControl {
             default:
               assert false;
           }
-          break;
-        default:
+        }
+        default -> {
           assert false;
+        }
       }
 
       // Check that the directory exists (OK if it doesn't for checkout).
