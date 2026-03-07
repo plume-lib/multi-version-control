@@ -44,6 +44,8 @@ import org.plumelib.options.Option;
 import org.plumelib.options.OptionGroup;
 import org.plumelib.options.Options;
 import org.plumelib.util.EntryReader;
+import org.plumelib.util.EntryReader.CommentFormat;
+import org.plumelib.util.EntryReader.EntryFormat;
 import org.plumelib.util.FilesPlume;
 import org.plumelib.util.StringsPlume;
 import org.plumelib.util.UtilPlume;
@@ -1915,7 +1917,8 @@ public class MultiVersionControl {
   // calling "hg showconfig".  This hack is good enough for now.
   private @Nullable String defaultPath(File dir) {
     File hgrc = new File(new File(dir, ".hg"), "hgrc");
-    try (EntryReader er = new EntryReader(hgrc, false, "^#.*", null)) {
+    CommentFormat commentFormat = new CommentFormat("^#.*");
+    try (EntryReader er = new EntryReader(hgrc, EntryFormat.DEFAULT, commentFormat, null)) {
       for (String line : er) {
         Matcher m = defaultPattern.matcher(line);
         if (m.matches()) {
