@@ -20,7 +20,7 @@ checker-qual = { module = "org.checkerframework:checker-qual", version.ref = "ch
 
 commons-exec = "org.apache.commons:commons-exec:1.6.0"
 
-error-prone-core = "com.google.errorprone:error_prone_core:2.48.0"
+error-prone-core = "com.google.errorprone:error_prone_core:2.42.0"
 
 ini4j = "org.ini4j:ini4j:0.5.4"
 
