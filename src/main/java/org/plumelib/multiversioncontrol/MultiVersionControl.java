@@ -1291,25 +1291,13 @@ public class MultiVersionControl {
 
   }
 
-  /** A pair of two files. */
-  static class FilePair {
-    /** The first file. */
-    final @Nullable File file1;
-
-    /** The second file. */
-    final @Nullable File file2;
-
-    /**
-     * Create a FilePair.
-     *
-     * @param file1 the first file
-     * @param file2 the second file
-     */
-    FilePair(@Nullable File file1, @Nullable File file2) {
-      this.file1 = file1;
-      this.file2 = file2;
-    }
-  }
+  /**
+   * A pair of two files.
+   *
+   * @param file1 the first file
+   * @param file2 the second file
+   */
+  static record FilePair(@Nullable File file1, @Nullable File file2) {}
 
   /**
    * Strip identical elements off the end of both paths, and then return what is left of each.
