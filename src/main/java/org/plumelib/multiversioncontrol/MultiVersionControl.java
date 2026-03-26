@@ -928,13 +928,7 @@ public class MultiVersionControl {
         // `c-fork-d`.
         if (searchPrefix) {
           String dirName = dir.getName();
-          FileFilter namePrefixFilter =
-              new FileFilter() {
-                @Override
-                public boolean accept(File file) {
-                  return file.isDirectory() && file.getName().startsWith(dirName);
-                }
-              };
+          FileFilter namePrefixFilter = f -> f.isDirectory() && f.getName().startsWith(dirName);
           File dirParent = dir.getParentFile();
           if (dirParent == null || !dirParent.isDirectory()) {
             continue;
@@ -1069,14 +1063,7 @@ public class MultiVersionControl {
           "childdirs is null (permission or other I/O problem?) for %s%n", dir.toString());
       return;
     }
-    Arrays.sort(
-        childdirs,
-        new Comparator<>() {
-          @Override
-          public int compare(File o1, File o2) {
-            return o1.getName().compareTo(o2.getName());
-          }
-        });
+    Arrays.sort(childdirs, Comparator.comparing(File::getName));
     for (File childdir : childdirs) {
       findCheckouts(childdir, checkouts, ignoreDirs);
     }
@@ -1521,10 +1508,10 @@ public class MultiVersionControl {
             continue CLONELOOP;
           }
           switch (c.repoType) {
-            case BZR:
+            case BZR -> {
               System.out.println("bzr handling not yet implemented: skipping " + c.directory);
-              break;
-            case CVS:
+            }
+            case CVS -> {
               assert c.module != null : "@AssumeAssertion(nullness): dependent type CVS";
               pb.command(
                   cvsExecutable,
@@ -1535,8 +1522,8 @@ public class MultiVersionControl {
                   "-ko", // no keyword substitution
                   c.module);
               addArgs(pb, cvsArg);
-              break;
-            case GIT:
+            }
+            case GIT -> {
               // "--" is to prevent the directory name from being interpreted as a command-line
               // option, if it starts with a hyphen.
               // "--filter=blob:none" makes cloning fast and reduces disk space.  It makes a
@@ -1544,24 +1531,25 @@ public class MultiVersionControl {
               // remote repository.  It makes pulling from the cloned repository impossible.
               pb.command(gitExecutable, "clone", "--recursive", "--", c.repository, dirbase);
               addArgs(pb, gitArg);
-              break;
-            case HG:
+            }
+            case HG -> {
               pb.command(hgExecutable, "clone", c.repository, dirbase);
               addArgs(pb, hgArg);
               if (insecure) {
                 addArg(pb, "--insecure");
               }
-              break;
-            case SVN:
+            }
+            case SVN -> {
               if (c.module != null) {
                 pb.command(svnExecutable, "checkout", c.repository, c.module);
               } else {
                 pb.command(svnExecutable, "checkout", c.repository);
               }
               addArgs(pb, svnArg);
-              break;
-            default:
+            }
+            default -> {
               assert false;
+            }
           }
         }
         case STATUS -> {
@@ -1569,10 +1557,10 @@ public class MultiVersionControl {
           // directory names.
           showNormalOutput = true;
           switch (c.repoType) {
-            case BZR:
+            case BZR -> {
               System.out.println("bzr handling not yet implemented: skipping " + c.directory);
-              break;
-            case CVS:
+            }
+            case CVS -> {
               assert c.repository != null;
               pb.command(
                   cvsExecutable,
@@ -1609,8 +1597,8 @@ public class MultiVersionControl {
               replacers.add(new Replacer("(^|\\n)(cvs diff: cannot find )", "$1$2" + dir));
               replacers.add(new Replacer("(^|\\n)(cvs diff: in directory )", "$1$2" + dir + "/"));
               replacers.add(new Replacer("(^|\\n)(cvs diff: ignoring )", "$1$2" + dir + "/"));
-              break;
-            case GIT:
+            }
+            case GIT -> {
               pb.command(gitExecutable, "status");
               addArgs(pb, gitArg);
               // Why was I using this option??
@@ -1696,9 +1684,8 @@ public class MultiVersionControl {
               // TODO: use `if git merge-base --is-ancestor origin/master HEAD ; then ...` to
               // determine whether this branch has no changes and thus can be deleted.
               pb4.command(gitExecutable, "merge-base", "--is-ancestor", "origin/master", "HEAD");
-
-              break;
-            case HG:
+            }
+            case HG -> {
               pb.command(hgExecutable, "status");
               addArgs(pb, hgArg);
               if (debug) {
@@ -1728,25 +1715,26 @@ public class MultiVersionControl {
               replacers3.add(new Replacer("^hg: unknown command 'shelve'\\n(.*\\n)+", ""));
               replacers3.add(
                   new Replacer("^(.*\\n)+", "shelved changes: " + pb.directory() + "\n"));
-              break;
-            case SVN:
+            }
+            case SVN -> {
               // Handle some changes.
               // "svn status" outputs an eighth column, if you pass the --show-updates switch: [* ]
               replacers.add(
                   new Replacer("(^|\\n)([ACDIMRX?!~ ][CM ][L ][+ ][$ ]) *", "$1$2 " + dir + "/"));
               pb.command(svnExecutable, "status");
               addArgs(pb, svnArg);
-              break;
-            default:
+            }
+            default -> {
               assert false;
+            }
           }
         }
         case PULL -> {
           switch (c.repoType) {
-            case BZR:
+            case BZR -> {
               System.out.println("bzr handling not yet implemented: skipping " + c.directory);
-              break;
-            case CVS:
+            }
+            case CVS -> {
               replacers.add(
                   new Replacer(
                       "(^|\\n)(cvs update: ((in|skipping) directory|conflicts found in )) +",
@@ -1769,8 +1757,8 @@ public class MultiVersionControl {
               // 'UseNewInfoFmtStrings'\"";
               replacers.add(new Replacer("(cvs update: move away )", "$1" + dir + "/"));
               replacers.add(new Replacer("(cvs \\[update aborted)(\\])", "$1 in " + dir + "$2"));
-              break;
-            case GIT:
+            }
+            case GIT -> {
               replacers.add(new Replacer("(^|\\n)Already up-to-date\\.\\n", "$1"));
               replacers.add(new Replacer("(^|\\n)error:", "$1error in " + dir + ":"));
               replacers.add(
@@ -1786,8 +1774,8 @@ public class MultiVersionControl {
               addArgs(pb, gitArg);
               // prune branches; alternately do "git remote prune origin"; "git gc" doesn't do this.
               pb2.command(gitExecutable, "fetch", "-p");
-              break;
-            case HG:
+            }
+            case HG -> {
               replacers.add(new Replacer("(^|\\n)([?!AMR] ) +", "$1$2 " + dir + "/"));
               replacers.add(new Replacer("(^|\\n)abort: ", "$1"));
               pb.command(hgExecutable, "-q", "update");
@@ -1801,17 +1789,18 @@ public class MultiVersionControl {
               if (insecure) {
                 addArg(pb2, "--insecure");
               }
-              break;
-            case SVN:
+            }
+            case SVN -> {
               replacers.add(new Replacer("(^|\\n)([?!AMR] ) +", "$1$2 " + dir + "/"));
               replacers.add(new Replacer("(svn: Failed to add file ')(.*')", "$1" + dir + "/$2"));
               assert c.repository != null;
               pb.command(svnExecutable, "-q", "update");
               addArgs(pb, svnArg);
               //         $filter = "grep -v \"Killed by signal 15.\"";
-              break;
-            default:
+            }
+            default -> {
               assert false;
+            }
           }
         }
         default -> {
@@ -1838,7 +1827,7 @@ public class MultiVersionControl {
           continue;
         }
         switch (action) {
-          case CLONE:
+          case CLONE -> {
             if (!parent.exists()) {
               if (show) {
                 if (!dryRun) {
@@ -1856,16 +1845,19 @@ public class MultiVersionControl {
                 }
               }
             }
-            break;
-          case STATUS:
-          case PULL:
+          }
+          case STATUS, PULL -> {
             if (!quiet) {
               System.out.println("Cannot find directory: " + dir);
             }
             continue CLONELOOP;
-          case LIST:
-          default:
+          }
+          case LIST -> {
             assert false;
+          }
+          default -> {
+            assert false;
+          }
         }
       }
 
