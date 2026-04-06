@@ -7,7 +7,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.time.Duration;
@@ -25,7 +24,6 @@ import org.apache.commons.exec.DefaultExecuteResultHandler;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteWatchdog;
 import org.apache.commons.exec.PumpStreamHandler;
-import org.checkerframework.checker.index.qual.GTENegativeOne;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.initialization.qual.UnknownInitialization;
 import org.checkerframework.checker.lock.qual.GuardSatisfied;
@@ -359,7 +357,7 @@ public class MultiVersionControl {
   public List<String> ignoreDir = new ArrayList<>();
 
   /** Files, each a directory, corresponding to strings in {@link ignoreDir}. */
-  private List<File> ignoreDirs = new ArrayList<>();
+  private Set<File> ignoreDirs = new LinkedHashSet<>();
 
   // These *-executable command-line options are handy:
   //  * if you want to use a specific version of the program
@@ -453,19 +451,6 @@ public class MultiVersionControl {
     LIST
   }
 
-  // Shorter variants
-  /** Clone a repository. */
-  private static Action CLONE = Action.CLONE;
-
-  /** Show the working tree status. */
-  private static Action STATUS = Action.STATUS;
-
-  /** Pull changes from upstream. */
-  private static Action PULL = Action.PULL;
-
-  /** List the known repositories. */
-  private static Action LIST = Action.LIST;
-
   /** Which action to perform on this run of MultiVersionControl. */
   private Action action;
 
@@ -516,8 +501,8 @@ public class MultiVersionControl {
         }
       }
 
-      for (String adir_unexpanded : mvc.dir) {
-        String adir = expandTilde(adir_unexpanded);
+      for (String adirUnexpanded : mvc.dir) {
+        String adir = expandTilde(adirUnexpanded);
         if (debug) {
           System.out.println("Searching for checkouts under " + adir);
         }
@@ -590,17 +575,17 @@ public class MultiVersionControl {
     }
     String actionString = remainingArgs[0];
     if ("checkout".startsWith(actionString)) {
-      action = CLONE;
+      action = Action.CLONE;
     } else if ("clone".startsWith(actionString)) {
-      action = CLONE;
+      action = Action.CLONE;
     } else if ("list".startsWith(actionString)) {
-      action = LIST;
+      action = Action.LIST;
     } else if ("pull".startsWith(actionString)) {
-      action = PULL;
+      action = Action.PULL;
     } else if ("status".startsWith(actionString)) {
-      action = STATUS;
+      action = Action.STATUS;
     } else if ("update".startsWith(actionString)) {
-      action = PULL;
+      action = Action.PULL;
     } else {
       System.out.printf("Unrecognized action \"%s\"", actionString);
       options.printUsage();
@@ -615,7 +600,7 @@ public class MultiVersionControl {
       dir.add(home);
     }
 
-    if (action == CLONE) {
+    if (action == Action.CLONE) {
       search = false;
       show = true;
       // Checkouts can be much slower than other operations.
@@ -827,11 +812,11 @@ public class MultiVersionControl {
     boolean currentRootIsRepos = false;
 
     try (EntryReader er = new EntryReader(file)) {
-      for (String line_untrimmed : er) {
+      for (String lineUntrimmed : er) {
         if (debug) {
-          System.out.println("line: " + line_untrimmed);
+          System.out.println("line: " + lineUntrimmed);
         }
-        String line = line_untrimmed.trim();
+        String line = lineUntrimmed.trim();
         // Skip comments and blank lines
         if (line.equals("") || line.startsWith("#")) {
           continue;
@@ -888,10 +873,7 @@ public class MultiVersionControl {
         }
 
         String dirname;
-        String root = currentRoot;
-        if (root.endsWith("/")) {
-          root = root.substring(0, root.length() - 1);
-        }
+        String root = StringsPlume.replaceSuffix(currentRoot, "/", "");
         String module = null;
 
         int spacePos = line.lastIndexOf(' ');
@@ -1002,7 +984,7 @@ public class MultiVersionControl {
    * @param checkouts the set to populate; is side-effected by this method
    * @param ignoreDirs directories not to search within
    */
-  private static void findCheckouts(File dir, Set<Checkout> checkouts, List<File> ignoreDirs) {
+  private static void findCheckouts(File dir, Set<Checkout> checkouts, Set<File> ignoreDirs) {
     if (!dir.isDirectory()) {
       // This should never happen, unless the directory is deleted between
       // the call to findCheckouts and the test of isDirectory.
@@ -1154,8 +1136,8 @@ public class MultiVersionControl {
         Profile.Section pathsSection = ini.get("paths");
         if (pathsSection != null) {
           repository = pathsSection.get("default");
-          if (repository != null && repository.endsWith("/")) {
-            repository = repository.substring(0, repository.length() - 1);
+          if (repository != null) {
+            repository = StringsPlume.replaceSuffix(repository, "/", "");
           }
         }
       } catch (IOException e) {
@@ -1175,8 +1157,8 @@ public class MultiVersionControl {
    * @throws DirectoryDoesNotExist if the directory does not exist
    */
   static Checkout dirToCheckoutGit(File gitDir, File parentDir) throws DirectoryDoesNotExist {
-    String repository = UtilPlume.backticks("git", "config", "remote.origin.url");
-
+    // TODO: Must pass parentDir to `backticks`, when next plume-util is released.
+    String repository = UtilPlume.backticks("git", "config", "remote.origin.url").trim();
     return new Checkout(RepoType.GIT, parentDir, repository, null);
   }
 
@@ -1333,9 +1315,7 @@ public class MultiVersionControl {
    * @param arg the argument to add to {@code pb}'s command
    */
   private void addArg(ProcessBuilder pb, String arg) {
-    List<String> command = pb.command();
-    command.add(arg);
-    pb.command(command);
+    pb.command().add(arg);
   }
 
   /**
@@ -1345,9 +1325,7 @@ public class MultiVersionControl {
    * @param args the arguments to add to {@code pb}'s command
    */
   private void addArgs(ProcessBuilder pb, List<String> args) {
-    List<String> command = pb.command();
-    command.addAll(args);
-    pb.command(command);
+    pb.command().addAll(args);
   }
 
   /**
@@ -1813,8 +1791,10 @@ public class MultiVersionControl {
         System.out.println(dir + ":");
       }
       if (dir.exists()) {
-        if (action == CLONE && !redoExisting && !quiet) {
-          System.out.println("Skipping checkout (dir already exists): " + dir);
+        if (action == Action.CLONE && !redoExisting) {
+          if (!quiet) {
+            System.out.println("Skipping checkout (dir already exists): " + dir);
+          }
           continue;
         }
       } else {
@@ -1831,9 +1811,7 @@ public class MultiVersionControl {
             if (!parent.exists()) {
               if (show) {
                 if (!dryRun) {
-                  System.out.printf(
-                      "Parent directory %s does not exist%s%n",
-                      parent, (dryRun ? "" : " (creating)"));
+                  System.out.printf("Parent directory %s does not exist (creating)%n", parent);
                 } else {
                   System.out.printf("  mkdir -p %s%n", parent);
                 }
@@ -1912,7 +1890,7 @@ public class MultiVersionControl {
     return null;
   }
 
-  /** A regular expression that matches a message about incalid certificates. */
+  /** A regular expression that matches a message about invalid certificates. */
   private Pattern invalidCertificatePattern =
       Pattern.compile("^https://[^.]*[.][^.]*[.]googlecode[.]com/hg$");
 
@@ -2090,19 +2068,5 @@ public class MultiVersionControl {
    */
   String command(ProcessBuilder pb) {
     return "  cd " + pb.directory() + "\n  " + StringsPlume.join(" ", pb.command());
-  }
-
-  /**
-   * A stream of newlines. Used for processes that want input, when we don't want to give them input
-   * but don't want them to simply hang.
-   */
-  static class StreamOfNewlines extends InputStream {
-    /** Creates a new StreamOfNewlines. */
-    public StreamOfNewlines() {}
-
-    @Override
-    public @GTENegativeOne int read() {
-      return (int) '\n';
-    }
   }
 }
