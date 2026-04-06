@@ -1157,12 +1157,8 @@ public class MultiVersionControl {
    * @throws DirectoryDoesNotExist if the directory does not exist
    */
   static Checkout dirToCheckoutGit(File gitDir, File parentDir) throws DirectoryDoesNotExist {
-    String repositoryRaw = UtilPlume.backticks("git", "config", "remote.origin.url").trim();
-    String repository =
-        (repositoryRaw.isEmpty() || repositoryRaw.startsWith("IOException:"))
-            ? null
-            : repositoryRaw;
-
+    // TODO: Must pass parentDir to `backticks`, when next plume-util is released.
+    String repository = UtilPlume.backticks("git", "config", "remote.origin.url").trim();
     return new Checkout(RepoType.GIT, parentDir, repository, null);
   }
 
@@ -1795,8 +1791,10 @@ public class MultiVersionControl {
         System.out.println(dir + ":");
       }
       if (dir.exists()) {
-        if (action == Action.CLONE && !redoExisting && !quiet) {
-          System.out.println("Skipping checkout (dir already exists): " + dir);
+        if (action == Action.CLONE && !redoExisting) {
+          if (!quiet) {
+            System.out.println("Skipping checkout (dir already exists): " + dir);
+          }
           continue;
         }
       } else {
