@@ -129,7 +129,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *         <li id="option:search"><b>--search=</b><i>boolean</i>. If true, search for all clones,
  *             not just those listed in a file. [default: false]
  *         <li id="option:search-prefix"><b>--search-prefix=</b><i>boolean</i>. If true, search for
- *             all clones whose directory is a prefix of one in the cofiguration file. [default:
+ *             all clones whose directory is a prefix of one in the configuration file. [default:
  *             false]
  *         <li id="option:dir"><b>--dir=</b><i>string</i> {@code [+]}. Directory under which to
  *             search for clones, when using {@code --search} [default home directory]
@@ -276,7 +276,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
 // The "list" command should be in the .mvc-checkouts file format, rather
 // than requiring the user to munge it.
 
-// In checkouts file, use of space delimiter for specifyng module interacts
+// In checkouts file, use of space delimiter for specifying module interacts
 // badly with file names that contain spaces.  This doesn't seem important
 // enough to fix.
 
@@ -338,7 +338,7 @@ public class MultiVersionControl {
   public boolean search = false;
 
   /**
-   * If true, search for all clones whose directory is a prefix of one in the cofiguration file.
+   * If true, search for all clones whose directory is a prefix of one in the configuration file.
    * This is especially useful when working with <a
    * href="https://github.com/plume-lib/manage-git-branches">manage-git-branches</a>.
    */
@@ -802,7 +802,7 @@ public class MultiVersionControl {
    * @param file the .mvc-checkouts file
    * @param checkouts the set to populate; is side-effected by this method
    * @param searchPrefix if true, search for all clones whose directory is a prefix of one in the
-   *     cofiguration file
+   *     configuration file
    * @throws IOException if there is trouble reading the file (or file system?)
    */
   static void readCheckouts(File file, Set<Checkout> checkouts, boolean searchPrefix)
@@ -1453,7 +1453,7 @@ public class MultiVersionControl {
           assert false;
         }
       }
-      // The \r* is necessary here; (somtimes?) there are two carriage returns.
+      // The \r* is necessary here; (sometimes?) there are two carriage returns.
       replacers.add(
           new Replacer(
               "(remote: )?Warning: untrusted X11 forwarding setup failed: xauth key data not"
