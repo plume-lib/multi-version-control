@@ -1944,7 +1944,6 @@ public class MultiVersionControl {
     @SuppressWarnings({"value"}) // ProcessBuilder.command() returns a non-empty list
     String @MinLen(1) [] args = (String @MinLen(1) []) pb.command().toArray(new String[0]);
     CommandLine cmdLine = new CommandLine(args[0]); // constructor requires executable name
-    @SuppressWarnings("nullness") // indices are in bounds, so no null values in resulting array
     String[] argArray = Arrays.copyOfRange(args, 1, args.length);
     cmdLine.addArguments(argArray);
     DefaultExecuteResultHandler resultHandler = new DefaultExecuteResultHandler();
