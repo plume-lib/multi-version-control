@@ -1093,8 +1093,10 @@ public class MultiVersionControl {
 
     String pathInRepo = FilesPlume.readString(repositoryFile.toPath()).trim();
     @NonNull File repoFileRoot = new File(pathInRepo);
-    while (repoFileRoot.getParentFile() != null) {
-      repoFileRoot = repoFileRoot.getParentFile();
+    for (File parent = repoFileRoot.getParentFile();
+        parent != null;
+        parent = repoFileRoot.getParentFile()) {
+      repoFileRoot = parent;
     }
 
     // strip common suffix off of local dir and repo url
@@ -1292,10 +1294,11 @@ public class MultiVersionControl {
         && r2 != null
         && (p2Limit == null || !r2.equals(p2Limit))
         && r1.getName().equals(r2.getName())) {
-      if (p1Contains != null && !new File(r1.getParentFile(), p1Contains).isDirectory()) {
+      File r1Parent = r1.getParentFile();
+      if (p1Contains != null && !new File(r1Parent, p1Contains).isDirectory()) {
         break;
       }
-      r1 = r1.getParentFile();
+      r1 = r1Parent;
       r2 = r2.getParentFile();
     }
     if (debug) {
@@ -1633,7 +1636,7 @@ public class MultiVersionControl {
               replacers.add(
                   new Replacer(
                       "(^|\\n)# Your branch is ahead of .*\\n",
-                      "$1unpushed changesets: " + pb.directory() + "\n"));
+                      "$1unpushed changesets: " + dir + "\n"));
               replacers.add(new Replacer("(^|\\n)([?][?]) ", "$1$2 " + dir + "/"));
               replacers.add(
                   new Replacer(
@@ -1643,7 +1646,7 @@ public class MultiVersionControl {
               replacers.add(
                   new Replacer(
                       "(^|\\n)# Your branch is behind .*\\n",
-                      "$1unpushed changesets: " + pb.directory() + "\n"));
+                      "$1unpushed changesets: " + dir + "\n"));
 
               // Could remove all other output, but this could suppress messages
               // replacers.add(new Replacer("(^|\\n)#.*\\n", "$1"));
@@ -1683,7 +1686,7 @@ public class MultiVersionControl {
               replacers.add(
                   new Replacer(
                       "^comparing with .*\\nsearching for changes\\nchangeset[^\001]*",
-                      "unpushed changesets: " + pb.directory() + "\n"));
+                      "unpushed changesets: " + dir + "\n"));
               replacers.add(
                   new Replacer(
                       "^\\n?comparing with .*\\nsearching for changes\\nno changes found\n", ""));
@@ -1692,7 +1695,7 @@ public class MultiVersionControl {
               // Shelve is an optional extension, so don't print anything if not installed.
               replacers3.add(new Replacer("^hg: unknown command 'shelve'\\n(.*\\n)+", ""));
               replacers3.add(
-                  new Replacer("^(.*\\n)+", "shelved changes: " + pb.directory() + "\n"));
+                  new Replacer("^(.*\\n)+", "shelved changes: " + dir + "\n"));
             }
             case SVN -> {
               // Handle some changes.
