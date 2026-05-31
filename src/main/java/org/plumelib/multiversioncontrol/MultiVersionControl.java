@@ -1694,8 +1694,7 @@ public class MultiVersionControl {
               addArgs(pb3, hgArg);
               // Shelve is an optional extension, so don't print anything if not installed.
               replacers3.add(new Replacer("^hg: unknown command 'shelve'\\n(.*\\n)+", ""));
-              replacers3.add(
-                  new Replacer("^(.*\\n)+", "shelved changes: " + dir + "\n"));
+              replacers3.add(new Replacer("^(.*\\n)+", "shelved changes: " + dir + "\n"));
             }
             case SVN -> {
               // Handle some changes.
