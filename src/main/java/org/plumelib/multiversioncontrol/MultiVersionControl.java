@@ -1335,7 +1335,7 @@ public class MultiVersionControl {
    * A Replacer does string substitution, to make output more user-friendly. Examples are
    * suppressing noise output or expanding relative file names.
    */
-  private static class Replacer {
+  static class Replacer {
     /** The regular expression matching text that should be replaced. */
     Pattern regexp;
 
