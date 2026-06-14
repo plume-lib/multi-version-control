@@ -517,6 +517,7 @@ public class MultiVersionControl {
           System.out.printf("Searching added %d checkouts%n", checkouts.size() - oldCheckouts);
         }
       }
+      System.out.flush();
     }
 
     if (debug) {
@@ -524,6 +525,7 @@ public class MultiVersionControl {
       for (Checkout c : checkouts) {
         System.out.println("  " + c);
       }
+      System.out.flush();
     }
     mvc.process(checkouts);
   }
@@ -1245,6 +1247,7 @@ public class MultiVersionControl {
       System.out.println("repoRoot = " + repoRoot);
       System.out.println(" repoUrl = " + url);
       System.out.println("    dirRelative = " + dirRelative.toString());
+      System.out.flush();
     }
 
     assert url.toString().startsWith(repoRoot.toString()) : "repoRoot=" + repoRoot + ", url=" + url;
@@ -1303,6 +1306,7 @@ public class MultiVersionControl {
     }
     if (debug) {
       System.out.printf("removeCommonSuffixDirs => %s %s%n", r1, r2);
+      System.out.flush();
     }
     return new FilePair(r1, r2);
   }
@@ -1393,6 +1397,7 @@ public class MultiVersionControl {
     for (Checkout c : checkouts) {
       if (debug) {
         System.out.println(c);
+        System.out.flush();
       }
       File dir = c.directory;
 
@@ -1859,6 +1864,7 @@ public class MultiVersionControl {
       //     // System.out.println("No changes committed in " + dir);
       //   }
       // }
+      System.out.flush();
     }
   }
 
@@ -1926,6 +1932,7 @@ public class MultiVersionControl {
   int perform_command(ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
     if (show) {
       System.out.println(command(pb));
+      System.out.flush();
     }
     if (dryRun) {
       return 0;
@@ -1987,6 +1994,7 @@ public class MultiVersionControl {
     if (timedOut) {
       System.out.printf("Timed out (limit: %ss):%n", timeout);
       System.out.println(command(pb));
+      System.out.flush();
       // Don't return; also show the output
     }
 
@@ -2057,6 +2065,7 @@ public class MultiVersionControl {
         }
       }
     }
+    System.out.flush();
 
     return exitValue;
   }
