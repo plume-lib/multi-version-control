@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -413,7 +414,7 @@ public class MultiVersionControl {
   @OptionGroup("Diagnostics")
   public boolean show = false;
 
-  /** If true, print the directory before executing commands in it. */
+  /** If true, print the directory (and the origin URL) before executing commands in it. */
   @Option("Print the directory before executing commands")
   public boolean printDirectory = false;
 
@@ -1387,6 +1388,10 @@ public class MultiVersionControl {
     // pb4 is only for checking whether there are no commits in this branch.
     ProcessBuilder pb4 = new ProcessBuilder(new ArrayList<>());
     pb4.redirectErrorStream(true);
+    // pb5 is only for printing the origin URL.
+    ProcessBuilder pb5 =
+        new ProcessBuilder(List.of(gitExecutable, "config", "--get", "remote.origin.url"));
+    pb5.redirectErrorStream(true);
 
     // I really want to be able to redirect output to a Reader, but that
     // isn't possible.  I have to send it to a file.
@@ -1848,6 +1853,8 @@ public class MultiVersionControl {
 
       if (printDirectory) {
         System.out.println(dir + " :");
+        pb5.directory(dir);
+        perform_command(pb5, Collections.emptyList(), true);
       }
       perform_command(pb, replacers, showNormalOutput);
       if (!pb2.command().isEmpty()) {
