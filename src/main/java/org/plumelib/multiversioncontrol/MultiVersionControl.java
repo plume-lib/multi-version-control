@@ -82,7 +82,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  * <p>You can specify the set of clones for the program to manage in a file {@code .mvc-checkouts},
  * or you can pass {@code --search} to make the program search your directory structure to find all
  * of your clones. For example (assuming you have a <a href="#installation">{@code mvc} alias</a>),
- * to list all un-committed changed files under your home directory:
+ * to list all uncommitted changed files under your home directory:
  *
  * <pre>
  * mvc status --search=true</pre>
@@ -160,7 +160,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *       </ul>
  *   <li id="optiongroup:Diagnostics">Diagnostics
  *       <ul>
- *         <li id="option:show"><b>--show=</b><i>boolean</i>. If true, display each command is it is
+ *         <li id="option:show"><b>--show=</b><i>boolean</i>. If true, display each command as it is
  *             executed. [default: false]
  *         <li id="option:print-directory"><b>--print-directory=</b><i>boolean</i>. If true, print
  *             the directory before executing commands in it. [default: false]
@@ -409,7 +409,7 @@ public class MultiVersionControl {
 
   // TODO: use consistent names: both "show" or both "print"
 
-  /** If true, display each command is it is executed. */
+  /** If true, display each command as it is executed. */
   @Option("Display commands as they are executed")
   @OptionGroup("Diagnostics")
   public boolean show = false;
@@ -930,7 +930,7 @@ public class MultiVersionControl {
               checkouts.add(new Checkout(currentType, sibling, root, module));
             } catch (DirectoryDoesNotExist e) {
               // A directory is an extension of a file in
-              // .mvc-checkouts, but lacks a (eg) .git subdir.  Just
+              // .mvc-checkouts, but lacks a (e.g.) .git subdir.  Just
               // skip that directory.
             }
           }
@@ -1278,10 +1278,10 @@ public class MultiVersionControl {
    * Strip identical elements off the end of both paths, and then return what is left of each.
    * Returned elements can be null! If p2Limit is non-null, then it should be a parent of p2, and
    * the stripping stops when p2 becomes p2Limit. If p1Contains is non-null, then p1 must contain a
-   * subdirectory of that name, and stripping stops when it is reached
+   * subdirectory of that name, and stripping stops when it is reached.
    *
    * @param p1 the first path
-   * @param p2 the first path
+   * @param p2 the second path
    * @param p2Limit null, or a parent of p2, which is the minimum suffix to return
    * @param p1Contains null, or a subdirectory of p1
    * @return p1 and p2, relative to their largest common prefix (modulo {@code p2Limit} and {@code
@@ -1931,7 +1931,7 @@ public class MultiVersionControl {
    * Perform {@code pb}'s command.
    *
    * @param pb the ProcessBuilder whose commands to run
-   * @param replacers replacement to make it the output before displaying it, to reduce verbasity
+   * @param replacers replacements to make in the output before displaying it, to reduce verbosity
    * @param showNormalOutput if true, then display the output even if the process completed
    *     normally. Ordinarily, output is displayed only if the process completed erroneously.
    * @return the status code: 0 for normal completion, non-zero for erroneous completion
