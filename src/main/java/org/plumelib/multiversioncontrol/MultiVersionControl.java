@@ -1520,7 +1520,7 @@ public class MultiVersionControl {
               // "--filter=blob:none" makes cloning fast and reduces disk space.  It makes a
               // subsequent `git blame` command slower, since it has retrieve information from the
               // remote repository.  It makes pulling from the cloned repository impossible.
-              pb.command(gitExecutable, "clone", "--recursive", "--", c.repository, dirbase);
+              pb.command(gitExecutable, "clone", /* "--recursive", */ "--", c.repository, dirbase);
               addArgs(pb, gitArg);
             }
             case HG -> {
@@ -1760,7 +1760,7 @@ public class MultiVersionControl {
                   new Replacer(
                       "((^|\\n)CONFLICT \\(content\\): Merge conflict in )", "$1" + dir + "/"));
               replacers.add(new Replacer("(^|\\n)([ACDMRU]\t)", "$1$2" + dir + "/"));
-              pb.command(gitExecutable, "pull", "-q", "--recurse-submodules");
+              pb.command(gitExecutable, "pull", "-q" /*, "--recurse-submodules"*/);
               addArgs(pb, gitArg);
               // prune branches; alternately do "git remote prune origin"; "git gc" doesn't do this.
               pb2.command(gitExecutable, "fetch", "-p");
