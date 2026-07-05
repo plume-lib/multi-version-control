@@ -111,7 +111,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *   <li id="optiongroup:Configuration-file">Configuration file
  *       <ul>
  *         <li id="option:home"><b>--home=</b><i>string</i>. User home directory. [default Java
- *             {@code user.home} property]
+ *             {@code user.home} property].
  *         <li id="option:checkouts"><b>--checkouts=</b><i>string</i>. File with list of clones. Set
  *             it to /dev/null to suppress reading. [default {@code .mvc-checkouts} in home
  *             directory]
@@ -130,12 +130,14 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *         <li id="option:search"><b>--search=</b><i>boolean</i>. If true, search for all clones,
  *             not just those listed in a file. [default: false]
  *         <li id="option:search-prefix"><b>--search-prefix=</b><i>boolean</i>. If true, search for
- *             all clones whose directory is a prefix of one in the configuration file. [default:
- *             false]
- *         <li id="option:dir"><b>--dir=</b><i>string</i> {@code [+]}. Directory under which to
- *             search for clones, when using {@code --search} [default home directory]
- *         <li id="option:ignore-dir"><b>--ignore-dir=</b><i>string</i> {@code [+]}. Directories
- *             under which to NOT search for clones. May include leading "~/".
+ *             all clones whose directory is a prefix of one in the configuration file. This is
+ *             especially useful when working with <a
+ *             href="https://github.com/plume-lib/manage-git-branches">manage-git-branches</a>.
+ *             [default: false]
+ *         <li id="option:dir"><b>--dir=</b><i>string</i> <code>[+]</code>. Directory under which to
+ *             search for clones, when using {@code --search} [default = home directory].
+ *         <li id="option:ignore-dir"><b>--ignore-dir=</b><i>string</i> <code>[+]</code>.
+ *             Directories under which to NOT search for clones. May include leading "~/".
  *       </ul>
  *   <li id="optiongroup:Paths-to-programs">Paths to programs
  *       <ul>
@@ -149,21 +151,21 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *             program. [default: svn]
  *         <li id="option:insecure"><b>--insecure=</b><i>boolean</i>. If true, use --insecure when
  *             invoking programs. [default: false]
- *         <li id="option:cvs-arg"><b>--cvs-arg=</b><i>string</i> {@code [+]}. Extra argument to
- *             pass to the cvs program.
- *         <li id="option:git-arg"><b>--git-arg=</b><i>string</i> {@code [+]}. Extra argument to
- *             pass to the git program.
- *         <li id="option:hg-arg"><b>--hg-arg=</b><i>string</i> {@code [+]}. Extra argument to pass
- *             to the hg program.
- *         <li id="option:svn-arg"><b>--svn-arg=</b><i>string</i> {@code [+]}. Extra argument to
- *             pass to the svn program.
+ *         <li id="option:cvs-arg"><b>--cvs-arg=</b><i>string</i> <code>[+]</code>. Extra argument
+ *             to pass to the cvs program.
+ *         <li id="option:git-arg"><b>--git-arg=</b><i>string</i> <code>[+]</code>. Extra argument
+ *             to pass to the git program.
+ *         <li id="option:hg-arg"><b>--hg-arg=</b><i>string</i> <code>[+]</code>. Extra argument to
+ *             pass to the hg program.
+ *         <li id="option:svn-arg"><b>--svn-arg=</b><i>string</i> <code>[+]</code>. Extra argument
+ *             to pass to the svn program.
  *       </ul>
  *   <li id="optiongroup:Diagnostics">Diagnostics
  *       <ul>
  *         <li id="option:show"><b>--show=</b><i>boolean</i>. If true, display each command as it is
  *             executed. [default: false]
  *         <li id="option:print-directory"><b>--print-directory=</b><i>boolean</i>. If true, print
- *             the directory before executing commands in it. [default: false]
+ *             the directory (and the origin URL) before executing commands in it. [default: false]
  *         <li id="option:dry-run"><b>--dry-run=</b><i>boolean</i>. Perform a "dry run": print
  *             commands but do not execute them. [default: false]
  *         <li id="option:quiet"><b>-q</b> <b>--quiet=</b><i>boolean</i>. If true, run quietly
@@ -177,7 +179,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *       </ul>
  * </ul>
  *
- * {@code [+]} means option can be specified multiple times
+ * <code>[+]</code> means option can be specified multiple times
  * <!-- end options doc -->
  *
  * <p><b>File format for {@code .mvc-checkouts} file</b>
@@ -1520,7 +1522,7 @@ public class MultiVersionControl {
               // "--filter=blob:none" makes cloning fast and reduces disk space.  It makes a
               // subsequent `git blame` command slower, since it has retrieve information from the
               // remote repository.  It makes pulling from the cloned repository impossible.
-              pb.command(gitExecutable, "clone", "--recursive", "--", c.repository, dirbase);
+              pb.command(gitExecutable, "clone", /* "--recursive", */ "--", c.repository, dirbase);
               addArgs(pb, gitArg);
             }
             case HG -> {
@@ -1760,7 +1762,7 @@ public class MultiVersionControl {
                   new Replacer(
                       "((^|\\n)CONFLICT \\(content\\): Merge conflict in )", "$1" + dir + "/"));
               replacers.add(new Replacer("(^|\\n)([ACDMRU]\t)", "$1$2" + dir + "/"));
-              pb.command(gitExecutable, "pull", "-q", "--recurse-submodules");
+              pb.command(gitExecutable, "pull", "-q" /*, "--recurse-submodules"*/);
               addArgs(pb, gitArg);
               // prune branches; alternately do "git remote prune origin"; "git gc" doesn't do this.
               pb2.command(gitExecutable, "fetch", "-p");
