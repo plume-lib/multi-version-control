@@ -464,7 +464,7 @@ public class MultiVersionControl {
    * @return path with "~" expanded
    */
   private static String expandTilde(String path) {
-    return path.replaceFirst("^~", home);
+    return path.replaceFirst("^~", Matcher.quoteReplacement(home));
   }
 
   /**
