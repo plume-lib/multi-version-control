@@ -45,9 +45,9 @@ import org.plumelib.options.Options;
 import org.plumelib.util.EntryReader;
 import org.plumelib.util.EntryReader.CommentFormat;
 import org.plumelib.util.EntryReader.EntryFormat;
-import org.plumelib.util.FilesPlume;
-import org.plumelib.util.StringsPlume;
-import org.plumelib.util.UtilPlume;
+import org.plumelib.util.FilesP;
+import org.plumelib.util.StringsP;
+import org.plumelib.util.UtilP;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNURL;
 import org.tmatesoft.svn.core.auth.ISVNAuthenticationManager;
@@ -878,7 +878,7 @@ public class MultiVersionControl {
         }
 
         String dirname;
-        String root = StringsPlume.replaceSuffix(currentRoot, "/", "");
+        String root = StringsP.replaceSuffix(currentRoot, "/", "");
         String module = null;
 
         int spacePos = line.lastIndexOf(' ');
@@ -1096,7 +1096,7 @@ public class MultiVersionControl {
       return;
     }
 
-    String pathInRepo = FilesPlume.readString(repositoryFile.toPath()).trim();
+    String pathInRepo = FilesP.readString(repositoryFile.toPath()).trim();
     @NonNull File repoFileRoot = new File(pathInRepo);
     for (File parent = repoFileRoot.getParentFile();
         parent != null;
@@ -1119,7 +1119,7 @@ public class MultiVersionControl {
       pathInRepoAtCheckout = dirRelative.getName();
     }
 
-    String repoRoot = FilesPlume.readString(rootFile.toPath()).trim();
+    String repoRoot = FilesP.readString(rootFile.toPath()).trim();
     checkouts.add(new Checkout(RepoType.CVS, dirRelative, repoRoot, pathInRepoAtCheckout));
   }
 
@@ -1144,7 +1144,7 @@ public class MultiVersionControl {
         if (pathsSection != null) {
           repository = pathsSection.get("default");
           if (repository != null) {
-            repository = StringsPlume.replaceSuffix(repository, "/", "");
+            repository = StringsP.replaceSuffix(repository, "/", "");
           }
         }
       } catch (IOException e) {
@@ -1165,7 +1165,7 @@ public class MultiVersionControl {
    */
   static Checkout dirToCheckoutGit(File gitDir, File parentDir) throws DirectoryDoesNotExist {
     // TODO: Must pass parentDir to `backticks`, when next plume-util is released.
-    String repository = UtilPlume.backticks("git", "config", "remote.origin.url").trim();
+    String repository = UtilP.backticks("git", "config", "remote.origin.url").trim();
     return new Checkout(RepoType.GIT, parentDir, repository, null);
   }
 
@@ -2086,6 +2086,6 @@ public class MultiVersionControl {
    * @return the shell command for the process
    */
   String command(ProcessBuilder pb) {
-    return "  cd " + pb.directory() + "\n  " + StringsPlume.join(" ", pb.command());
+    return "  cd " + pb.directory() + "\n  " + StringsP.join(" ", pb.command());
   }
 }
