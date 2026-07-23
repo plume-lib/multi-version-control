@@ -1378,7 +1378,6 @@ public class MultiVersionControl {
    *
    * @param checkouts the clones and checkouts to process
    */
-  @SuppressWarnings("PMD.SwitchDensity")
   public void process(Set<Checkout> checkouts) {
     // Always run at least one command, but sometimes up to three.
     ProcessBuilder pb = new ProcessBuilder("");
