@@ -334,7 +334,7 @@ public class MultiVersionControl {
   @Option("Timeout for each command, in seconds")
   public int timeout = 600;
 
-  // Default is false because searching whole directory structure is slow.
+  // Default is false because searching the whole directory structure is slow.
   /** If true, search for all clones, not just those listed in a file. */
   @OptionGroup("Searching for clones")
   @Option("Search for all clones, not just those listed in a file")
@@ -981,7 +981,7 @@ public class MultiVersionControl {
   //   }
 
   /**
-   * Find all checkouts at or under the given directory (or, as a special case, also its parent --
+   * Finds all checkouts at or under the given directory (or, as a special case, also its parent --
    * could rewrite to avoid that case), and adds them to checkouts. Works by checking whether dir or
    * any of its descendants is a version control directory.
    *
@@ -1340,7 +1340,7 @@ public class MultiVersionControl {
 
   /**
    * A Replacer does string substitution, to make output more user-friendly. Examples are
-   * suppressing noise output or expanding relative file names.
+   * suppressing noisy output or expanding relative file names.
    */
   static class Replacer {
     /** The regular expression matching text that should be replaced. */
