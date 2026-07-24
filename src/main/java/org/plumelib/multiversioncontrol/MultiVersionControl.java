@@ -938,10 +938,8 @@ public class MultiVersionControl {
           }
         }
       }
-    } catch (IOException e) {
-      System.err.printf("There is a problem with reading the file %s: %s", file.getPath(), e);
-      throw new UncheckedIOException(e);
     }
+    // Let any IOException propagate to the caller (main), which reports it and continues.
     if (debug) {
       System.out.printf("Here are the checkouts:%n");
       for (Checkout c : checkouts) {
@@ -1164,8 +1162,9 @@ public class MultiVersionControl {
    * @throws DirectoryDoesNotExist if the directory does not exist
    */
   static Checkout dirToCheckoutGit(File gitDir, File parentDir) throws DirectoryDoesNotExist {
-    // TODO: Must pass parentDir to `backticks`, when next plume-util is released.
-    String repository = UtilP.backticks("git", "config", "remote.origin.url").trim();
+    // Run `git config` in parentDir, so that it reports the URL of this clone rather than of
+    // whatever repository happens to contain the current working directory.
+    String repository = UtilP.backticks(parentDir, "git", "config", "remote.origin.url").trim();
     return new Checkout(RepoType.GIT, parentDir, repository, null);
   }
 
@@ -1855,18 +1854,18 @@ public class MultiVersionControl {
       if (printDirectory) {
         System.out.println(dir + " :");
         pb5.directory(dir);
-        perform_command(pb5, Collections.emptyList(), true);
+        performCommand(pb5, Collections.emptyList(), true);
       }
-      perform_command(pb, replacers, showNormalOutput);
+      performCommand(pb, replacers, showNormalOutput);
       if (!pb2.command().isEmpty()) {
-        perform_command(pb2, replacers, showNormalOutput);
+        performCommand(pb2, replacers, showNormalOutput);
       }
       if (!pb3.command().isEmpty()) {
-        perform_command(pb3, replacers3, showNormalOutput);
+        performCommand(pb3, replacers3, showNormalOutput);
       }
       // TODO:
       // if (!pb4.command().isEmpty()) {
-      //   int isAncestorStatus = perform_command(pb4, replacers4, showNormalOutput);
+      //   int isAncestorStatus = performCommand(pb4, replacers4, showNormalOutput);
       //   if (isAncestorStatus == 0) {
       //     // TODO: Output this message only for non-master branches.
       //     // System.out.println("No changes committed in " + dir);
@@ -1937,7 +1936,7 @@ public class MultiVersionControl {
    *     normally. Ordinarily, output is displayed only if the process completed erroneously.
    * @return the status code: 0 for normal completion, non-zero for erroneous completion
    */
-  int perform_command(ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
+  int performCommand(ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
     if (show) {
       System.out.println(command(pb));
       System.out.flush();
@@ -2014,13 +2013,7 @@ public class MultiVersionControl {
     // I could try printing always, to better understand this question.
     if (showNormalOutput || exitValue != 0 || debugReplacers || debugProcessOutput) {
       // Filter then print the output.
-      String output;
-      try {
-        String tmpOutput = outStream.toString(UTF_8);
-        output = tmpOutput;
-      } catch (RuntimeException e) {
-        throw new Error("Exception getting process standard output");
-      }
+      String output = outStream.toString(UTF_8);
 
       if (debugReplacers || debugProcessOutput) {
         System.out.println("preoutput=<<<" + output + ">>>");
