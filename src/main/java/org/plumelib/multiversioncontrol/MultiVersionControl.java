@@ -805,7 +805,8 @@ public class MultiVersionControl {
    * Read checkouts from the file (in {@code .mvc-checkouts} format), and add them to the set.
    *
    * @param file the .mvc-checkouts file
-   * @param checkouts the set to populate; is side-effected by this method
+   * @param checkouts the set to populate; is side-effected by this method, but only if the whole
+   *     file was read successfully
    * @param searchPrefix if true, search for all clones whose directory is a prefix of one in the
    *     configuration file
    * @throws IOException if there is trouble reading the file (or file system?)
@@ -815,6 +816,10 @@ public class MultiVersionControl {
     RepoType currentType = RepoType.BZR; // arbitrary choice, to avoid uninitialized variable
     String currentRoot = null;
     boolean currentRootIsRepos = false;
+
+    // Accumulate into a temporary set, so that if reading the file fails partway through, the
+    // caller's set is not left holding a partial (and therefore misleading) configuration.
+    Set<Checkout> fileCheckouts = new LinkedHashSet<>();
 
     try (EntryReader er = new EntryReader(file)) {
       for (String lineUntrimmed : er) {
@@ -903,7 +908,7 @@ public class MultiVersionControl {
         }
 
         Checkout checkout = new Checkout(currentType, dir, root, module);
-        checkouts.add(checkout);
+        fileCheckouts.add(checkout);
 
         // TODO: This can result in near-duplicates in the checkouts set.  Suppose that the
         // .mvc-checkouts file contains two lines
@@ -929,7 +934,7 @@ public class MultiVersionControl {
           }
           for (File sibling : siblings) {
             try {
-              checkouts.add(new Checkout(currentType, sibling, root, module));
+              fileCheckouts.add(new Checkout(currentType, sibling, root, module));
             } catch (DirectoryDoesNotExist e) {
               // A directory is an extension of a file in
               // .mvc-checkouts, but lacks a (e.g.) .git subdir.  Just
@@ -939,7 +944,11 @@ public class MultiVersionControl {
         }
       }
     }
-    // Let any IOException propagate to the caller (main), which reports it and continues.
+    // Any IOException propagates to the caller (main), which reports it and continues.  Because the
+    // merge below has not happened yet in that case, the caller never processes a partially read
+    // configuration file.
+    checkouts.addAll(fileCheckouts);
+
     if (debug) {
       System.out.printf("Here are the checkouts:%n");
       for (Checkout c : checkouts) {
