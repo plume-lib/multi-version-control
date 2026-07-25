@@ -805,7 +805,8 @@ public class MultiVersionControl {
    * Read checkouts from the file (in {@code .mvc-checkouts} format), and add them to the set.
    *
    * @param file the .mvc-checkouts file
-   * @param checkouts the set to populate; is side-effected by this method
+   * @param checkouts the set to populate; is side-effected by this method, but only if the whole
+   *     file was read successfully
    * @param searchPrefix if true, search for all clones whose directory is a prefix of one in the
    *     configuration file
    * @throws IOException if there is trouble reading the file (or file system?)
@@ -815,6 +816,10 @@ public class MultiVersionControl {
     RepoType currentType = RepoType.BZR; // arbitrary choice, to avoid uninitialized variable
     String currentRoot = null;
     boolean currentRootIsRepos = false;
+
+    // Accumulate into a temporary set, so that if reading the file fails partway through, the
+    // caller's set is not left holding a partial (and therefore misleading) configuration.
+    Set<Checkout> fileCheckouts = new LinkedHashSet<>();
 
     try (EntryReader er = new EntryReader(file)) {
       for (String lineUntrimmed : er) {
@@ -903,7 +908,7 @@ public class MultiVersionControl {
         }
 
         Checkout checkout = new Checkout(currentType, dir, root, module);
-        checkouts.add(checkout);
+        fileCheckouts.add(checkout);
 
         // TODO: This can result in near-duplicates in the checkouts set.  Suppose that the
         // .mvc-checkouts file contains two lines
@@ -929,7 +934,7 @@ public class MultiVersionControl {
           }
           for (File sibling : siblings) {
             try {
-              checkouts.add(new Checkout(currentType, sibling, root, module));
+              fileCheckouts.add(new Checkout(currentType, sibling, root, module));
             } catch (DirectoryDoesNotExist e) {
               // A directory is an extension of a file in
               // .mvc-checkouts, but lacks a (e.g.) .git subdir.  Just
@@ -938,10 +943,12 @@ public class MultiVersionControl {
           }
         }
       }
-    } catch (IOException e) {
-      System.err.printf("There is a problem with reading the file %s: %s", file.getPath(), e);
-      throw new UncheckedIOException(e);
     }
+    // Any IOException propagates to the caller (main), which reports it and continues.  Because the
+    // merge below has not happened yet in that case, the caller never processes a partially read
+    // configuration file.
+    checkouts.addAll(fileCheckouts);
+
     if (debug) {
       System.out.printf("Here are the checkouts:%n");
       for (Checkout c : checkouts) {
@@ -1164,8 +1171,9 @@ public class MultiVersionControl {
    * @throws DirectoryDoesNotExist if the directory does not exist
    */
   static Checkout dirToCheckoutGit(File gitDir, File parentDir) throws DirectoryDoesNotExist {
-    // TODO: Must pass parentDir to `backticks`, when next plume-util is released.
-    String repository = UtilP.backticks("git", "config", "remote.origin.url").trim();
+    // Run `git config` in parentDir, so that it reports the URL of this clone rather than of
+    // whatever repository happens to contain the current working directory.
+    String repository = UtilP.backticks(parentDir, "git", "config", "remote.origin.url").trim();
     return new Checkout(RepoType.GIT, parentDir, repository, null);
   }
 
@@ -1855,18 +1863,18 @@ public class MultiVersionControl {
       if (printDirectory) {
         System.out.println(dir + " :");
         pb5.directory(dir);
-        perform_command(pb5, Collections.emptyList(), true);
+        performCommand(pb5, Collections.emptyList(), true);
       }
-      perform_command(pb, replacers, showNormalOutput);
+      performCommand(pb, replacers, showNormalOutput);
       if (!pb2.command().isEmpty()) {
-        perform_command(pb2, replacers, showNormalOutput);
+        performCommand(pb2, replacers, showNormalOutput);
       }
       if (!pb3.command().isEmpty()) {
-        perform_command(pb3, replacers3, showNormalOutput);
+        performCommand(pb3, replacers3, showNormalOutput);
       }
       // TODO:
       // if (!pb4.command().isEmpty()) {
-      //   int isAncestorStatus = perform_command(pb4, replacers4, showNormalOutput);
+      //   int isAncestorStatus = performCommand(pb4, replacers4, showNormalOutput);
       //   if (isAncestorStatus == 0) {
       //     // TODO: Output this message only for non-master branches.
       //     // System.out.println("No changes committed in " + dir);
@@ -1937,7 +1945,7 @@ public class MultiVersionControl {
    *     normally. Ordinarily, output is displayed only if the process completed erroneously.
    * @return the status code: 0 for normal completion, non-zero for erroneous completion
    */
-  int perform_command(ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
+  int performCommand(ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
     if (show) {
       System.out.println(command(pb));
       System.out.flush();
@@ -2014,13 +2022,7 @@ public class MultiVersionControl {
     // I could try printing always, to better understand this question.
     if (showNormalOutput || exitValue != 0 || debugReplacers || debugProcessOutput) {
       // Filter then print the output.
-      String output;
-      try {
-        String tmpOutput = outStream.toString(UTF_8);
-        output = tmpOutput;
-      } catch (RuntimeException e) {
-        throw new Error("Exception getting process standard output");
-      }
+      String output = outStream.toString(UTF_8);
 
       if (debugReplacers || debugProcessOutput) {
         System.out.println("preoutput=<<<" + output + ">>>");
