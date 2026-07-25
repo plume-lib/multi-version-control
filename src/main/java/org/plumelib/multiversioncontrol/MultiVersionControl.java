@@ -1854,8 +1854,10 @@ public class MultiVersionControl {
 
       if (printDirectory) {
         System.out.println(dir + " :");
-        pb5.directory(dir);
-        perform_command(pb5, Collections.emptyList(), true);
+        if (c.repoType == RepoType.GIT && dir.isDirectory()) {
+          pb5.directory(dir);
+          perform_command(pb5, Collections.emptyList(), true);
+        }
       }
       perform_command(pb, replacers, showNormalOutput);
       if (!pb2.command().isEmpty()) {
