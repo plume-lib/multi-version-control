@@ -1,6 +1,6 @@
 [versions]
 
-checker-framework = "4.2.1"
+checker-framework = "4.2.2"
 
 google-java-format = "1.28.0"
 
@@ -35,14 +35,14 @@ ini4j = { module = "org.ini4j:ini4j", version = "0.5.4" }
 # Version only:  for the JaCoCo plugin's `toolVersion`.
 jacoco = { module = "org.jacoco:org.jacoco.core", version.ref = "jacoco" }
 
-options = { module = "org.plumelib:options", version = "3.0.0-SNAPSHOT" }
+options = { module = "org.plumelib:options", version = "3.0.0" }
 
-plume-util = { module = "org.plumelib:plume-util", version = "2.0.0-SNAPSHOT" }
+plume-util = { module = "org.plumelib:plume-util", version = "2.0.0" }
 
 # Version only:  for the PMD plugin's `toolVersion`.
 pmd-java = { module = "net.sourceforge.pmd:pmd-java", version.ref = "pmd" }
 
-require-javadoc = { module = "org.plumelib:require-javadoc", version = "3.0.0-SNAPSHOT" }
+require-javadoc = { module = "org.plumelib:require-javadoc", version = "3.0.0" }
 
 svnkit = { module = "org.tmatesoft.svnkit:svnkit", version = "1.10.11" }
 
