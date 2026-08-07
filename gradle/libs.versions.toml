@@ -14,11 +14,11 @@ error-prone-core = "com.google.errorprone:error_prone_core:2.50.0"
 
 ini4j = "org.ini4j:ini4j:0.5.4"
 
-options = "org.plumelib:options:3.0.0-SNAPSHOT"
+options = "org.plumelib:options:3.0.0"
 
-plume-util = "org.plumelib:plume-util:2.0.0-SNAPSHOT"
+plume-util = "org.plumelib:plume-util:2.0.0"
 
-require-javadoc = "org.plumelib:require-javadoc:3.0.0-SNAPSHOT"
+require-javadoc = "org.plumelib:require-javadoc:3.0.0"
 
 svnkit = "org.tmatesoft.svnkit:svnkit:1.10.11"
 
