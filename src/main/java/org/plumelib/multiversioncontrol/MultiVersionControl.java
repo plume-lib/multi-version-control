@@ -109,74 +109,134 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *
  * <ul>
  *   <li id="optiongroup:Configuration-file">Configuration file
- *       <ul>
- *         <li id="option:home"><b>--home=</b><i>string</i>. User home directory. [default Java
- *             {@code user.home} property].
- *         <li id="option:checkouts"><b>--checkouts=</b><i>string</i>. File with list of clones. Set
- *             it to /dev/null to suppress reading. [default {@code .mvc-checkouts} in home
- *             directory]
- *       </ul>
+ *                                           <ul>
+ *                                             <li id="option:home"><b>--home=</b><i>string</i>.
+ *                                                                  User home directory. [default
+ *                                                                  Java {@code user.home}
+ *                                                                  property].
+ *                                             <li id="option:checkouts"><b>--checkouts=</b><i>string</i>.
+ *                                                                       File with list of clones.
+ *                                                                       Set it to /dev/null to
+ *                                                                       suppress reading. [default
+ *                                                                       {@code .mvc-checkouts} in
+ *                                                                       home directory]
+ *                                           </ul>
  *   <li id="optiongroup:Miscellaneous-options">Miscellaneous options
- *       <ul>
- *         <li id="option:redo-existing"><b>--redo-existing=</b><i>boolean</i>. If false, clone
- *             command skips existing directories. [default: false]
- *         <li id="option:timeout"><b>--timeout=</b><i>int</i>. Terminating the process can leave
- *             the repository in a bad state, so set this rather high for safety. Also, the timeout
- *             needs to account for the time to run hooks (that might recompile or run tests).
- *             [default: 600]
- *       </ul>
+ *                                              <ul>
+ *                                                <li id="option:redo-existing"><b>--redo-existing=</b><i>boolean</i>.
+ *                                                                              If false, clone
+ *                                                                              command skips
+ *                                                                              existing
+ *                                                                              directories.
+ *                                                                              [default: false]
+ *                                                <li id="option:timeout"><b>--timeout=</b><i>int</i>.
+ *                                                                        Terminating the process
+ *                                                                        can leave the repository
+ *                                                                        in a bad state, so set
+ *                                                                        this rather high for
+ *                                                                        safety. Also, the timeout
+ *                                                                        needs to account for the
+ *                                                                        time to run hooks (that
+ *                                                                        might recompile or run
+ *                                                                        tests). [default: 600]
+ *                                              </ul>
  *   <li id="optiongroup:Searching-for-clones">Searching for clones
- *       <ul>
- *         <li id="option:search"><b>--search=</b><i>boolean</i>. If true, search for all clones,
- *             not just those listed in a file. [default: false]
- *         <li id="option:search-prefix"><b>--search-prefix=</b><i>boolean</i>. If true, search for
- *             all clones whose directory is a prefix of one in the configuration file. This is
- *             especially useful when working with <a
- *             href="https://github.com/plume-lib/manage-git-branches">manage-git-branches</a>.
- *             [default: false]
- *         <li id="option:dir"><b>--dir=</b><i>string</i> <code>[+]</code>. Directory under which to
- *             search for clones, when using {@code --search} [default = home directory].
- *         <li id="option:ignore-dir"><b>--ignore-dir=</b><i>string</i> <code>[+]</code>.
- *             Directories under which to NOT search for clones. May include leading "~/".
- *       </ul>
+ *                                             <ul>
+ *                                               <li id="option:search"><b>--search=</b><i>boolean</i>.
+ *                                                                      If true, search for all
+ *                                                                      clones, not just those
+ *                                                                      listed in a file. [default:
+ *                                                                      false]
+ *                                               <li id="option:search-prefix"><b>--search-prefix=</b><i>boolean</i>.
+ *                                                                             If true, search for
+ *                                                                             all clones whose
+ *                                                                             directory is a prefix
+ *                                                                             of one in the
+ *                                                                             configuration file.
+ *                                                                             This is especially
+ *                                                                             useful when working
+ *                                                                             with <a
+ *                                                                             href="https://github.com/plume-lib/manage-git-branches">manage-git-branches</a>.
+ *                                                                             [default: false]
+ *                                               <li id="option:dir"><b>--dir=</b><i>string</i>
+ *                                                                   <code>[+]</code>. Directory
+ *                                                                   under which to search for
+ *                                                                   clones, when using {@code
+ *                                                                   --search} [default = home
+ *                                                                   directory].
+ *                                               <li id="option:ignore-dir"><b>--ignore-dir=</b><i>string</i>
+ *                                                                          <code>[+]</code>.
+ *                                                                          Directories under which
+ *                                                                          to NOT search for
+ *                                                                          clones. May include
+ *                                                                          leading "~/".
+ *                                             </ul>
  *   <li id="optiongroup:Paths-to-programs">Paths to programs
- *       <ul>
- *         <li id="option:cvs-executable"><b>--cvs-executable=</b><i>string</i>. Path to the cvs
- *             program. [default: cvs]
- *         <li id="option:git-executable"><b>--git-executable=</b><i>string</i>. Path to the git
- *             program. [default: git]
- *         <li id="option:hg-executable"><b>--hg-executable=</b><i>string</i>. Path to the hg
- *             program. [default: hg]
- *         <li id="option:svn-executable"><b>--svn-executable=</b><i>string</i>. Path to the svn
- *             program. [default: svn]
- *         <li id="option:insecure"><b>--insecure=</b><i>boolean</i>. If true, use --insecure when
- *             invoking programs. [default: false]
- *         <li id="option:cvs-arg"><b>--cvs-arg=</b><i>string</i> <code>[+]</code>. Extra argument
- *             to pass to the cvs program.
- *         <li id="option:git-arg"><b>--git-arg=</b><i>string</i> <code>[+]</code>. Extra argument
- *             to pass to the git program.
- *         <li id="option:hg-arg"><b>--hg-arg=</b><i>string</i> <code>[+]</code>. Extra argument to
- *             pass to the hg program.
- *         <li id="option:svn-arg"><b>--svn-arg=</b><i>string</i> <code>[+]</code>. Extra argument
- *             to pass to the svn program.
- *       </ul>
+ *                                          <ul>
+ *                                            <li id="option:cvs-executable"><b>--cvs-executable=</b><i>string</i>.
+ *                                                                           Path to the cvs
+ *                                                                           program. [default: cvs]
+ *                                            <li id="option:git-executable"><b>--git-executable=</b><i>string</i>.
+ *                                                                           Path to the git
+ *                                                                           program. [default: git]
+ *                                            <li id="option:hg-executable"><b>--hg-executable=</b><i>string</i>.
+ *                                                                          Path to the hg program.
+ *                                                                          [default: hg]
+ *                                            <li id="option:svn-executable"><b>--svn-executable=</b><i>string</i>.
+ *                                                                           Path to the svn
+ *                                                                           program. [default: svn]
+ *                                            <li id="option:insecure"><b>--insecure=</b><i>boolean</i>.
+ *                                                                     If true, use --insecure when
+ *                                                                     invoking programs. [default:
+ *                                                                     false]
+ *                                            <li id="option:cvs-arg"><b>--cvs-arg=</b><i>string</i>
+ *                                                                    <code>[+]</code>. Extra
+ *                                                                    argument to pass to the cvs
+ *                                                                    program.
+ *                                            <li id="option:git-arg"><b>--git-arg=</b><i>string</i>
+ *                                                                    <code>[+]</code>. Extra
+ *                                                                    argument to pass to the git
+ *                                                                    program.
+ *                                            <li id="option:hg-arg"><b>--hg-arg=</b><i>string</i>
+ *                                                                   <code>[+]</code>. Extra
+ *                                                                   argument to pass to the hg
+ *                                                                   program.
+ *                                            <li id="option:svn-arg"><b>--svn-arg=</b><i>string</i>
+ *                                                                    <code>[+]</code>. Extra
+ *                                                                    argument to pass to the svn
+ *                                                                    program.
+ *                                          </ul>
  *   <li id="optiongroup:Diagnostics">Diagnostics
- *       <ul>
- *         <li id="option:show"><b>--show=</b><i>boolean</i>. If true, display each command as it is
- *             executed. [default: false]
- *         <li id="option:print-directory"><b>--print-directory=</b><i>boolean</i>. If true, print
- *             the directory (and the origin URL) before executing commands in it. [default: false]
- *         <li id="option:dry-run"><b>--dry-run=</b><i>boolean</i>. Perform a "dry run": print
- *             commands but do not execute them. [default: false]
- *         <li id="option:quiet"><b>-q</b> <b>--quiet=</b><i>boolean</i>. If true, run quietly
- *             (e.g., no output about missing directories). [default: true]
- *         <li id="option:debug"><b>--debug=</b><i>boolean</i>. Print debugging output. [default:
- *             false]
- *         <li id="option:debug-replacers"><b>--debug-replacers=</b><i>boolean</i>. Debug
- *             'replacers' that filter command output. [default: false]
- *         <li id="option:debug-process-output"><b>--debug-process-output=</b><i>boolean</i>.
- *             Lightweight debugging of 'replacers' that filter command output. [default: false]
- *       </ul>
+ *                                    <ul>
+ *                                      <li id="option:show"><b>--show=</b><i>boolean</i>. If true,
+ *                                                           display each command as it is executed.
+ *                                                           [default: false]
+ *                                      <li id="option:print-directory"><b>--print-directory=</b><i>boolean</i>.
+ *                                                                      If true, print the directory
+ *                                                                      (and the origin URL) before
+ *                                                                      executing commands in it.
+ *                                                                      [default: false]
+ *                                      <li id="option:dry-run"><b>--dry-run=</b><i>boolean</i>.
+ *                                                              Perform a "dry run": print commands
+ *                                                              but do not execute them. [default:
+ *                                                              false]
+ *                                      <li id="option:quiet"><b>-q</b>
+ *                                                            <b>--quiet=</b><i>boolean</i>. If
+ *                                                            true, run quietly (e.g., no output
+ *                                                            about missing directories). [default:
+ *                                                            true]
+ *                                      <li id="option:debug"><b>--debug=</b><i>boolean</i>. Print
+ *                                                            debugging output. [default: false]
+ *                                      <li id="option:debug-replacers"><b>--debug-replacers=</b><i>boolean</i>.
+ *                                                                      Debug 'replacers' that
+ *                                                                      filter command output.
+ *                                                                      [default: false]
+ *                                      <li id="option:debug-process-output"><b>--debug-process-output=</b><i>boolean</i>.
+ *                                                                           Lightweight debugging
+ *                                                                           of 'replacers' that
+ *                                                                           filter command output.
+ *                                                                           [default: false]
+ *                                    </ul>
  * </ul>
  *
  * <code>[+]</code> means option can be specified multiple times
