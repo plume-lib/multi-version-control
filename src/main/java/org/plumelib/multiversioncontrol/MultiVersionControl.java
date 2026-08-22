@@ -364,7 +364,6 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
 //       '*' a newer revision exists on the server
 //       ' ' the working copy is up to date
 
-@SuppressWarnings("PMD.TooManyFields")
 public class MultiVersionControl {
 
   /** User home directory. [default Java {@code user.home} property]. */
