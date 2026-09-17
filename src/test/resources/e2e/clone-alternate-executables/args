@@ -1,0 +1,5 @@
+--cvs-executable=/usr/local/bin/cvs
+--git-executable=~/bin/my-git
+--hg-executable=hg-3
+--svn-executable=/opt/svn/bin/svn
+clone

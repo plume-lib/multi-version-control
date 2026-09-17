@@ -1,0 +1,1 @@
+A "~" in an executable's path is not expanded; the value is used literally.

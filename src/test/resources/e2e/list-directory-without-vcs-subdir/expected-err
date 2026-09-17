@@ -1,0 +1,2 @@
+Problem reading file ${HOME}/.mvc-checkouts: Directory ${HOME}/not-a-clone exists but .git subdirectory does not exist
+

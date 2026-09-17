@@ -1,0 +1,3 @@
+ M ${HOME}/dirty/file.txt
+?? ${HOME}/dirty/untracked.txt
+unpushed commits: ${HOME}/ahead

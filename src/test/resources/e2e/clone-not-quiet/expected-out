@@ -1,0 +1,4 @@
+No --dry-run argument, so using --dry-run=true; override with --dry-run=false
+  mkdir -p ${HOME}/git
+  cd ${HOME}/git
+  git clone -- https://github.com/plume-lib/options.git options

@@ -1,0 +1,3 @@
+SVN ${HOME}/svn/annotations svn+ssh://example.com/repos/annotations null
+SVN ${HOME}/svn/dir2 svn+ssh://example.com/repos/annotations null
+SVN ${HOME}/svn/dir3 svn+ssh://example.com/repos/annotations null

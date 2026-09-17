@@ -1,0 +1,3 @@
+  mkdir -p ${HOME}/a/b/c
+  cd ${HOME}/a/b/c
+  git clone -- https://github.com/plume-lib/options.git options

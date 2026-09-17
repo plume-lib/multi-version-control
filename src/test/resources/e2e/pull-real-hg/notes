@@ -1,0 +1,4 @@
+"pull" runs "hg fetch", which is an optional extension.  When it is not enabled, hg prints an
+error, which the program passes through after removing the "abort: " prefix.  The goal file
+records the behavior when fetch is unavailable, which is the usual case; if the fetch extension is
+enabled, this test fails and the goal file needs an update.

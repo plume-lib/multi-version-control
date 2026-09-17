@@ -1,0 +1,2 @@
+M     ${HOME}/wc/file.txt
+?     ${HOME}/wc/untracked.txt

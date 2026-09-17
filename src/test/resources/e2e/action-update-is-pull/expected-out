@@ -1,0 +1,4 @@
+  cd ${HOME}/git/options
+  git pull -q
+  cd ${HOME}/git/options
+  git fetch -p

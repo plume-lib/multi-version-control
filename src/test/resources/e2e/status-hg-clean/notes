@@ -1,0 +1,3 @@
+The program runs "hg outgoing" and "hg shelve -l" as well as "hg status", and suppresses the
+output of all three when there is nothing to report.  Suppressing the "hg shelve" output matters
+because shelve is an optional extension that need not be enabled.

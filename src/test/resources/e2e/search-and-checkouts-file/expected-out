@@ -1,0 +1,2 @@
+GIT ${HOME}/from-file https://github.com/plume-lib/options.git null
+GIT ${HOME}/found-by-search ${HOME}/remote.git null

@@ -35,6 +35,9 @@ dependencies {
   implementation(libs.options)
   implementation(libs.plume.util)
   implementation(libs.svnkit)
+
+  testImplementation(libs.junit.jupiter)
+  testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 application {
@@ -158,6 +161,44 @@ checkerFramework {
     "-AwarnRedundantAnnotations",
     "-AwarnUnneededSuppressions",
   ]
+}
+
+
+// Testing
+//
+// This block appears after the `checkerFramework` block because configuring the `test` task
+// resolves the test compile tasks, which the Checker Framework plugin refuses to configure until
+// its version is set.
+
+test {
+  useJUnitPlatform()
+  // The end-to-end tests run the program in a subprocess, using this classpath.  Do not use the
+  // test JVM's own `java.class.path` property, whose value Gradle does not guarantee.
+  systemProperty("mvc.test.classpath", sourceSets.test.runtimeClasspath.asPath)
+  // Where to find the end-to-end test cases, and where to write goal files when regenerating them.
+  systemProperty("mvc.test.casesDir", file("src/test/resources/e2e").absolutePath)
+  // Run `./gradlew test -Pregenerate` to overwrite the goal files with the program's actual
+  // output.  Always inspect the resulting diffs before committing them.
+  if (project.hasProperty("regenerate")) {
+    systemProperty("mvc.test.regenerate", "true")
+    outputs.upToDateWhen { false }
+  }
+  doFirst {
+    // The program under test runs in a subprocess, so run the coverage agent there rather than
+    // (uselessly) in the test JVM.  Every subprocess appends to the same file, which is safe
+    // because the tests are sequential and each subprocess writes the file as it exits.
+    // `asJvmArg` writes the destination as a path relative to the project directory, but a
+    // subprocess runs in a temporary directory, so make the destination absolute.
+    String agentArg = jacoco.asJvmArg.replaceFirst(/destfile=([^,]*)/) { all, destination ->
+      "destfile=" + file(destination).absolutePath
+    }
+    systemProperty("mvc.test.jacocoArg", agentArg)
+  }
+  testLogging {
+    events("failed")
+    exceptionFormat = "full"
+    showStandardStreams = false
+  }
 }
 
 

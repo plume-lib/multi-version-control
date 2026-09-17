@@ -1,0 +1,5 @@
+--checkouts=/dev/null
+--search
+--dir=~/first
+--dir=~/second
+list

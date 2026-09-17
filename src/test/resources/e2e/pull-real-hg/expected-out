@@ -1,0 +1,6 @@
+hg: unknown command 'fetch'
+'fetch' is provided by the following extension:
+
+    fetch         pull, update and merge in one command (DEPRECATED)
+
+(use 'hg help extensions' for information on enabling extensions)

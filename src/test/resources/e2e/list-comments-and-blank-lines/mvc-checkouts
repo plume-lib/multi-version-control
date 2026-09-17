@@ -1,0 +1,11 @@
+# A comment at the beginning of the file.
+
+GITREPOS: https://github.com/plume-lib/options.git
+# A comment within a section.
+~/git/options
+
+   # An indented comment.
+
+
+GITREPOS: https://github.com/plume-lib/plume-util.git
+   ~/git/plume-util

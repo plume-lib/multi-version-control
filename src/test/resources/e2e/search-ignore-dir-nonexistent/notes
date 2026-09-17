@@ -1,0 +1,1 @@
+A nonexistent --ignore-dir is a warning, not an error; the search still happens.

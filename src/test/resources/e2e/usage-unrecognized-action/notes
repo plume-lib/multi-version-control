@@ -1,0 +1,2 @@
+The "Unrecognized action" message is not terminated by a line separator, so the usage message
+runs onto the same line.  The goal file records the current (wrong) behavior.

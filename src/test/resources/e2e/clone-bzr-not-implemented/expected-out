@@ -1,0 +1,3 @@
+bzr handling not yet implemented: skipping ${HOME}/proj
+  cd ${HOME}
+  echo command not set

@@ -1,0 +1,2 @@
+--print-directory prints the directory and its origin URL before the output for that directory,
+even when there is nothing else to report.

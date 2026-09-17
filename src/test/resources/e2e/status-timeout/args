@@ -1,0 +1,3 @@
+--timeout=1
+--git-executable=${HOME}/slow-git
+status

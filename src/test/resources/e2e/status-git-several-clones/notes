@@ -1,0 +1,2 @@
+Clones are processed in the order in which the configuration file lists them, and a clone with
+nothing to report contributes no output.

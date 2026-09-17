@@ -1,0 +1,5 @@
+The program recognizes Bazaar clones but does not act on them.
+
+As for the "status" and "clone" actions, the program goes on to run the placeholder command "echo
+command not set".  Here its output is invisible, because "pull" prints a command's output only if
+the command fails, and "echo" succeeds.

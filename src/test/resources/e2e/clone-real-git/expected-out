@@ -1,0 +1,3 @@
+Parent directory ${HOME}/parent does not exist (creating)
+  cd ${HOME}/parent
+  git clone -- ${HOME}/remote.git new-clone
