@@ -64,10 +64,10 @@ import org.junit.jupiter.api.TestFactory;
  * -Pregenerate}. Always inspect the resulting diffs: a goal file should record what the program
  * ought to print, not merely what it does print.
  */
-public final class EndToEndTest {
+final class EndToEndTest {
 
   /** Creates a new EndToEndTest. */
-  public EndToEndTest() {}
+  EndToEndTest() {}
 
   /** The directory that contains the test case directories. */
   private static final Path casesDir =
@@ -116,7 +116,7 @@ public final class EndToEndTest {
    * @throws IOException if the test case directories cannot be read
    */
   @TestFactory
-  public List<DynamicTest> endToEndTests() throws IOException {
+  List<DynamicTest> endToEndTests() throws IOException {
     List<Path> caseDirs;
     try (Stream<Path> entries = Files.list(casesDir)) {
       caseDirs = entries.filter(Files::isDirectory).sorted().toList();
