@@ -37,16 +37,25 @@ All of these are optional except `args`.
   standard out.
 - `expected-postcheck`: Goal file for the output of `postcheck.sh`.
 - `requires`: Whitespace-separated names of programs that must be on the PATH.
-  If any is missing, the test is skipped rather than failed.
+  If any is missing, the test is skipped rather than failed.  A failure message
+  states these programs' versions, because a goal file may record the exact
+  wording of their messages.
 - `sort-output`: If this file exists, the lines of standard output are sorted
   before comparison.  Use it only where the program does not define the output
   order.
 - `notes`: Commentary for human readers; the harness ignores it.
 
+A test case directory may not contain any other file.  Without that
+restriction, a misspelled file name would silently weaken or disable part of the
+test:  a misspelled goal file would change the test into "this stream must be
+empty", and a misspelled `sort-output` would turn off sorting.
+
 Absolute pathnames vary from run to run, so before comparing the program's
 output to a goal file, the harness replaces the temporary home directory by
 `${HOME}` and the real home directory of the user who is running the tests by
-`${USER_HOME}`.
+`${USER_HOME}`.  The harness also removes the warnings that the JVM itself
+prints, from standard error only:  a line of the program's own standard output
+might start with `WARNING:`.
 
 `common.sh` is not a test case; it holds shell functions that the `setup.sh`
 scripts share.

@@ -11,6 +11,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Assumptions;
@@ -48,7 +50,8 @@ import org.junit.jupiter.api.TestFactory;
  *       is how a test checks a program output that is a file rather than text on standard out.
  *   <dt>{@code requires}
  *   <dd>Whitespace-separated names of programs that must be on the PATH. If any is missing, the
- *       test is skipped rather than failed.
+ *       test is skipped rather than failed. A failure message states these programs' versions,
+ *       because a goal file may record the exact wording of their messages.
  *   <dt>{@code sort-output}
  *   <dd>If this (possibly empty) file exists, the lines of standard output are sorted before
  *       comparison. Use this only for a test whose output order the program does not define.
@@ -58,7 +61,12 @@ import org.junit.jupiter.api.TestFactory;
  *
  * <p>Absolute pathnames vary from run to run, so before comparing the program's output to a goal
  * file, the temporary home directory is replaced by {@code ${HOME}} and the home directory of the
- * user who is running the tests is replaced by {@code ${USER_HOME}}.
+ * user who is running the tests is replaced by {@code ${USER_HOME}}. The warnings that the JVM
+ * itself prints are removed from standard error, but not from standard output, where a line that
+ * starts with "WARNING: " might be the program's own output.
+ *
+ * <p>A test case directory may not contain any file other than those listed above. Without that
+ * restriction, a misspelled file name would silently weaken or disable part of the test.
  *
  * <p>To overwrite the goal files with the program's current output, run {@code ./gradlew test
  * -Pregenerate}. Always inspect the resulting diffs: a goal file should record what the program
@@ -71,11 +79,11 @@ final class EndToEndTest {
 
   /** The directory that contains the test case directories. */
   private static final Path casesDir =
-      Path.of(getRequiredProperty("mvc.test.casesDir", "src/test/resources/e2e"));
+      Path.of(propertyOrDefault("mvc.test.casesDir", "src/test/resources/e2e"));
 
   /** The class path with which to run the program. */
   private static final String classpath =
-      getRequiredProperty("mvc.test.classpath", System.getProperty("java.class.path"));
+      propertyOrDefault("mvc.test.classpath", System.getProperty("java.class.path"));
 
   /** If true, overwrite the goal files instead of just comparing against them. */
   private static final boolean regenerate = Boolean.getBoolean("mvc.test.regenerate");
@@ -88,11 +96,38 @@ final class EndToEndTest {
    * The JVM argument that runs the code coverage agent, or the empty string if coverage is not
    * being measured. The program runs in a subprocess, so the agent must run there.
    */
-  private static final String jacocoArg = getRequiredProperty("mvc.test.jacocoArg", "");
+  private static final String jacocoArg = propertyOrDefault("mvc.test.jacocoArg", "");
+
+  /**
+   * How long to wait for a subprocess, in seconds. Every subprocess that a test runs finishes in
+   * well under a second, so a longer wait means that something has hung. Fail in that case, rather
+   * than blocking the build forever.
+   */
+  private static final int subprocessTimeoutSeconds = 600;
+
+  /**
+   * The names of the files that may appear in a test case directory. Any other file is an error,
+   * because a misspelled name would silently weaken or disable part of the test.
+   */
+  private static final Set<String> caseFileNames =
+      Set.of(
+          "args",
+          "expected-err",
+          "expected-out",
+          "expected-postcheck",
+          "expected-status",
+          "mvc-checkouts",
+          "notes",
+          "postcheck.sh",
+          "requires",
+          "setup.sh",
+          "sort-output");
 
   /**
    * Matches the warnings that the JVM prints, on some JDK versions, when SVNKit loads its native
-   * library. Whether they appear depends on the JDK version, not on the program, so remove them.
+   * library. Whether they appear depends on the JDK version, not on the program, so remove them
+   * from standard error. Standard output is not filtered, because a line of the program's own
+   * output might start with "WARNING: ".
    */
   private static final Pattern jvmWarnings =
       Pattern.compile("^WARNING: [^\n]*\n(?:WARNING: [^\n]*\n)*\n?", Pattern.MULTILINE);
@@ -104,7 +139,7 @@ final class EndToEndTest {
    * @param defaultValue the value to use if the property is not set
    * @return the value of the property, or {@code defaultValue}
    */
-  private static String getRequiredProperty(String property, String defaultValue) {
+  private static String propertyOrDefault(String property, String defaultValue) {
     String value = System.getProperty(property);
     return value == null ? defaultValue : value;
   }
@@ -137,6 +172,35 @@ final class EndToEndTest {
   //
 
   /**
+   * Throws an exception if a test case directory contains a file that the test harness does not
+   * know about, or a goal file that nothing would ever be compared against. Without this check, a
+   * misspelled file name would silently weaken or disable part of the test.
+   *
+   * @param caseDir the test case directory
+   * @throws IOException if the directory cannot be read
+   */
+  private static void checkCaseFiles(Path caseDir) throws IOException {
+    List<String> unrecognized = new ArrayList<>();
+    try (Stream<Path> entries = Files.list(caseDir)) {
+      for (Path entry : entries.sorted().toList()) {
+        String name = String.valueOf(entry.getFileName());
+        if (!caseFileNames.contains(name)) {
+          unrecognized.add(name);
+        }
+      }
+    }
+    if (!unrecognized.isEmpty()) {
+      throw new AssertionError(
+          "Unrecognized file(s) in " + caseDir + ": " + String.join(" ", unrecognized));
+    }
+    if (Files.exists(caseDir.resolve("expected-postcheck"))
+        && !Files.exists(caseDir.resolve("postcheck.sh"))) {
+      throw new AssertionError(
+          "Goal file `expected-postcheck`, but no `postcheck.sh`, in " + caseDir);
+    }
+  }
+
+  /**
    * Runs one test case: run the program, then compare its output to the goal files.
    *
    * @param caseDir the test case directory
@@ -145,7 +209,9 @@ final class EndToEndTest {
    */
   private void runTestCase(Path caseDir) throws IOException, InterruptedException {
     String caseName = caseName(caseDir);
-    for (String program : whitespaceSeparated(readFileOrEmpty(caseDir.resolve("requires")))) {
+    checkCaseFiles(caseDir);
+    List<String> required = whitespaceSeparated(readFileOrEmpty(caseDir.resolve("requires")));
+    for (String program : required) {
       Assumptions.assumeTrue(
           onPath(program), "Skipping " + caseName + ": no " + program + " on PATH");
     }
@@ -154,6 +220,7 @@ final class EndToEndTest {
     boolean passed = false;
     try {
       Path home = Files.createDirectory(scratch.resolve("home"));
+      String versions = versionsOf(required, home, scratch);
 
       Path checkoutsFile = caseDir.resolve("mvc-checkouts");
       if (Files.exists(checkoutsFile)) {
@@ -171,6 +238,7 @@ final class EndToEndTest {
                   + "; files are in "
                   + home
                   + "\n"
+                  + versions
                   + setup.describe());
         }
       }
@@ -189,20 +257,19 @@ final class EndToEndTest {
         command.add(substituteHome(arg, home));
       }
       Result result = run(command, home, scratch);
+      String context = context("The program", home, versions, result);
 
       String stdout = normalize(result.stdout(), home);
       if (Files.exists(caseDir.resolve("sort-output"))) {
         stdout = sortLines(stdout);
       }
-      checkGoal(caseDir.resolve("expected-out"), stdout, "standard output", result, home);
+      checkGoal(caseDir.resolve("expected-out"), stdout, "standard output", context);
       checkGoal(
           caseDir.resolve("expected-err"),
-          normalize(result.stderr(), home),
+          normalizeStderr(result.stderr(), home),
           "standard error",
-          result,
-          home);
-      checkGoal(
-          caseDir.resolve("expected-status"), result.status() + "\n", "exit status", result, home);
+          context);
+      checkGoal(caseDir.resolve("expected-status"), result.status() + "\n", "exit status", context);
 
       Path postcheckScript = caseDir.resolve("postcheck.sh");
       if (Files.exists(postcheckScript)) {
@@ -215,14 +282,14 @@ final class EndToEndTest {
                   + "; files are in "
                   + home
                   + "\n"
+                  + versions
                   + postcheck.describe());
         }
         checkGoal(
             caseDir.resolve("expected-postcheck"),
             normalize(postcheck.stdout(), home),
             "postcheck output",
-            result,
-            home);
+            context("postcheck.sh", home, versions, postcheck));
       }
       passed = true;
     } finally {
@@ -240,11 +307,10 @@ final class EndToEndTest {
    * @param goalFile the goal file; it need not exist, in which case the expected value is empty
    * @param actual the program's actual behavior
    * @param what a description of what is being compared, for the failure message
-   * @param result the program's complete output, for the failure message
-   * @param home the temporary home directory, which is left in place if the test fails
+   * @param context a description of the subprocess and its environment, for the failure message
    * @throws IOException if the goal file cannot be read or written
    */
-  private void checkGoal(Path goalFile, String actual, String what, Result result, Path home)
+  private void checkGoal(Path goalFile, String actual, String what, String context)
       throws IOException {
     if (regenerate) {
       // An exit status of 0 and an empty stream are the defaults, so represent them by the absence
@@ -261,17 +327,25 @@ final class EndToEndTest {
       expected = readFile(goalFile);
     }
     assertEquals(
-        expected,
-        actual,
-        () ->
-            "Wrong "
-                + what
-                + "; goal file is "
-                + goalFile
-                + "\nThe program ran in "
-                + home
-                + ", which was left in place\n"
-                + result.describe());
+        expected, actual, () -> "Wrong " + what + "; goal file is " + goalFile + "\n" + context);
+  }
+
+  /**
+   * Returns a description of a subprocess and its environment, for use in a failure message.
+   *
+   * @param subprocess a description of the subprocess, such as {@code "The program"}
+   * @param home the temporary home directory, which is left in place if the test fails
+   * @param versions the versions of the programs that the test case requires
+   * @param result the subprocess's complete output
+   * @return a description of the subprocess and its environment
+   */
+  private static String context(String subprocess, Path home, String versions, Result result) {
+    return subprocess
+        + " ran in "
+        + home
+        + ", which was left in place\n"
+        + versions
+        + result.describe();
   }
 
   // //////////////////////////////////////////////////////////////////////
@@ -343,8 +417,47 @@ final class EndToEndTest {
     env.put("LANG", "C");
     env.put("TZ", "UTC");
     Process process = pb.start();
-    int status = process.waitFor();
-    return new Result(status, readFile(outFile), readFile(errFile));
+    if (!process.waitFor(subprocessTimeoutSeconds, TimeUnit.SECONDS)) {
+      process.destroyForcibly();
+      throw new AssertionError(
+          "Killed a command that did not finish within "
+              + subprocessTimeoutSeconds
+              + " seconds: "
+              + String.join(" ", command)
+              + "\nstandard output so far:\n<<<"
+              + readFile(outFile)
+              + ">>>\nstandard error so far:\n<<<"
+              + readFile(errFile)
+              + ">>>");
+    }
+    return new Result(process.exitValue(), readFile(outFile), readFile(errFile));
+  }
+
+  /**
+   * Returns a description of the versions of the programs that a test case requires. A goal file
+   * may record the exact wording of a program's messages, so a different version of that program is
+   * a common reason for a test to fail.
+   *
+   * @param programs the programs that the test case requires
+   * @param home the directory to use as both the working directory and {@code $HOME}
+   * @param scratch a directory in which to write the subprocesses' output
+   * @return a description of the programs' versions, ending with a line separator, or {@code ""}
+   * @throws IOException if a subprocess cannot be run
+   * @throws InterruptedException if waiting for a subprocess is interrupted
+   */
+  private String versionsOf(List<String> programs, Path home, Path scratch)
+      throws IOException, InterruptedException {
+    StringBuilder result = new StringBuilder();
+    for (String program : programs) {
+      Result version = run(List.of(program, "--version"), home, scratch);
+      result
+          .append("Version of ")
+          .append(program)
+          .append(": ")
+          .append(version.stdout().lines().findFirst().orElse("unknown"))
+          .append("\n");
+    }
+    return result.toString();
   }
 
   /**
@@ -463,7 +576,7 @@ final class EndToEndTest {
   /**
    * Makes the program's output independent of where the test happens to run: replaces the temporary
    * home directory by {@code ${HOME}}, replaces the home directory of the user who is running the
-   * tests by {@code ${USER_HOME}}, normalizes line separators, and removes JVM warnings.
+   * tests by {@code ${USER_HOME}}, and normalizes line separators.
    *
    * <p>The usage message mentions the user's real home directory even though the program is run
    * with {@code --home}, because it prints each option's default rather than its current value.
@@ -476,29 +589,48 @@ final class EndToEndTest {
     String result = s.replace("\r\n", "\n");
     result = result.replace(home.toString(), "${HOME}");
     String userHome = System.getProperty("user.home");
-    if (userHome != null && !userHome.equals("")) {
+    // The JVM sets `user.home` to "?" when it cannot determine the home directory, as when a
+    // container runs as a uid that has no entry in the password database.  Substituting for that
+    // would replace every question mark in the program's output.
+    if (userHome != null && userHome.length() > 1) {
       result = result.replace(userHome, "${USER_HOME}");
     }
-    result = jvmWarnings.matcher(result).replaceAll("");
     return result;
   }
 
   /**
-   * Returns the lines of a string, sorted.
+   * Like {@link #normalize}, but also removes the warnings that the JVM prints. Only standard error
+   * is filtered this way, because a line of the program's own standard output might start with
+   * "WARNING: ".
    *
-   * @param s a string that ends with a line separator, or is empty
+   * @param s the program's standard error
+   * @param home the temporary home directory
+   * @return the standard error, in a form that can be compared against a goal file
+   */
+  private static String normalizeStderr(String s, Path home) {
+    return jvmWarnings.matcher(normalize(s, home)).replaceAll("");
+  }
+
+  /**
+   * Returns the lines of a string, sorted. A trailing line separator, if there is one, stays at the
+   * end rather than being sorted along with the text.
+   *
+   * @param s a string
    * @return the lines of the string, sorted
    */
   private static String sortLines(String s) {
     if (s.equals("")) {
       return s;
     }
+    boolean endsWithSeparator = s.endsWith("\n");
     List<String> lines = new ArrayList<>(Arrays.asList(s.split("\n", -1)));
-    // `split` produces a final empty element for the trailing line separator.
-    String last = lines.remove(lines.size() - 1);
+    if (endsWithSeparator) {
+      // `split` produces a final empty element for the trailing line separator.
+      lines.remove(lines.size() - 1);
+    }
     lines.sort(Comparator.naturalOrder());
-    lines.add(last);
-    return String.join("\n", lines);
+    String result = String.join("\n", lines);
+    return endsWithSeparator ? result + "\n" : result;
   }
 
   // //////////////////////////////////////////////////////////////////////
