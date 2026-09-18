@@ -1,0 +1,2 @@
+The extra arguments are appended to the command for the corresponding program.  --insecure adds
+"--insecure" to the hg command only.

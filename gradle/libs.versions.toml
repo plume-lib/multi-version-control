@@ -32,6 +32,10 @@ ini4j = { module = "org.ini4j:ini4j", version = "0.5.4" }
 # Version only:  for the JaCoCo plugin's `toolVersion`.
 jacoco = { module = "org.jacoco:org.jacoco.core", version.ref = "jacoco" }
 
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version = "6.1.2" }
+
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version = "6.1.2" }
+
 # Version only:  Spotless resolves ktfmt itself.
 ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 

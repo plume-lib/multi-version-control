@@ -1,0 +1,1 @@
+Unlike a bad --ignore-dir, a bad --dir is fatal, with exit status 2.

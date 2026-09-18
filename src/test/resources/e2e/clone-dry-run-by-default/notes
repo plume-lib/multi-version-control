@@ -1,0 +1,4 @@
+"clone" implies --dry-run unless --dry-run is given explicitly, so this test does not access the
+network.  It shows the command that would be run for each version control system.  An SVNROOT
+section produces a "svn checkout" with no module argument, because the module was folded into the
+repository when the configuration file was read.

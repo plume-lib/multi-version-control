@@ -1,0 +1,26 @@
+BZRROOT: bzr+ssh://example.com/bzr
+~/bzr/from-root
+
+BZRREPOS: bzr+ssh://example.com/bzr/from-repos
+~/bzr/from-repos
+
+CVSROOT: :ext:example.com:/nonexistent/cvsroot
+~/cvs/mod
+
+GITROOT: https://github.com/plume-lib
+~/git/options
+
+GITREPOS: https://github.com/plume-lib/plume-util.git
+~/git/plume-util
+
+HGROOT: https://www.mercurial-scm.org/repo
+~/hg/hg
+
+HGREPOS: https://www.mercurial-scm.org/repo/hg-stable
+~/hg/hg-stable
+
+SVNROOT: svn+ssh://example.com/repos
+~/svn/proj
+
+SVNREPOS: svn+ssh://example.com/repos/proj2
+~/svn/proj2

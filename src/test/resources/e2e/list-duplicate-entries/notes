@@ -1,0 +1,2 @@
+A clone is processed once even if the configuration file mentions it more than once, because
+Checkout equality compares canonical directories.

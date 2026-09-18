@@ -1,0 +1,3 @@
+# shellcheck shell=bash
+. "$(dirname "$0")/../common.sh"
+mkdir -p "$HOME/git/options/.git"

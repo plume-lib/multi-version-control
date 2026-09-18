@@ -1,0 +1,1 @@
+GIT ${HOME}/outer ${HOME}/remote.git null

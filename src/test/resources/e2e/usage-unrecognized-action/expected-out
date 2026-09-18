@@ -1,0 +1,37 @@
+Unrecognized action "bogus"Usage: mvc [options] {clone,status,pull,list}
+
+Configuration file:
+  --home=<string>                  - User home directory. [default ${USER_HOME}]
+  --checkouts=<string>             - File with list of clones.  Set it to /dev/null to suppress reading. [default ~/.mvc-checkouts]
+
+Miscellaneous options:
+  --redo-existing=<boolean>        - Redo existing clones; relevant only to clone command [default false]
+  --timeout=<int>                  - Timeout for each command, in seconds [default 600]
+
+Searching for clones:
+  --search=<boolean>               - Search for all clones, not just those listed in a file [default false]
+  --search-prefix=<boolean>        - Search for all clones whose directory is a prefix of one listed in a file [default false]
+  --dir=<string> [+]               - Directory under which to search for clones; default=home dir
+  --ignore-dir=<string> [+]        - Directory under which to NOT search for clones
+
+Paths to programs:
+  --cvs-executable=<string>        - Path to the cvs program [default cvs]
+  --git-executable=<string>        - Path to the git program [default git]
+  --hg-executable=<string>         - Path to the hg program [default hg]
+  --svn-executable=<string>        - Path to the svn program [default svn]
+  --insecure=<boolean>             - Pass --insecure argument to hg [default false]
+  --cvs-arg=<string> [+]           - Extra argument to pass to the cvs program
+  --git-arg=<string> [+]           - Extra argument to pass to the git program
+  --hg-arg=<string> [+]            - Extra argument to pass to the hg program
+  --svn-arg=<string> [+]           - Extra argument to pass to the svn program
+
+Diagnostics:
+  --show=<boolean>                 - Display commands as they are executed [default false]
+  --print-directory=<boolean>      - Print the directory before executing commands [default false]
+  --dry-run=<boolean>              - Do not execute commands; just print them.  Implies --show --redo-existing [default false]
+  -q --quiet=<boolean>             - Run quietly (e.g., no output about missing directories) [default true]
+  --debug=<boolean>                - Print debugging output [default false]
+  --debug-replacers=<boolean>      - Debug 'replacers' that filter command output [default false]
+  --debug-process-output=<boolean> - Lightweight debugging of 'replacers' that filter command output [default false]
+
+[+] means option can be specified multiple times

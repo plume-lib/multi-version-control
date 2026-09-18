@@ -7,6 +7,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.time.Duration;
@@ -33,6 +34,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.nullness.qual.RequiresNonNull;
 import org.checkerframework.checker.regex.qual.Regex;
+import org.checkerframework.checker.signedness.qual.PolySigned;
 import org.checkerframework.common.initializedfields.qual.EnsuresInitializedFields;
 import org.checkerframework.common.value.qual.MinLen;
 import org.checkerframework.dataflow.qual.Pure;
@@ -105,142 +107,84 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  * <p><b>Command-line arguments</b>
  *
  * <p>The command-line options are as follows:
+ * <!-- spotless:off -->
  * <!-- start options doc (DO NOT EDIT BY HAND) -->
  *
  * <ul>
  *   <li id="optiongroup:Configuration-file">Configuration file
- *                                           <ul>
- *                                             <li id="option:home"><b>--home=</b><i>string</i>.
- *                                                                  User home directory. [default
- *                                                                  Java {@code user.home}
- *                                                                  property].
- *                                             <li id="option:checkouts"><b>--checkouts=</b><i>string</i>.
- *                                                                       File with list of clones.
- *                                                                       Set it to /dev/null to
- *                                                                       suppress reading. [default
- *                                                                       {@code .mvc-checkouts} in
- *                                                                       home directory]
- *                                           </ul>
+ *       <ul>
+ *         <li id="option:home"><b>--home=</b><i>string</i>. User home directory. [default Java
+ *             {@code user.home} property].
+ *         <li id="option:checkouts"><b>--checkouts=</b><i>string</i>. File with list of clones. Set
+ *             it to /dev/null to suppress reading. [default {@code .mvc-checkouts} in home
+ *             directory]
+ *       </ul>
  *   <li id="optiongroup:Miscellaneous-options">Miscellaneous options
- *                                              <ul>
- *                                                <li id="option:redo-existing"><b>--redo-existing=</b><i>boolean</i>.
- *                                                                              If false, clone
- *                                                                              command skips
- *                                                                              existing
- *                                                                              directories.
- *                                                                              [default: false]
- *                                                <li id="option:timeout"><b>--timeout=</b><i>int</i>.
- *                                                                        Terminating the process
- *                                                                        can leave the repository
- *                                                                        in a bad state, so set
- *                                                                        this rather high for
- *                                                                        safety. Also, the timeout
- *                                                                        needs to account for the
- *                                                                        time to run hooks (that
- *                                                                        might recompile or run
- *                                                                        tests). [default: 600]
- *                                              </ul>
+ *       <ul>
+ *         <li id="option:redo-existing"><b>--redo-existing=</b><i>boolean</i>. If false, clone
+ *             command skips existing directories. [default: false]
+ *         <li id="option:timeout"><b>--timeout=</b><i>int</i>. Terminating the process can leave
+ *             the repository in a bad state, so set this rather high for safety. Also, the timeout
+ *             needs to account for the time to run hooks (that might recompile or run tests).
+ *             [default: 600]
+ *       </ul>
  *   <li id="optiongroup:Searching-for-clones">Searching for clones
- *                                             <ul>
- *                                               <li id="option:search"><b>--search=</b><i>boolean</i>.
- *                                                                      If true, search for all
- *                                                                      clones, not just those
- *                                                                      listed in a file. [default:
- *                                                                      false]
- *                                               <li id="option:search-prefix"><b>--search-prefix=</b><i>boolean</i>.
- *                                                                             If true, search for
- *                                                                             all clones whose
- *                                                                             directory is a prefix
- *                                                                             of one in the
- *                                                                             configuration file.
- *                                                                             This is especially
- *                                                                             useful when working
- *                                                                             with <a
- *                                                                             href="https://github.com/plume-lib/manage-git-branches">manage-git-branches</a>.
- *                                                                             [default: false]
- *                                               <li id="option:dir"><b>--dir=</b><i>string</i>
- *                                                                   <code>[+]</code>. Directory
- *                                                                   under which to search for
- *                                                                   clones, when using {@code
- *                                                                   --search} [default = home
- *                                                                   directory].
- *                                               <li id="option:ignore-dir"><b>--ignore-dir=</b><i>string</i>
- *                                                                          <code>[+]</code>.
- *                                                                          Directories under which
- *                                                                          to NOT search for
- *                                                                          clones. May include
- *                                                                          leading "~/".
- *                                             </ul>
+ *       <ul>
+ *         <li id="option:search"><b>--search=</b><i>boolean</i>. If true, search for all clones,
+ *             not just those listed in a file. [default: false]
+ *         <li id="option:search-prefix"><b>--search-prefix=</b><i>boolean</i>. If true, search for
+ *             all clones whose directory is a prefix of one in the configuration file. This is
+ *             especially useful when working with <a
+ *             href="https://github.com/plume-lib/manage-git-branches">manage-git-branches</a>.
+ *             [default: false]
+ *         <li id="option:dir"><b>--dir=</b><i>string</i> {@code [+]}. Directory under which to
+ *             search for clones, when using {@code --search} [default = home directory].
+ *         <li id="option:ignore-dir"><b>--ignore-dir=</b><i>string</i> {@code [+]}. Directories
+ *             under which to NOT search for clones. May include leading "~/".
+ *       </ul>
  *   <li id="optiongroup:Paths-to-programs">Paths to programs
- *                                          <ul>
- *                                            <li id="option:cvs-executable"><b>--cvs-executable=</b><i>string</i>.
- *                                                                           Path to the cvs
- *                                                                           program. [default: cvs]
- *                                            <li id="option:git-executable"><b>--git-executable=</b><i>string</i>.
- *                                                                           Path to the git
- *                                                                           program. [default: git]
- *                                            <li id="option:hg-executable"><b>--hg-executable=</b><i>string</i>.
- *                                                                          Path to the hg program.
- *                                                                          [default: hg]
- *                                            <li id="option:svn-executable"><b>--svn-executable=</b><i>string</i>.
- *                                                                           Path to the svn
- *                                                                           program. [default: svn]
- *                                            <li id="option:insecure"><b>--insecure=</b><i>boolean</i>.
- *                                                                     If true, use --insecure when
- *                                                                     invoking programs. [default:
- *                                                                     false]
- *                                            <li id="option:cvs-arg"><b>--cvs-arg=</b><i>string</i>
- *                                                                    <code>[+]</code>. Extra
- *                                                                    argument to pass to the cvs
- *                                                                    program.
- *                                            <li id="option:git-arg"><b>--git-arg=</b><i>string</i>
- *                                                                    <code>[+]</code>. Extra
- *                                                                    argument to pass to the git
- *                                                                    program.
- *                                            <li id="option:hg-arg"><b>--hg-arg=</b><i>string</i>
- *                                                                   <code>[+]</code>. Extra
- *                                                                   argument to pass to the hg
- *                                                                   program.
- *                                            <li id="option:svn-arg"><b>--svn-arg=</b><i>string</i>
- *                                                                    <code>[+]</code>. Extra
- *                                                                    argument to pass to the svn
- *                                                                    program.
- *                                          </ul>
+ *       <ul>
+ *         <li id="option:cvs-executable"><b>--cvs-executable=</b><i>string</i>. Path to the cvs
+ *             program. [default: cvs]
+ *         <li id="option:git-executable"><b>--git-executable=</b><i>string</i>. Path to the git
+ *             program. [default: git]
+ *         <li id="option:hg-executable"><b>--hg-executable=</b><i>string</i>. Path to the hg
+ *             program. [default: hg]
+ *         <li id="option:svn-executable"><b>--svn-executable=</b><i>string</i>. Path to the svn
+ *             program. [default: svn]
+ *         <li id="option:insecure"><b>--insecure=</b><i>boolean</i>. If true, use --insecure when
+ *             invoking programs. [default: false]
+ *         <li id="option:cvs-arg"><b>--cvs-arg=</b><i>string</i> {@code [+]}. Extra argument to
+ *             pass to the cvs program.
+ *         <li id="option:git-arg"><b>--git-arg=</b><i>string</i> {@code [+]}. Extra argument to
+ *             pass to the git program.
+ *         <li id="option:hg-arg"><b>--hg-arg=</b><i>string</i> {@code [+]}. Extra argument to pass
+ *             to the hg program.
+ *         <li id="option:svn-arg"><b>--svn-arg=</b><i>string</i> {@code [+]}. Extra argument to
+ *             pass to the svn program.
+ *       </ul>
  *   <li id="optiongroup:Diagnostics">Diagnostics
- *                                    <ul>
- *                                      <li id="option:show"><b>--show=</b><i>boolean</i>. If true,
- *                                                           display each command as it is executed.
- *                                                           [default: false]
- *                                      <li id="option:print-directory"><b>--print-directory=</b><i>boolean</i>.
- *                                                                      If true, print the directory
- *                                                                      (and the origin URL) before
- *                                                                      executing commands in it.
- *                                                                      [default: false]
- *                                      <li id="option:dry-run"><b>--dry-run=</b><i>boolean</i>.
- *                                                              Perform a "dry run": print commands
- *                                                              but do not execute them. [default:
- *                                                              false]
- *                                      <li id="option:quiet"><b>-q</b>
- *                                                            <b>--quiet=</b><i>boolean</i>. If
- *                                                            true, run quietly (e.g., no output
- *                                                            about missing directories). [default:
- *                                                            true]
- *                                      <li id="option:debug"><b>--debug=</b><i>boolean</i>. Print
- *                                                            debugging output. [default: false]
- *                                      <li id="option:debug-replacers"><b>--debug-replacers=</b><i>boolean</i>.
- *                                                                      Debug 'replacers' that
- *                                                                      filter command output.
- *                                                                      [default: false]
- *                                      <li id="option:debug-process-output"><b>--debug-process-output=</b><i>boolean</i>.
- *                                                                           Lightweight debugging
- *                                                                           of 'replacers' that
- *                                                                           filter command output.
- *                                                                           [default: false]
- *                                    </ul>
+ *       <ul>
+ *         <li id="option:show"><b>--show=</b><i>boolean</i>. If true, display each command as it is
+ *             executed. [default: false]
+ *         <li id="option:print-directory"><b>--print-directory=</b><i>boolean</i>. If true, print
+ *             the directory (and the origin URL) before executing commands in it. [default: false]
+ *         <li id="option:dry-run"><b>--dry-run=</b><i>boolean</i>. Perform a "dry run": print
+ *             commands but do not execute them. [default: false]
+ *         <li id="option:quiet"><b>-q</b> <b>--quiet=</b><i>boolean</i>. If true, run quietly
+ *             (e.g., no output about missing directories). [default: true]
+ *         <li id="option:debug"><b>--debug=</b><i>boolean</i>. Print debugging output. [default:
+ *             false]
+ *         <li id="option:debug-replacers"><b>--debug-replacers=</b><i>boolean</i>. Debug
+ *             'replacers' that filter command output. [default: false]
+ *         <li id="option:debug-process-output"><b>--debug-process-output=</b><i>boolean</i>.
+ *             Lightweight debugging of 'replacers' that filter command output. [default: false]
+ *       </ul>
  * </ul>
  *
- * <code>[+]</code> means option can be specified multiple times
+ * {@code [+]} means option can be specified multiple times
  * <!-- end options doc -->
+ * <!-- spotless:on -->
  *
  * <p><b>File format for {@code .mvc-checkouts} file</b>
  *
@@ -2041,8 +1985,18 @@ public class MultiVersionControl {
     executor.setWatchdog(watchdog);
 
     final ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-    PumpStreamHandler streamHandler =
-        new PumpStreamHandler(outStream); // send both stderr and stdout
+    // Send both the subprocess's standard output and its standard error to `outStream`, but only a
+    // complete line at a time.  `PumpStreamHandler` pumps each stream in a thread of its own, so
+    // writing to `outStream` directly would let one stream's output land in the middle of a line
+    // of the other stream's output.
+    //
+    // These streams need no closing:  they hold no resource, `outStream` belongs to this method,
+    // and the code below flushes them.
+    @SuppressWarnings("resourceleak:required.method.not.called")
+    LineAtomicOutputStream outPump = new LineAtomicOutputStream(outStream);
+    @SuppressWarnings("resourceleak:required.method.not.called")
+    LineAtomicOutputStream errPump = new LineAtomicOutputStream(outStream);
+    PumpStreamHandler streamHandler = new PumpStreamHandler(outPump, errPump);
     executor.setStreamHandler(streamHandler);
 
     try {
@@ -2063,6 +2017,14 @@ public class MultiVersionControl {
       exitValue = resultHandler.getExitValue();
     } catch (InterruptedException e) {
       throw new Error(e);
+    }
+    // A stream's last line might not end with a line separator.
+    try {
+      outPump.flush();
+      errPump.flush();
+    } catch (IOException e) {
+      // `outStream` is a ByteArrayOutputStream, which never throws IOException.
+      throw new UncheckedIOException(e);
     }
     boolean timedOut = executor.isFailure(exitValue) && watchdog.killedProcess();
 
@@ -2147,5 +2109,56 @@ public class MultiVersionControl {
    */
   String command(ProcessBuilder pb) {
     return "  cd " + pb.directory() + "\n  " + StringsP.join(" ", pb.command());
+  }
+
+  /**
+   * An output stream that writes to another output stream, a whole line at a time. Two of these
+   * that write to the same stream never interleave their output within a line, even when different
+   * threads write to them; each line of the result comes from exactly one of them.
+   *
+   * <p>This is for merging a subprocess's standard output and standard error, which are pumped by
+   * two different threads.
+   *
+   * <p>A client must {@link #flush} this stream when done with it; otherwise a final line that has
+   * no line separator would never be written.
+   */
+  private static class LineAtomicOutputStream extends OutputStream {
+
+    /** Where to write complete lines. */
+    private final OutputStream delegate;
+
+    /** What has been written to this, since the most recent line separator. */
+    private final ByteArrayOutputStream partialLine = new ByteArrayOutputStream();
+
+    /**
+     * Creates a new LineAtomicOutputStream.
+     *
+     * @param delegate where to write complete lines
+     */
+    LineAtomicOutputStream(OutputStream delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public void write(@PolySigned int b) throws IOException {
+      partialLine.write(b);
+      // `write` writes only the low 8 bits of its argument.
+      if ((b & 0xff) == '\n') {
+        flush();
+      }
+    }
+
+    /** Writes what has been buffered, even if it is not a complete line. */
+    @Override
+    public void flush() throws IOException {
+      if (partialLine.size() != 0) {
+        // Synchronize on `delegate`, because another LineAtomicOutputStream might be writing to it.
+        synchronized (delegate) {
+          partialLine.writeTo(delegate);
+          delegate.flush();
+        }
+        partialLine.reset();
+      }
+    }
   }
 }

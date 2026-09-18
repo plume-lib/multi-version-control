@@ -1,0 +1,3 @@
+GIT ${HOME}/proj ${HOME}/remote.git null
+GIT ${HOME}/proj-fork-alice ${HOME}/remote.git null
+GIT ${HOME}/proj-fork-alice-branch-feature ${HOME}/remote.git null

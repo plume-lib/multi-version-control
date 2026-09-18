@@ -1,0 +1,5 @@
+The program recognizes Bazaar clones but does not act on them.
+
+It should stop after saying so, but instead it goes on to the placeholder command that
+ProcessBuilder was initialized with.  The goal file records the current (wrong) behavior; the
+"echo command not set" line should not appear.

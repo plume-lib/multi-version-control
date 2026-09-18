@@ -1,0 +1,4 @@
+CVS records the path within the repository in every directory of a checkout, so the program must
+collapse the CVS directories of one checkout into a single Checkout.  For "other-project", the
+directory name matches only the last component of the path within the repository, so the reported
+module is the whole path.

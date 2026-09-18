@@ -1,0 +1,2 @@
+--debug-replacers shows the output before and after each replacer, and then the character codes of
+the result, so that a user can see which replacer changed what.

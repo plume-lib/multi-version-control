@@ -1,0 +1,12 @@
+  cd ${HOME}/cvs/mod
+  cvs -Q update -d
+  cd ${HOME}/git/options
+  git pull -q
+  cd ${HOME}/git/options
+  git fetch -p
+  cd ${HOME}/hg/hg
+  hg -q update
+  cd ${HOME}/hg/hg
+  hg -q fetch
+  cd ${HOME}/svn/proj
+  svn -q update

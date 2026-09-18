@@ -1,0 +1,2 @@
+config error: default repository not configured!
+(see 'hg help config.paths')

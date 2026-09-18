@@ -1,0 +1,5 @@
+GITROOT: https://github.com/plume-lib
+~/git/local-name-for-bcel-util bcel-util
+
+CVSROOT: :ext:example.com:/nonexistent/cvsroot
+~/cvs/local-name a/module/deep/in/the/repository

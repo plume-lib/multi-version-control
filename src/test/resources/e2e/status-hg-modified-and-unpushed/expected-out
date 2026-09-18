@@ -1,0 +1,3 @@
+M ${HOME}/modified/file.txt
+? ${HOME}/modified/untracked.txt
+unpushed changesets: ${HOME}/unpushed

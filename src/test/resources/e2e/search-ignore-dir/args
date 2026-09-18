@@ -1,0 +1,5 @@
+--checkouts=/dev/null
+--search
+--ignore-dir=~/ignored
+--ignore-dir=${HOME}/also-ignored
+list

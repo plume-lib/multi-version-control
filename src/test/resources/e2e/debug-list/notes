@@ -1,0 +1,2 @@
+--debug prints how each line of the configuration file was parsed, and the set of clones, before
+performing the action.

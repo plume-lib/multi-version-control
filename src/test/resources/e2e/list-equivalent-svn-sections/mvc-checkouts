@@ -1,0 +1,12 @@
+# The class documentation states that these three sections have identical effects.  They are
+# written here with three different directories, because otherwise the three checkouts would be
+# collapsed into one.
+
+SVNROOT: svn+ssh://example.com/repos/
+~/svn/annotations
+
+SVNROOT: svn+ssh://example.com/repos/
+~/svn/dir2 annotations
+
+SVNREPOS: svn+ssh://example.com/repos/annotations
+~/svn/dir3

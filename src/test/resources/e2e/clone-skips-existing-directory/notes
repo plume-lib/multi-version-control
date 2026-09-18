@@ -1,0 +1,1 @@
+Without --redo-existing, an existing directory is not cloned again.

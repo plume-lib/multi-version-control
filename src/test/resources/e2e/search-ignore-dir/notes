@@ -1,0 +1,2 @@
+--ignore-dir may be written with a leading "~/" or as an absolute path, and it excludes everything
+under the named directory.

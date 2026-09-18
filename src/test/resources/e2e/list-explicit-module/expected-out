@@ -1,0 +1,2 @@
+GIT ${HOME}/git/local-name-for-bcel-util https://github.com/plume-lib/bcel-util null
+CVS ${HOME}/cvs/local-name :ext:example.com:/nonexistent/cvsroot a/module/deep/in/the/repository
