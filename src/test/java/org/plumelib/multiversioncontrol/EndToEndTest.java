@@ -99,6 +99,16 @@ final class EndToEndTest {
   private static final String jacocoArg = propertyOrDefault("mvc.test.jacocoArg", "");
 
   /**
+   * How many failing tests' temporary directories to leave in place, for a person to examine. The
+   * files of any further failure are deleted, so that a run in which many tests fail does not fill
+   * up the temporary directory.
+   */
+  private static final int maxKeptDirectories = 5;
+
+  /** How many failing tests' temporary directories have been left in place. */
+  private static int keptDirectories = 0;
+
+  /**
    * How long to wait for a subprocess, in seconds. Every subprocess that a test runs finishes in
    * well under a second, so a longer wait means that something has hung. Fail in that case, rather
    * than blocking the build forever.
@@ -217,6 +227,8 @@ final class EndToEndTest {
     }
 
     Path scratch = Files.createTempDirectory("mvc-e2e-").toRealPath();
+    // The tests run sequentially, so this is accurate for the whole of this test case.
+    boolean keepIfFailed = keptDirectories < maxKeptDirectories;
     boolean passed = false;
     try {
       Path home = Files.createDirectory(scratch.resolve("home"));
@@ -235,9 +247,8 @@ final class EndToEndTest {
           throw new AssertionError(
               "setup.sh failed for "
                   + caseName
-                  + "; files are in "
-                  + home
                   + "\n"
+                  + whereFiles(home, keepIfFailed)
                   + versions
                   + setup.describe());
         }
@@ -257,7 +268,7 @@ final class EndToEndTest {
         command.add(substituteHome(arg, home));
       }
       Result result = run(command, home, scratch);
-      String context = context("The program", home, versions, result);
+      String context = context("The program", home, keepIfFailed, versions, result);
 
       String stdout = normalize(result.stdout(), home);
       if (Files.exists(caseDir.resolve("sort-output"))) {
@@ -279,9 +290,8 @@ final class EndToEndTest {
           throw new AssertionError(
               "postcheck.sh failed for "
                   + caseName
-                  + "; files are in "
-                  + home
                   + "\n"
+                  + whereFiles(home, keepIfFailed)
                   + versions
                   + postcheck.describe());
         }
@@ -289,15 +299,36 @@ final class EndToEndTest {
             caseDir.resolve("expected-postcheck"),
             normalize(postcheck.stdout(), home),
             "postcheck output",
-            context("postcheck.sh", home, versions, postcheck));
+            context("postcheck.sh", home, keepIfFailed, versions, postcheck));
       }
       passed = true;
     } finally {
-      // On failure, leave the files in place; the failure message says where they are.
-      if (passed) {
+      // On failure, leave the files in place for a person to examine; the failure message says
+      // where they are.  Do that for at most `maxKeptDirectories` failures, so that a run in which
+      // many tests fail does not fill up the temporary directory.
+      if (passed || !keepIfFailed) {
         deleteRecursively(scratch);
+      } else {
+        keptDirectories++;
       }
     }
+  }
+
+  /**
+   * Returns a description, for a failure message, of where the failing test's files are.
+   *
+   * @param home the test's temporary home directory
+   * @param kept true if the directory was left in place
+   * @return a description of where the failing test's files are, ending with a line separator
+   */
+  private static String whereFiles(Path home, boolean kept) {
+    return kept
+        ? "The files are in " + home + "\n"
+        : "The files were in "
+            + home
+            + ", but were deleted because the files of "
+            + maxKeptDirectories
+            + " earlier failures are being kept\n";
   }
 
   /**
@@ -334,16 +365,17 @@ final class EndToEndTest {
    * Returns a description of a subprocess and its environment, for use in a failure message.
    *
    * @param subprocess a description of the subprocess, such as {@code "The program"}
-   * @param home the temporary home directory, which is left in place if the test fails
+   * @param home the temporary home directory
+   * @param kept true if the temporary home directory was left in place
    * @param versions the versions of the programs that the test case requires
    * @param result the subprocess's complete output
    * @return a description of the subprocess and its environment
    */
-  private static String context(String subprocess, Path home, String versions, Result result) {
+  private static String context(
+      String subprocess, Path home, boolean kept, String versions, Result result) {
     return subprocess
-        + " ran in "
-        + home
-        + ", which was left in place\n"
+        + " ran in the test's temporary home directory.\n"
+        + whereFiles(home, kept)
         + versions
         + result.describe();
   }
@@ -398,8 +430,19 @@ final class EndToEndTest {
     pb.redirectOutput(outFile.toFile());
     pb.redirectError(errFile.toFile());
     Map<String, String> env = pb.environment();
-    // Inherited settings would make the output depend on who runs the tests.
-    env.keySet().removeIf(k -> k.startsWith("GIT_") || k.startsWith("HG") || k.startsWith("SVN_"));
+    // Inherited settings would make the output depend on who runs the tests.  In particular, a JVM
+    // whose JAVA_TOOL_OPTIONS, _JAVA_OPTIONS, or JDK_JAVA_OPTIONS environment variable is set
+    // prints a "Picked up ..." line to standard error.  Those variables are set by default in some
+    // Docker images and in some corporate environments.
+    env.keySet()
+        .removeIf(
+            k ->
+                k.startsWith("GIT_")
+                    || k.startsWith("HG")
+                    || k.startsWith("SVN_")
+                    || k.equals("JAVA_TOOL_OPTIONS")
+                    || k.equals("_JAVA_OPTIONS")
+                    || k.equals("JDK_JAVA_OPTIONS"));
     env.put("HOME", home.toString());
     env.put("XDG_CONFIG_HOME", home.resolve(".config").toString());
     env.put("GIT_CONFIG_GLOBAL", "/dev/null");

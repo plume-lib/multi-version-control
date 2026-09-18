@@ -105,9 +105,8 @@ tasks.withType<JavaCompile>().configureEach {
 // Compilation always uses Java 21, but the tests run under various Java versions.  The
 // `java.toolchain` setting above applies to Test tasks as well as to compilation, so without this
 // the tests would always run under Java 21.  By default the tests run under the JVM that Gradle
-// itself is running under.  The job matrix in .github/workflows/gradle.yml does not rely on that
-// default:  it runs Gradle under Java 21 in every job and selects the test JVM by passing
-// `-PtestJavaVersion`.
+// itself is running under, which is what the job matrix in .github/workflows/gradle.yml relies on:
+// each job installs one JDK, runs Gradle under it, and thus also runs the tests under it.
 // Override with, for example:
 //   ./gradlew test -PtestJavaVersion=21
 val testJavaVersionProperty = project.findProperty("testJavaVersion")
@@ -145,12 +144,15 @@ tasks.withType<Test>().configureEach {
   val testRuntimeClasspath = sourceSets.test.get().runtimeClasspath
   val jacocoTaskExtension = extensions.getByType<JacocoTaskExtension>()
   val projectDirFile = layout.projectDirectory.asFile
+  // The program under test runs in a subprocess, which is where the agent is useful; see below.
+  // Do not also run the agent in the test JVM, which executes none of the program's code.
+  jacocoTaskExtension.isEnabled = false
   doFirst {
     // The end-to-end tests run the program in a subprocess, using this classpath.  Do not use the
     // test JVM's own `java.class.path` property, whose value Gradle does not guarantee.
     systemProperty("mvc.test.classpath", testRuntimeClasspath.asPath)
-    // The program under test runs in a subprocess, so run the coverage agent there rather than
-    // (uselessly) in the test JVM.  Every subprocess appends to the same file, which is safe
+    // The program under test runs in a subprocess, so run the coverage agent there; it is disabled
+    // in the test JVM, above.  Every subprocess appends to the same file, which is safe
     // because the tests are sequential and each subprocess writes the file as it exits.
     // `asJvmArg` may write the destination as a path relative to the project directory, but a
     // subprocess runs in a temporary directory, so make the destination absolute.
@@ -200,6 +202,11 @@ tasks.named<JacocoReport>("jacocoTestReport") {
 
 spotless {
   java {
+    // google-java-format 1.36.1 reflows the nested <ul> lists that `updateUserOptions` generates
+    // into one or two words per line, indented almost to the right margin.  The `spotless:off` and
+    // `spotless:on` comments around that generated documentation keep it readable.
+    toggleOffOn()
+
     googleJavaFormat(libs.versions.google.java.format.get())
     formatAnnotations()
   }

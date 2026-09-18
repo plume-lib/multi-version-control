@@ -2,3 +2,7 @@
 error, which the program passes through after removing the "abort: " prefix.  The goal file
 records the behavior when fetch is unavailable, which is the usual case; if the fetch extension is
 enabled, this test fails and the goal file needs an update.
+
+hg writes part of this message to standard output and part to standard error, and the program
+merges the two streams with one thread apiece, so their relative order varies from run to run.
+That is why this test case has a `sort-output` file.
