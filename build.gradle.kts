@@ -158,7 +158,13 @@ tasks.withType<Test>().configureEach {
     // subprocess runs in a temporary directory, so make the destination absolute.
     val agentArg =
       Regex("destfile=([^,]*)").replace(jacocoTaskExtension.asJvmArg) { match ->
-        "destfile=" + projectDirFile.resolve(match.groupValues[1]).absolutePath
+        val destfile = projectDirFile.resolve(match.groupValues[1])
+        // Disabling the extension, above, also disables Gradle's own deletion of the destination
+        // file before the task runs.  Delete it here instead.  Otherwise the appends accumulate
+        // across runs, and a coverage report credits tests that have since been changed or
+        // deleted, until someone runs `clean`.
+        destfile.delete()
+        "destfile=" + destfile.absolutePath
       }
     systemProperty("mvc.test.jacocoArg", agentArg)
   }

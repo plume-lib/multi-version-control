@@ -73,3 +73,9 @@ That writes the goal files from the program's actual output, for all test cases.
 Inspect the diffs before committing them: a goal file should record what the
 program ought to print, not merely what it does print.  Where the program's
 current output is wrong, the test case has a `notes` file that says so.
+
+Regeneration skips a test case whose `requires` programs are not installed, and
+leaves that test case's goal files unchanged; it prints the name of each such
+test case.  So, on a machine without Mercurial or Subversion, the absence of a
+diff for an hg or svn test case does not mean that its goal files are up to
+date.

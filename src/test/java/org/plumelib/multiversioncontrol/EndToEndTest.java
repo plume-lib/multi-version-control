@@ -70,7 +70,9 @@ import org.junit.jupiter.api.TestFactory;
  *
  * <p>To overwrite the goal files with the program's current output, run {@code ./gradlew test
  * -Pregenerate}. Always inspect the resulting diffs: a goal file should record what the program
- * ought to print, not merely what it does print.
+ * ought to print, not merely what it does print. Regeneration leaves the goal files of a skipped
+ * test case unchanged, so it cannot bring those files up to date on a machine that lacks the
+ * programs they require; it prints the name of each such test case.
  */
 final class EndToEndTest {
 
@@ -114,6 +116,9 @@ final class EndToEndTest {
    * than blocking the build forever.
    */
   private static final int subprocessTimeoutSeconds = 600;
+
+  /** How long to wait, in seconds, for a subprocess that has been killed to die. */
+  private static final int destroyTimeoutSeconds = 10;
 
   /**
    * The names of the files that may appear in a test case directory. Any other file is an error,
@@ -222,8 +227,15 @@ final class EndToEndTest {
     checkCaseFiles(caseDir);
     List<String> required = whitespaceSeparated(readFileOrEmpty(caseDir.resolve("requires")));
     for (String program : required) {
-      Assumptions.assumeTrue(
-          onPath(program), "Skipping " + caseName + ": no " + program + " on PATH");
+      if (!onPath(program)) {
+        if (regenerate) {
+          // A skipped test case's goal files are left as they are.  Say so, because otherwise a
+          // developer might conclude from the absence of a diff that they are up to date.
+          System.out.println(
+              "Not regenerating the goal files of " + caseName + ": no " + program + " on PATH");
+        }
+        Assumptions.abort("Skipping " + caseName + ": no " + program + " on PATH");
+      }
     }
 
     Path scratch = Files.createTempDirectory("mvc-e2e-").toRealPath();
@@ -306,10 +318,21 @@ final class EndToEndTest {
       // On failure, leave the files in place for a person to examine; the failure message says
       // where they are.  Do that for at most `maxKeptDirectories` failures, so that a run in which
       // many tests fail does not fill up the temporary directory.
-      if (passed || !keepIfFailed) {
+      if (passed) {
         deleteRecursively(scratch);
-      } else {
+      } else if (keepIfFailed) {
         keptDirectories++;
+      } else {
+        // The test is already failing, and its failure message is more informative than anything
+        // about cleaning up after it, so do not let a problem here replace that message.  A
+        // subprocess that the harness killed for running too long, or a process that such a
+        // subprocess started, may still be creating files under `scratch`, which would make
+        // deleting `scratch` fail.
+        try {
+          deleteRecursively(scratch);
+        } catch (IOException | RuntimeException e) {
+          System.err.println("Problem deleting " + scratch + ": " + e);
+        }
       }
     }
   }
@@ -461,7 +484,10 @@ final class EndToEndTest {
     env.put("TZ", "UTC");
     Process process = pb.start();
     if (!process.waitFor(subprocessTimeoutSeconds, TimeUnit.SECONDS)) {
-      process.destroyForcibly();
+      // Wait for the subprocess to die, so that it is not still writing files under `scratch` when
+      // the caller deletes that directory.  A process that the subprocess started might outlive
+      // it, so the caller tolerates a failure to delete.
+      process.destroyForcibly().waitFor(destroyTimeoutSeconds, TimeUnit.SECONDS);
       throw new AssertionError(
           "Killed a command that did not finish within "
               + subprocessTimeoutSeconds

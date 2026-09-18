@@ -7,6 +7,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.time.Duration;
@@ -33,6 +34,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.nullness.qual.RequiresNonNull;
 import org.checkerframework.checker.regex.qual.Regex;
+import org.checkerframework.checker.signedness.qual.PolySigned;
 import org.checkerframework.common.initializedfields.qual.EnsuresInitializedFields;
 import org.checkerframework.common.value.qual.MinLen;
 import org.checkerframework.dataflow.qual.Pure;
@@ -1983,8 +1985,18 @@ public class MultiVersionControl {
     executor.setWatchdog(watchdog);
 
     final ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-    PumpStreamHandler streamHandler =
-        new PumpStreamHandler(outStream); // send both stderr and stdout
+    // Send both the subprocess's standard output and its standard error to `outStream`, but only a
+    // complete line at a time.  `PumpStreamHandler` pumps each stream in a thread of its own, so
+    // writing to `outStream` directly would let one stream's output land in the middle of a line
+    // of the other stream's output.
+    //
+    // These streams need no closing:  they hold no resource, `outStream` belongs to this method,
+    // and the code below flushes them.
+    @SuppressWarnings("resourceleak:required.method.not.called")
+    LineAtomicOutputStream outPump = new LineAtomicOutputStream(outStream);
+    @SuppressWarnings("resourceleak:required.method.not.called")
+    LineAtomicOutputStream errPump = new LineAtomicOutputStream(outStream);
+    PumpStreamHandler streamHandler = new PumpStreamHandler(outPump, errPump);
     executor.setStreamHandler(streamHandler);
 
     try {
@@ -2005,6 +2017,14 @@ public class MultiVersionControl {
       exitValue = resultHandler.getExitValue();
     } catch (InterruptedException e) {
       throw new Error(e);
+    }
+    // A stream's last line might not end with a line separator.
+    try {
+      outPump.flush();
+      errPump.flush();
+    } catch (IOException e) {
+      // `outStream` is a ByteArrayOutputStream, which never throws IOException.
+      throw new UncheckedIOException(e);
     }
     boolean timedOut = executor.isFailure(exitValue) && watchdog.killedProcess();
 
@@ -2089,5 +2109,56 @@ public class MultiVersionControl {
    */
   String command(ProcessBuilder pb) {
     return "  cd " + pb.directory() + "\n  " + StringsP.join(" ", pb.command());
+  }
+
+  /**
+   * An output stream that writes to another output stream, a whole line at a time. Two of these
+   * that write to the same stream never interleave their output within a line, even when different
+   * threads write to them; each line of the result comes from exactly one of them.
+   *
+   * <p>This is for merging a subprocess's standard output and standard error, which are pumped by
+   * two different threads.
+   *
+   * <p>A client must {@link #flush} this stream when done with it; otherwise a final line that has
+   * no line separator would never be written.
+   */
+  private static class LineAtomicOutputStream extends OutputStream {
+
+    /** Where to write complete lines. */
+    private final OutputStream delegate;
+
+    /** What has been written to this, since the most recent line separator. */
+    private final ByteArrayOutputStream partialLine = new ByteArrayOutputStream();
+
+    /**
+     * Creates a new LineAtomicOutputStream.
+     *
+     * @param delegate where to write complete lines
+     */
+    LineAtomicOutputStream(OutputStream delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public void write(@PolySigned int b) throws IOException {
+      partialLine.write(b);
+      // `write` writes only the low 8 bits of its argument.
+      if ((b & 0xff) == '\n') {
+        flush();
+      }
+    }
+
+    /** Writes what has been buffered, even if it is not a complete line. */
+    @Override
+    public void flush() throws IOException {
+      if (partialLine.size() != 0) {
+        // Synchronize on `delegate`, because another LineAtomicOutputStream might be writing to it.
+        synchronized (delegate) {
+          partialLine.writeTo(delegate);
+          delegate.flush();
+        }
+        partialLine.reset();
+      }
+    }
   }
 }
