@@ -48,9 +48,9 @@ import org.plumelib.options.Options;
 import org.plumelib.util.EntryReader;
 import org.plumelib.util.EntryReader.CommentFormat;
 import org.plumelib.util.EntryReader.EntryFormat;
-import org.plumelib.util.FilesPlume;
-import org.plumelib.util.StringsPlume;
-import org.plumelib.util.UtilPlume;
+import org.plumelib.util.FilesP;
+import org.plumelib.util.StringsP;
+import org.plumelib.util.UtilP;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNURL;
 import org.tmatesoft.svn.core.auth.ISVNAuthenticationManager;
@@ -85,7 +85,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  * <p>You can specify the set of clones for the program to manage in a file {@code .mvc-checkouts},
  * or you can pass {@code --search} to make the program search your directory structure to find all
  * of your clones. For example (assuming you have a <a href="#installation">{@code mvc} alias</a>),
- * to list all un-committed changed files under your home directory:
+ * to list all uncommitted changed files under your home directory:
  *
  * <pre>
  * mvc status --search=true</pre>
@@ -112,75 +112,137 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *
  * <ul>
  *   <li id="optiongroup:Configuration-file">Configuration file
- *       <ul>
- *         <li id="option:home"><b>--home=</b><i>string</i>. User home directory. [default Java
- *             {@code user.home} property]
- *         <li id="option:checkouts"><b>--checkouts=</b><i>string</i>. File with list of clones. Set
- *             it to /dev/null to suppress reading. [default {@code .mvc-checkouts} in home
- *             directory]
- *       </ul>
+ *                                           <ul>
+ *                                             <li id="option:home"><b>--home=</b><i>string</i>.
+ *                                                                  User home directory. [default
+ *                                                                  Java {@code user.home}
+ *                                                                  property].
+ *                                             <li id="option:checkouts"><b>--checkouts=</b><i>string</i>.
+ *                                                                       File with list of clones.
+ *                                                                       Set it to /dev/null to
+ *                                                                       suppress reading. [default
+ *                                                                       {@code .mvc-checkouts} in
+ *                                                                       home directory]
+ *                                           </ul>
  *   <li id="optiongroup:Miscellaneous-options">Miscellaneous options
- *       <ul>
- *         <li id="option:redo-existing"><b>--redo-existing=</b><i>boolean</i>. If false, clone
- *             command skips existing directories. [default: false]
- *         <li id="option:timeout"><b>--timeout=</b><i>int</i>. Terminating the process can leave
- *             the repository in a bad state, so set this rather high for safety. Also, the timeout
- *             needs to account for the time to run hooks (that might recompile or run tests).
- *             [default: 600]
- *       </ul>
+ *                                              <ul>
+ *                                                <li id="option:redo-existing"><b>--redo-existing=</b><i>boolean</i>.
+ *                                                                              If false, clone
+ *                                                                              command skips
+ *                                                                              existing
+ *                                                                              directories.
+ *                                                                              [default: false]
+ *                                                <li id="option:timeout"><b>--timeout=</b><i>int</i>.
+ *                                                                        Terminating the process
+ *                                                                        can leave the repository
+ *                                                                        in a bad state, so set
+ *                                                                        this rather high for
+ *                                                                        safety. Also, the timeout
+ *                                                                        needs to account for the
+ *                                                                        time to run hooks (that
+ *                                                                        might recompile or run
+ *                                                                        tests). [default: 600]
+ *                                              </ul>
  *   <li id="optiongroup:Searching-for-clones">Searching for clones
- *       <ul>
- *         <li id="option:search"><b>--search=</b><i>boolean</i>. If true, search for all clones,
- *             not just those listed in a file. [default: false]
- *         <li id="option:search-prefix"><b>--search-prefix=</b><i>boolean</i>. If true, search for
- *             all clones whose directory is a prefix of one in the configuration file. [default:
- *             false]
- *         <li id="option:dir"><b>--dir=</b><i>string</i> {@code [+]}. Directory under which to
- *             search for clones, when using {@code --search} [default home directory]
- *         <li id="option:ignore-dir"><b>--ignore-dir=</b><i>string</i> {@code [+]}. Directories
- *             under which to NOT search for clones. May include leading "~/".
- *       </ul>
+ *                                             <ul>
+ *                                               <li id="option:search"><b>--search=</b><i>boolean</i>.
+ *                                                                      If true, search for all
+ *                                                                      clones, not just those
+ *                                                                      listed in a file. [default:
+ *                                                                      false]
+ *                                               <li id="option:search-prefix"><b>--search-prefix=</b><i>boolean</i>.
+ *                                                                             If true, search for
+ *                                                                             all clones whose
+ *                                                                             directory is a prefix
+ *                                                                             of one in the
+ *                                                                             configuration file.
+ *                                                                             This is especially
+ *                                                                             useful when working
+ *                                                                             with <a
+ *                                                                             href="https://github.com/plume-lib/manage-git-branches">manage-git-branches</a>.
+ *                                                                             [default: false]
+ *                                               <li id="option:dir"><b>--dir=</b><i>string</i>
+ *                                                                   <code>[+]</code>. Directory
+ *                                                                   under which to search for
+ *                                                                   clones, when using {@code
+ *                                                                   --search} [default = home
+ *                                                                   directory].
+ *                                               <li id="option:ignore-dir"><b>--ignore-dir=</b><i>string</i>
+ *                                                                          <code>[+]</code>.
+ *                                                                          Directories under which
+ *                                                                          to NOT search for
+ *                                                                          clones. May include
+ *                                                                          leading "~/".
+ *                                             </ul>
  *   <li id="optiongroup:Paths-to-programs">Paths to programs
- *       <ul>
- *         <li id="option:cvs-executable"><b>--cvs-executable=</b><i>string</i>. Path to the cvs
- *             program. [default: cvs]
- *         <li id="option:git-executable"><b>--git-executable=</b><i>string</i>. Path to the git
- *             program. [default: git]
- *         <li id="option:hg-executable"><b>--hg-executable=</b><i>string</i>. Path to the hg
- *             program. [default: hg]
- *         <li id="option:svn-executable"><b>--svn-executable=</b><i>string</i>. Path to the svn
- *             program. [default: svn]
- *         <li id="option:insecure"><b>--insecure=</b><i>boolean</i>. If true, use --insecure when
- *             invoking programs. [default: false]
- *         <li id="option:cvs-arg"><b>--cvs-arg=</b><i>string</i> {@code [+]}. Extra argument to
- *             pass to the cvs program.
- *         <li id="option:git-arg"><b>--git-arg=</b><i>string</i> {@code [+]}. Extra argument to
- *             pass to the git program.
- *         <li id="option:hg-arg"><b>--hg-arg=</b><i>string</i> {@code [+]}. Extra argument to pass
- *             to the hg program.
- *         <li id="option:svn-arg"><b>--svn-arg=</b><i>string</i> {@code [+]}. Extra argument to
- *             pass to the svn program.
- *       </ul>
+ *                                          <ul>
+ *                                            <li id="option:cvs-executable"><b>--cvs-executable=</b><i>string</i>.
+ *                                                                           Path to the cvs
+ *                                                                           program. [default: cvs]
+ *                                            <li id="option:git-executable"><b>--git-executable=</b><i>string</i>.
+ *                                                                           Path to the git
+ *                                                                           program. [default: git]
+ *                                            <li id="option:hg-executable"><b>--hg-executable=</b><i>string</i>.
+ *                                                                          Path to the hg program.
+ *                                                                          [default: hg]
+ *                                            <li id="option:svn-executable"><b>--svn-executable=</b><i>string</i>.
+ *                                                                           Path to the svn
+ *                                                                           program. [default: svn]
+ *                                            <li id="option:insecure"><b>--insecure=</b><i>boolean</i>.
+ *                                                                     If true, use --insecure when
+ *                                                                     invoking programs. [default:
+ *                                                                     false]
+ *                                            <li id="option:cvs-arg"><b>--cvs-arg=</b><i>string</i>
+ *                                                                    <code>[+]</code>. Extra
+ *                                                                    argument to pass to the cvs
+ *                                                                    program.
+ *                                            <li id="option:git-arg"><b>--git-arg=</b><i>string</i>
+ *                                                                    <code>[+]</code>. Extra
+ *                                                                    argument to pass to the git
+ *                                                                    program.
+ *                                            <li id="option:hg-arg"><b>--hg-arg=</b><i>string</i>
+ *                                                                   <code>[+]</code>. Extra
+ *                                                                   argument to pass to the hg
+ *                                                                   program.
+ *                                            <li id="option:svn-arg"><b>--svn-arg=</b><i>string</i>
+ *                                                                    <code>[+]</code>. Extra
+ *                                                                    argument to pass to the svn
+ *                                                                    program.
+ *                                          </ul>
  *   <li id="optiongroup:Diagnostics">Diagnostics
- *       <ul>
- *         <li id="option:show"><b>--show=</b><i>boolean</i>. If true, display each command is it is
- *             executed. [default: false]
- *         <li id="option:print-directory"><b>--print-directory=</b><i>boolean</i>. If true, print
- *             the directory before executing commands in it. [default: false]
- *         <li id="option:dry-run"><b>--dry-run=</b><i>boolean</i>. Perform a "dry run": print
- *             commands but do not execute them. [default: false]
- *         <li id="option:quiet"><b>-q</b> <b>--quiet=</b><i>boolean</i>. If true, run quietly
- *             (e.g., no output about missing directories). [default: true]
- *         <li id="option:debug"><b>--debug=</b><i>boolean</i>. Print debugging output. [default:
- *             false]
- *         <li id="option:debug-replacers"><b>--debug-replacers=</b><i>boolean</i>. Debug
- *             'replacers' that filter command output. [default: false]
- *         <li id="option:debug-process-output"><b>--debug-process-output=</b><i>boolean</i>.
- *             Lightweight debugging of 'replacers' that filter command output. [default: false]
- *       </ul>
+ *                                    <ul>
+ *                                      <li id="option:show"><b>--show=</b><i>boolean</i>. If true,
+ *                                                           display each command as it is executed.
+ *                                                           [default: false]
+ *                                      <li id="option:print-directory"><b>--print-directory=</b><i>boolean</i>.
+ *                                                                      If true, print the directory
+ *                                                                      (and the origin URL) before
+ *                                                                      executing commands in it.
+ *                                                                      [default: false]
+ *                                      <li id="option:dry-run"><b>--dry-run=</b><i>boolean</i>.
+ *                                                              Perform a "dry run": print commands
+ *                                                              but do not execute them. [default:
+ *                                                              false]
+ *                                      <li id="option:quiet"><b>-q</b>
+ *                                                            <b>--quiet=</b><i>boolean</i>. If
+ *                                                            true, run quietly (e.g., no output
+ *                                                            about missing directories). [default:
+ *                                                            true]
+ *                                      <li id="option:debug"><b>--debug=</b><i>boolean</i>. Print
+ *                                                            debugging output. [default: false]
+ *                                      <li id="option:debug-replacers"><b>--debug-replacers=</b><i>boolean</i>.
+ *                                                                      Debug 'replacers' that
+ *                                                                      filter command output.
+ *                                                                      [default: false]
+ *                                      <li id="option:debug-process-output"><b>--debug-process-output=</b><i>boolean</i>.
+ *                                                                           Lightweight debugging
+ *                                                                           of 'replacers' that
+ *                                                                           filter command output.
+ *                                                                           [default: false]
+ *                                    </ul>
  * </ul>
  *
- * {@code [+]} means option can be specified multiple times
+ * <code>[+]</code> means option can be specified multiple times
  * <!-- end options doc -->
  *
  * <p><b>File format for {@code .mvc-checkouts} file</b>
@@ -305,7 +367,6 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
 //       '*' a newer revision exists on the server
 //       ' ' the working copy is up to date
 
-@SuppressWarnings("PMD.TooManyFields")
 public class MultiVersionControl {
 
   /** User home directory. [default Java {@code user.home} property]. */
@@ -335,7 +396,7 @@ public class MultiVersionControl {
   @Option("Timeout for each command, in seconds")
   public int timeout = 600;
 
-  // Default is false because searching whole directory structure is slow.
+  // Default is false because searching the whole directory structure is slow.
   /** If true, search for all clones, not just those listed in a file. */
   @OptionGroup("Searching for clones")
   @Option("Search for all clones, not just those listed in a file")
@@ -412,7 +473,7 @@ public class MultiVersionControl {
 
   // TODO: use consistent names: both "show" or both "print"
 
-  /** If true, display each command is it is executed. */
+  /** If true, display each command as it is executed. */
   @Option("Display commands as they are executed")
   @OptionGroup("Diagnostics")
   public boolean show = false;
@@ -465,7 +526,7 @@ public class MultiVersionControl {
    * @return path with "~" expanded
    */
   private static String expandTilde(String path) {
-    return path.replaceFirst("^~", home);
+    return path.replaceFirst("^~", Matcher.quoteReplacement(home));
   }
 
   /**
@@ -806,7 +867,8 @@ public class MultiVersionControl {
    * Read checkouts from the file (in {@code .mvc-checkouts} format), and add them to the set.
    *
    * @param file the .mvc-checkouts file
-   * @param checkouts the set to populate; is side-effected by this method
+   * @param checkouts the set to populate; is side-effected by this method, but only if the whole
+   *     file was read successfully
    * @param searchPrefix if true, search for all clones whose directory is a prefix of one in the
    *     configuration file
    * @throws IOException if there is trouble reading the file (or file system?)
@@ -816,6 +878,10 @@ public class MultiVersionControl {
     RepoType currentType = RepoType.BZR; // arbitrary choice, to avoid uninitialized variable
     String currentRoot = null;
     boolean currentRootIsRepos = false;
+
+    // Accumulate into a temporary set, so that if reading the file fails partway through, the
+    // caller's set is not left holding a partial (and therefore misleading) configuration.
+    Set<Checkout> fileCheckouts = new LinkedHashSet<>();
 
     try (EntryReader er = new EntryReader(file)) {
       for (String lineUntrimmed : er) {
@@ -879,7 +945,7 @@ public class MultiVersionControl {
         }
 
         String dirname;
-        String root = StringsPlume.replaceSuffix(currentRoot, "/", "");
+        String root = StringsP.replaceSuffix(currentRoot, "/", "");
         String module = null;
 
         int spacePos = line.lastIndexOf(' ');
@@ -904,7 +970,7 @@ public class MultiVersionControl {
         }
 
         Checkout checkout = new Checkout(currentType, dir, root, module);
-        checkouts.add(checkout);
+        fileCheckouts.add(checkout);
 
         // TODO: This can result in near-duplicates in the checkouts set.  Suppose that the
         // .mvc-checkouts file contains two lines
@@ -930,19 +996,21 @@ public class MultiVersionControl {
           }
           for (File sibling : siblings) {
             try {
-              checkouts.add(new Checkout(currentType, sibling, root, module));
+              fileCheckouts.add(new Checkout(currentType, sibling, root, module));
             } catch (DirectoryDoesNotExist e) {
               // A directory is an extension of a file in
-              // .mvc-checkouts, but lacks a (eg) .git subdir.  Just
+              // .mvc-checkouts, but lacks a (e.g.) .git subdir.  Just
               // skip that directory.
             }
           }
         }
       }
-    } catch (IOException e) {
-      System.err.printf("There is a problem with reading the file %s: %s", file.getPath(), e);
-      throw new UncheckedIOException(e);
     }
+    // Any IOException propagates to the caller (main), which reports it and continues.  Because the
+    // merge below has not happened yet in that case, the caller never processes a partially read
+    // configuration file.
+    checkouts.addAll(fileCheckouts);
+
     if (debug) {
       System.out.printf("Here are the checkouts:%n");
       for (Checkout c : checkouts) {
@@ -982,7 +1050,7 @@ public class MultiVersionControl {
   //   }
 
   /**
-   * Find all checkouts at or under the given directory (or, as a special case, also its parent --
+   * Finds all checkouts at or under the given directory (or, as a special case, also its parent --
    * could rewrite to avoid that case), and adds them to checkouts. Works by checking whether dir or
    * any of its descendants is a version control directory.
    *
@@ -1097,7 +1165,7 @@ public class MultiVersionControl {
       return;
     }
 
-    String pathInRepo = FilesPlume.readString(repositoryFile.toPath()).trim();
+    String pathInRepo = FilesP.readString(repositoryFile.toPath()).trim();
     @NonNull File repoFileRoot = new File(pathInRepo);
     for (File parent = repoFileRoot.getParentFile();
         parent != null;
@@ -1120,7 +1188,7 @@ public class MultiVersionControl {
       pathInRepoAtCheckout = dirRelative.getName();
     }
 
-    String repoRoot = FilesPlume.readString(rootFile.toPath()).trim();
+    String repoRoot = FilesP.readString(rootFile.toPath()).trim();
     checkouts.add(new Checkout(RepoType.CVS, dirRelative, repoRoot, pathInRepoAtCheckout));
   }
 
@@ -1145,7 +1213,7 @@ public class MultiVersionControl {
         if (pathsSection != null) {
           repository = pathsSection.get("default");
           if (repository != null) {
-            repository = StringsPlume.replaceSuffix(repository, "/", "");
+            repository = StringsP.replaceSuffix(repository, "/", "");
           }
         }
       } catch (IOException e) {
@@ -1165,8 +1233,9 @@ public class MultiVersionControl {
    * @throws DirectoryDoesNotExist if the directory does not exist
    */
   static Checkout dirToCheckoutGit(File gitDir, File parentDir) throws DirectoryDoesNotExist {
-    // TODO: Must pass parentDir to `backticks`, when next plume-util is released.
-    String repository = UtilPlume.backticks("git", "config", "remote.origin.url").trim();
+    // Run `git config` in parentDir, so that it reports the URL of this clone rather than of
+    // whatever repository happens to contain the current working directory.
+    String repository = UtilP.backticks(parentDir, "git", "config", "remote.origin.url").trim();
     return new Checkout(RepoType.GIT, parentDir, repository, null);
   }
 
@@ -1281,10 +1350,10 @@ public class MultiVersionControl {
    * Strip identical elements off the end of both paths, and then return what is left of each.
    * Returned elements can be null! If p2Limit is non-null, then it should be a parent of p2, and
    * the stripping stops when p2 becomes p2Limit. If p1Contains is non-null, then p1 must contain a
-   * subdirectory of that name, and stripping stops when it is reached
+   * subdirectory of that name, and stripping stops when it is reached.
    *
    * @param p1 the first path
-   * @param p2 the first path
+   * @param p2 the second path
    * @param p2Limit null, or a parent of p2, which is the minimum suffix to return
    * @param p1Contains null, or a subdirectory of p1
    * @return p1 and p2, relative to their largest common prefix (modulo {@code p2Limit} and {@code
@@ -1341,7 +1410,7 @@ public class MultiVersionControl {
 
   /**
    * A Replacer does string substitution, to make output more user-friendly. Examples are
-   * suppressing noise output or expanding relative file names.
+   * suppressing noisy output or expanding relative file names.
    */
   static class Replacer {
     /** The regular expression matching text that should be replaced. */
@@ -1379,7 +1448,6 @@ public class MultiVersionControl {
    *
    * @param checkouts the clones and checkouts to process
    */
-  @SuppressWarnings("PMD.SwitchDensity")
   public void process(Set<Checkout> checkouts) {
     // Always run at least one command, but sometimes up to three.
     ProcessBuilder pb = new ProcessBuilder("");
@@ -1523,7 +1591,7 @@ public class MultiVersionControl {
               // "--filter=blob:none" makes cloning fast and reduces disk space.  It makes a
               // subsequent `git blame` command slower, since it has retrieve information from the
               // remote repository.  It makes pulling from the cloned repository impossible.
-              pb.command(gitExecutable, "clone", "--recursive", "--", c.repository, dirbase);
+              pb.command(gitExecutable, "clone", /* "--recursive", */ "--", c.repository, dirbase);
               addArgs(pb, gitArg);
             }
             case HG -> {
@@ -1763,7 +1831,7 @@ public class MultiVersionControl {
                   new Replacer(
                       "((^|\\n)CONFLICT \\(content\\): Merge conflict in )", "$1" + dir + "/"));
               replacers.add(new Replacer("(^|\\n)([ACDMRU]\t)", "$1$2" + dir + "/"));
-              pb.command(gitExecutable, "pull", "-q", "--recurse-submodules");
+              pb.command(gitExecutable, "pull", "-q" /*, "--recurse-submodules"*/);
               addArgs(pb, gitArg);
               // prune branches; alternately do "git remote prune origin"; "git gc" doesn't do this.
               pb2.command(gitExecutable, "fetch", "-p");
@@ -1857,18 +1925,18 @@ public class MultiVersionControl {
       if (printDirectory) {
         System.out.println(dir + " :");
         pb5.directory(dir);
-        perform_command(pb5, Collections.emptyList(), true);
+        performCommand(pb5, Collections.emptyList(), true);
       }
-      perform_command(pb, replacers, showNormalOutput);
+      performCommand(pb, replacers, showNormalOutput);
       if (!pb2.command().isEmpty()) {
-        perform_command(pb2, replacers, showNormalOutput);
+        performCommand(pb2, replacers, showNormalOutput);
       }
       if (!pb3.command().isEmpty()) {
-        perform_command(pb3, replacers3, showNormalOutput);
+        performCommand(pb3, replacers3, showNormalOutput);
       }
       // TODO:
       // if (!pb4.command().isEmpty()) {
-      //   int isAncestorStatus = perform_command(pb4, replacers4, showNormalOutput);
+      //   int isAncestorStatus = performCommand(pb4, replacers4, showNormalOutput);
       //   if (isAncestorStatus == 0) {
       //     // TODO: Output this message only for non-master branches.
       //     // System.out.println("No changes committed in " + dir);
@@ -1934,12 +2002,12 @@ public class MultiVersionControl {
    * Perform {@code pb}'s command.
    *
    * @param pb the ProcessBuilder whose commands to run
-   * @param replacers replacement to make it the output before displaying it, to reduce verbasity
+   * @param replacers replacements to make in the output before displaying it, to reduce verbosity
    * @param showNormalOutput if true, then display the output even if the process completed
    *     normally. Ordinarily, output is displayed only if the process completed erroneously.
    * @return the status code: 0 for normal completion, non-zero for erroneous completion
    */
-  int perform_command(ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
+  int performCommand(ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
     if (show) {
       System.out.println(command(pb));
       System.out.flush();
@@ -2016,13 +2084,7 @@ public class MultiVersionControl {
     // I could try printing always, to better understand this question.
     if (showNormalOutput || exitValue != 0 || debugReplacers || debugProcessOutput) {
       // Filter then print the output.
-      String output;
-      try {
-        String tmpOutput = outStream.toString(UTF_8);
-        output = tmpOutput;
-      } catch (RuntimeException e) {
-        throw new Error("Exception getting process standard output");
-      }
+      String output = outStream.toString(UTF_8);
 
       if (debugReplacers || debugProcessOutput) {
         System.out.println("preoutput=<<<" + output + ">>>");
@@ -2087,6 +2149,6 @@ public class MultiVersionControl {
    * @return the shell command for the process
    */
   String command(ProcessBuilder pb) {
-    return "  cd " + pb.directory() + "\n  " + StringsPlume.join(" ", pb.command());
+    return "  cd " + pb.directory() + "\n  " + StringsP.join(" ", pb.command());
   }
 }
