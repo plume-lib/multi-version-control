@@ -979,12 +979,12 @@ public class MultiVersionControl {
         // `c-fork-d`.
         if (searchPrefix) {
           String dirName = dir.getName();
-          FileFilter namePrefixFilter = f -> f.isDirectory() && f.getName().startsWith(dirName);
           File dirParent = dir.getParentFile();
           if (dirParent == null || !dirParent.isDirectory()) {
             continue;
           }
-          File[] siblings = dirParent.listFiles(namePrefixFilter);
+          File[] siblings =
+              dirParent.listFiles(f -> f.isDirectory() && f.getName().startsWith(dirName));
           if (siblings == null) {
             throw new Error(
                 String.format(
@@ -1107,8 +1107,9 @@ public class MultiVersionControl {
     }
 
     @SuppressWarnings({
-      "nullness" // dependent: listFiles => non-null because dir is a directory, and
+      "nullness", // dependent: listFiles => non-null because dir is a directory, and
       // the checker doesn't know that checkouts.add etc do not affect dir
+      "allcheckers:purity.functional.argument" // idf prints if theirs an IOException.
     })
     File @NonNull [] childdirs = dir.listFiles(idf);
     if (childdirs == null) {
