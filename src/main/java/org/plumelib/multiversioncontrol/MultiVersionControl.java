@@ -28,6 +28,9 @@ import org.apache.commons.exec.PumpStreamHandler;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.initialization.qual.UnknownInitialization;
 import org.checkerframework.checker.lock.qual.GuardSatisfied;
+import org.checkerframework.checker.modifiability.qual.Growable;
+import org.checkerframework.checker.modifiability.qual.Modifiable;
+import org.checkerframework.checker.modifiability.qual.IteratorPolyMod;
 import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -412,14 +415,14 @@ public class MultiVersionControl {
    * directory].
    */
   @Option("Directory under which to search for clones; default=home dir")
-  public List<String> dir = new ArrayList<>();
+  public @Modifiable @IteratorPolyMod List<String> dir = new ArrayList<>();
 
   /** Directories under which to NOT search for clones. May include leading "~/". */
   @Option("Directory under which to NOT search for clones")
   public List<String> ignoreDir = new ArrayList<>();
 
   /** Files, each a directory, corresponding to strings in {@link ignoreDir}. */
-  private Set<File> ignoreDirs = new LinkedHashSet<>();
+  private @Modifiable Set<File> ignoreDirs = new LinkedHashSet<>();
 
   // These *-executable command-line options are handy:
   //  * if you want to use a specific version of the program
@@ -870,7 +873,7 @@ public class MultiVersionControl {
    *     configuration file
    * @throws IOException if there is trouble reading the file (or file system?)
    */
-  static void readCheckouts(File file, Set<Checkout> checkouts, boolean searchPrefix)
+  static void readCheckouts(File file, @Growable Set<Checkout> checkouts, boolean searchPrefix)
       throws IOException {
     RepoType currentType = RepoType.BZR; // arbitrary choice, to avoid uninitialized variable
     String currentRoot = null;
@@ -1055,7 +1058,7 @@ public class MultiVersionControl {
    * @param checkouts the set to populate; is side-effected by this method
    * @param ignoreDirs directories not to search within
    */
-  private static void findCheckouts(File dir, Set<Checkout> checkouts, Set<File> ignoreDirs) {
+  private static void findCheckouts(File dir, @Growable Set<Checkout> checkouts, Set<File> ignoreDirs) {
     if (!dir.isDirectory()) {
       // This should never happen, unless the directory is deleted between
       // the call to findCheckouts and the test of isDirectory.
@@ -1151,7 +1154,7 @@ public class MultiVersionControl {
    * @param checkouts the set to populate; is side-effected by this method
    * @throws DirectoryDoesNotExist if the directory does not exist
    */
-  static void addCheckoutCvs(File cvsDir, File parentDir, Set<Checkout> checkouts)
+  static void addCheckoutCvs(File cvsDir, File parentDir, @Growable Set<Checkout> checkouts)
       throws DirectoryDoesNotExist {
     assert cvsDir.getName().equals("CVS") : cvsDir.getName();
     // relative path within repository
