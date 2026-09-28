@@ -52,10 +52,10 @@ empty", and a misspelled `sort-output` would turn off sorting.
 
 Absolute pathnames vary from run to run, so before comparing the program's
 output to a goal file, the harness replaces the temporary home directory by
-`${HOME}` and the real home directory of the user who is running the tests by
-`${USER_HOME}`.  The harness also removes the warnings that the JVM itself
-prints, from standard error only:  a line of the program's own standard output
-might start with `WARNING:`.
+`${HOME}` and the program's `user.home` property, which the harness sets to a
+fixed placeholder, by `${USER_HOME}`.  The harness also removes the warnings
+that the JVM itself prints, from standard error only:  a line of the program's
+own standard output might start with `WARNING:`.
 
 `common.sh` is not a test case; it holds shell functions that the `setup.sh`
 scripts share.

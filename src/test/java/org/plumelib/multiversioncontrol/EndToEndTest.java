@@ -60,10 +60,11 @@ import org.junit.jupiter.api.TestFactory;
  * </dl>
  *
  * <p>Absolute pathnames vary from run to run, so before comparing the program's output to a goal
- * file, the temporary home directory is replaced by {@code ${HOME}} and the home directory of the
- * user who is running the tests is replaced by {@code ${USER_HOME}}. The warnings that the JVM
- * itself prints are removed from standard error, but not from standard output, where a line that
- * starts with "WARNING: " might be the program's own output.
+ * file, the temporary home directory is replaced by {@code ${HOME}} and the program's {@code
+ * user.home} property, which the harness sets to a fixed placeholder, is replaced by {@code
+ * ${USER_HOME}}. The warnings that the JVM itself prints are removed from standard error, but not
+ * from standard output, where a line that starts with "WARNING: " might be the program's own
+ * output.
  *
  * <p>A test case directory may not contain any file other than those listed above. Without that
  * restriction, a misspelled file name would silently weaken or disable part of the test.
@@ -89,6 +90,15 @@ final class EndToEndTest {
 
   /** If true, overwrite the goal files instead of just comparing against them. */
   private static final boolean regenerate = Boolean.getBoolean("mvc.test.regenerate");
+
+  /**
+   * The value of the {@code user.home} property in the program's JVM. The usage message shows it as
+   * the default for {@code --home}. Fixing it makes the output independent of who runs the tests
+   * and of how the JVM would otherwise determine the home directory: when a container runs as a uid
+   * that has no entry in the password database, the JVM uses {@code $HOME} (which the harness sets
+   * to the temporary home directory) or "?", depending on the JDK version.
+   */
+  private static final String userHomePlaceholder = "/nonexistent/user-home";
 
   /** The {@code java} executable that runs the program. */
   private static final String javaExecutable =
@@ -272,6 +282,7 @@ final class EndToEndTest {
         command.add(jacocoArg);
       }
       command.add("-ea");
+      command.add("-Duser.home=" + userHomePlaceholder);
       command.add("-cp");
       command.add(classpath);
       command.add(MultiVersionControl.class.getName());
@@ -644,10 +655,10 @@ final class EndToEndTest {
 
   /**
    * Makes the program's output independent of where the test happens to run: replaces the temporary
-   * home directory by {@code ${HOME}}, replaces the home directory of the user who is running the
-   * tests by {@code ${USER_HOME}}, and normalizes line separators.
+   * home directory by {@code ${HOME}}, replaces the program's {@code user.home} property by {@code
+   * ${USER_HOME}}, and normalizes line separators.
    *
-   * <p>The usage message mentions the user's real home directory even though the program is run
+   * <p>The usage message mentions the {@code user.home} property even though the program is run
    * with {@code --home}, because it prints each option's default rather than its current value.
    *
    * @param s the program's output
@@ -657,13 +668,7 @@ final class EndToEndTest {
   private static String normalize(String s, Path home) {
     String result = s.replace("\r\n", "\n");
     result = result.replace(home.toString(), "${HOME}");
-    String userHome = System.getProperty("user.home");
-    // The JVM sets `user.home` to "?" when it cannot determine the home directory, as when a
-    // container runs as a uid that has no entry in the password database.  Substituting for that
-    // would replace every question mark in the program's output.
-    if (userHome != null && userHome.length() > 1) {
-      result = result.replace(userHome, "${USER_HOME}");
-    }
+    result = result.replace(userHomePlaceholder, "${USER_HOME}");
     return result;
   }
 
