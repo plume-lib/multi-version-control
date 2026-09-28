@@ -1,0 +1,2 @@
+"clone" turns --search off, because there is no point in cloning a clone that already exists.
+Only the clone from the configuration file appears.

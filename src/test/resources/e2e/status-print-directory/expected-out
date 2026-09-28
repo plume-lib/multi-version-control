@@ -1,0 +1,3 @@
+${HOME}/clone :
+${HOME}/remote.git
+ M ${HOME}/clone/file.txt

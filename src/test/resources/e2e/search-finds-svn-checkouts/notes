@@ -1,0 +1,2 @@
+--dir names the working copy rather than the whole home directory, so that the search does not
+descend into the Subversion repository itself.

@@ -1,0 +1,2 @@
+HG ${HOME}/clone-with-default-path ${HOME}/upstream null
+HG ${HOME}/upstream null null

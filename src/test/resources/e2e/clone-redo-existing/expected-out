@@ -1,0 +1,3 @@
+  cd ${HOME}
+  git clone -- ${HOME}/remote.git existing
+fatal in ${HOME}/existing: destination path 'existing' already exists and is not an empty directory.

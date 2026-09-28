@@ -1,0 +1,5 @@
+The clone has a modified file, but the program prints nothing at all and exits with status 0,
+because the version control program does not exist.  The goal files record the current (wrong)
+behavior: a user who misspells --git-executable is told that everything is fine.  The program does
+try to report this, but the report is unreachable, because commons-exec passes the failure to the
+result handler instead of throwing IOException from the asynchronous execute method.

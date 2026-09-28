@@ -1,0 +1,5 @@
+# shellcheck shell=bash
+. "$(dirname "$0")/../common.sh"
+make_git_remote remote
+clone_git remote clone
+rm "$HOME/clone/file.txt"

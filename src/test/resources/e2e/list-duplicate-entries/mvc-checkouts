@@ -1,0 +1,7 @@
+GITREPOS: https://github.com/plume-lib/options.git
+~/git/options
+~/git/options
+
+# The same directory, written differently.
+GITREPOS: https://github.com/plume-lib/options.git
+~/git/./options

@@ -1,0 +1,2 @@
+A directory named CVS that lacks the Root and Repository files is not a CVS checkout, and is
+skipped.

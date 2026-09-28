@@ -1,0 +1,6 @@
+--checkouts=/dev/null
+--debug
+--search
+--dir=~/searched
+--ignore-dir=~/searched/ignored
+list

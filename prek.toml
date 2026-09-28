@@ -34,7 +34,11 @@ exclude = { glob = [
   "gradlew",
   "gradlew.bat",
   "src/main/resources/specifications/jdk/**/*",
-  "src/test/resources/end-to-end/**/*",
+  "src/test/resources/e2e/*/args",
+  "src/test/resources/e2e/*/mvc-checkouts",
+  "src/test/resources/e2e/*/notes",
+  "src/test/resources/e2e/*/requires",
+  "src/test/resources/e2e/*/sort-output",
   "tests/kvasir-tests/povray/**/*",
 ] }
 

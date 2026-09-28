@@ -1,0 +1,2 @@
+GIT ${HOME}/first/alpha ${HOME}/remote.git null
+GIT ${HOME}/second/beta ${HOME}/remote.git null

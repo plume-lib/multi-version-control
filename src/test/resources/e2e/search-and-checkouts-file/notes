@@ -1,0 +1,2 @@
+--search adds to the clones read from the configuration file; it does not replace them.  The
+clones from the file come first, and "from-file" does not exist on disk but is still listed.

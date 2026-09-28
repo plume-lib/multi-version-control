@@ -1,0 +1,5 @@
+  cd ${HOME}/clone
+  git status --porcelain
+ M ${HOME}/clone/file.txt
+  cd ${HOME}/clone
+  git log --branches --not --remotes

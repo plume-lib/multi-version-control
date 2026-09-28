@@ -1,0 +1,2 @@
+--debug-process-output shows each command's output before and after the replacers run, so that a
+user can tell whether a replacer is what suppressed some output.

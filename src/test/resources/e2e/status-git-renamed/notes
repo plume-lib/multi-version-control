@@ -1,0 +1,2 @@
+For a rename, only the source file name is made absolute; the destination after "->" is left
+relative.  The goal file records the current behavior; both names ought to be absolute.

@@ -1,0 +1,6 @@
+--cvs-arg=--cvs-extra
+--git-arg=--depth=1
+--hg-arg=--hg-extra
+--svn-arg=--non-interactive
+--insecure
+clone

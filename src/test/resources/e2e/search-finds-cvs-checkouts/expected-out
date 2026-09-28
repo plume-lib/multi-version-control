@@ -1,0 +1,2 @@
+CVS ${HOME}/other-project :pserver:anonymous@cvs.example.com:/cvsroot some/deep/path/other-project
+CVS ${HOME}/project :pserver:anonymous@cvs.example.com:/cvsroot myproject

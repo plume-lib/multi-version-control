@@ -1,0 +1,2 @@
+If the parent directory cannot be created, the program stops with exit status 1 rather than going
+on to the other clones.

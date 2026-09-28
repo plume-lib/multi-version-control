@@ -1,0 +1,9 @@
+"pull" runs "hg fetch", which is an optional extension.  When it is not enabled, hg prints an
+error, which the program passes through after removing the "abort: " prefix.  The goal file
+records the behavior when fetch is unavailable, which is the usual case; if the fetch extension is
+enabled, this test fails and the goal file needs an update.
+
+hg writes part of this message to standard output and part to standard error, and the program
+merges the two streams with one thread apiece, so their relative order varies from run to run.
+That is why this test case has a `sort-output` file.  Sorting is enough because the program writes
+a whole line at a time, so no line is ever half from one stream and half from the other.

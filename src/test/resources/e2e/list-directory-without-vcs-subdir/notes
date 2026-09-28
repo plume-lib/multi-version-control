@@ -1,0 +1,3 @@
+An existing directory that lacks the version control subdirectory aborts reading the file.  No
+clones at all are listed, not even the ones that appear before the bad line: the program discards
+the whole configuration rather than acting on a partially read one.

@@ -1,0 +1,11 @@
+line: # A comment.
+line: GITREPOS: https://github.com/plume-lib/options.git
+split length: 2
+line: ~/git/options
+split length: 1
+Here are the checkouts:
+GIT ${HOME}/git/options https://github.com/plume-lib/options.git null
+About to process 1 checkouts:
+  GIT ${HOME}/git/options https://github.com/plume-lib/options.git null
+GIT ${HOME}/git/options https://github.com/plume-lib/options.git null
+GIT ${HOME}/git/options https://github.com/plume-lib/options.git null
