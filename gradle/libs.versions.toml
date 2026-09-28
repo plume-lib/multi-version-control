@@ -8,7 +8,7 @@ jacoco = "0.8.15"
 
 ktfmt = "0.64"
 
-pmd = "7.27.0"
+pmd = "7.28.0"
 
 [libraries]
 
@@ -52,7 +52,7 @@ svnkit = { module = "org.tmatesoft.svnkit:svnkit", version = "1.10.11" }
 
 [plugins]
 
-com-diffplug-spotless = { id = "com.diffplug.spotless", version = "8.10.2" }
+com-diffplug-spotless = { id = "com.diffplug.spotless", version = "8.10.3" }
 
 com-gradleup-shadow = { id = "com.gradleup.shadow", version = "9.6.1" }
 
