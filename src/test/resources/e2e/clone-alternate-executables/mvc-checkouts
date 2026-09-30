@@ -1,0 +1,14 @@
+CVSROOT: :ext:example.com:/nonexistent/cvsroot
+~/cvs/mod
+
+GITREPOS: https://github.com/plume-lib/options.git
+~/git/options
+
+HGREPOS: https://www.mercurial-scm.org/repo/hg
+~/hg/hg
+
+SVNROOT: svn+ssh://example.com/repos
+~/svn/proj
+
+SVNREPOS: svn+ssh://example.com/repos/proj2
+~/svn/proj2

@@ -1,0 +1,15 @@
+  mkdir -p ${HOME}/cvs
+  cd ${HOME}/cvs
+  cvs -d :ext:example.com:/nonexistent/cvsroot checkout -P -ko mod
+  mkdir -p ${HOME}/git
+  cd ${HOME}/git
+  git clone -- https://github.com/plume-lib/options.git options
+  mkdir -p ${HOME}/hg
+  cd ${HOME}/hg
+  hg clone https://www.mercurial-scm.org/repo/hg hg
+  mkdir -p ${HOME}/svn
+  cd ${HOME}/svn
+  svn checkout svn+ssh://example.com/repos/proj
+  mkdir -p ${HOME}/svn
+  cd ${HOME}/svn
+  svn checkout svn+ssh://example.com/repos/proj2

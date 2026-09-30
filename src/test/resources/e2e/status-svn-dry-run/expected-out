@@ -1,0 +1,2 @@
+  cd ${HOME}/wc
+  svn status

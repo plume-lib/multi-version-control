@@ -1,0 +1,6 @@
+Timed out (limit: 1s):
+  cd ${HOME}/clone
+  ${HOME}/slow-git status --porcelain
+Timed out (limit: 1s):
+  cd ${HOME}/clone
+  ${HOME}/slow-git log --branches --not --remotes

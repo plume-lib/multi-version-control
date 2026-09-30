@@ -1,0 +1,1 @@
+--dry-run implies --show and runs nothing, so the modified file is not reported.

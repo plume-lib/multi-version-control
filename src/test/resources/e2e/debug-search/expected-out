@@ -1,0 +1,8 @@
+Here are the checkouts:
+Searching for checkouts under ${HOME}/searched
+findCheckouts: ignoring ${HOME}/searched/ignored
+Searching added 1 checkouts
+About to process 1 checkouts:
+  GIT ${HOME}/searched/alpha ${HOME}/remote.git null
+GIT ${HOME}/searched/alpha ${HOME}/remote.git null
+GIT ${HOME}/searched/alpha ${HOME}/remote.git null

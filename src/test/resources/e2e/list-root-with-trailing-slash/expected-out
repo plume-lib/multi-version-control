@@ -1,0 +1,2 @@
+GIT ${HOME}/git/options https://github.com/plume-lib/options null
+GIT ${HOME}/git/plume-util https://github.com/plume-lib/plume-util.git null

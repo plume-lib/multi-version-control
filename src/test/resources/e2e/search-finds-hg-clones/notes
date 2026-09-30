@@ -1,0 +1,2 @@
+For a Mercurial clone, the repository is the "default" path from .hg/hgrc.  The repository created
+by "hg init" has no such file, so its repository is null.

@@ -1,0 +1,1 @@
+"list" reports clones that have not been created yet, because the "clone" action needs them.
