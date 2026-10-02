@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import org.checkerframework.checker.modifiability.qual.Modifiable;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -463,6 +464,8 @@ final class EndToEndTest {
     pb.directory(home.toFile());
     pb.redirectOutput(outFile.toFile());
     pb.redirectError(errFile.toFile());
+    @SuppressWarnings("modifiability:assignment") // ProcessBuilder.environment() is modifiable
+    @Modifiable
     Map<String, String> env = pb.environment();
     // Inherited settings would make the output depend on who runs the tests.  In particular, a JVM
     // whose JAVA_TOOL_OPTIONS, _JAVA_OPTIONS, or JDK_JAVA_OPTIONS environment variable is set
