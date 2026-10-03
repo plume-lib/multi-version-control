@@ -464,9 +464,7 @@ final class EndToEndTest {
     pb.directory(home.toFile());
     pb.redirectOutput(outFile.toFile());
     pb.redirectError(errFile.toFile());
-    @SuppressWarnings("modifiability:assignment") // ProcessBuilder.environment() is modifiable
-    @Modifiable
-    Map<String, String> env = pb.environment();
+    @Modifiable Map<String, String> env = pb.environment();
     // Inherited settings would make the output depend on who runs the tests.  In particular, a JVM
     // whose JAVA_TOOL_OPTIONS, _JAVA_OPTIONS, or JDK_JAVA_OPTIONS environment variable is set
     // prints a "Picked up ..." line to standard error.  Those variables are set by default in some
