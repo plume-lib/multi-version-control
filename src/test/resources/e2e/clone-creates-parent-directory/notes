@@ -1,0 +1,2 @@
+In a dry run, the program prints the "mkdir -p" that it would perform, and does not perform it.
+The postcheck confirms that no directory was created.

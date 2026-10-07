@@ -1,0 +1,2 @@
+The documentation of --checkouts states that /dev/null suppresses reading the configuration file.
+The home directory does contain a .mvc-checkouts file, which must be ignored.

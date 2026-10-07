@@ -1,0 +1,3 @@
+--svn-executable=${HOME}/fake-svn
+--debug-replacers
+status

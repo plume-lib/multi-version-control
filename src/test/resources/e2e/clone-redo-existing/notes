@@ -1,0 +1,2 @@
+With --redo-existing, the program runs the clone command even though the directory exists.  git
+fails, and the program prints git's error message with the directory added to the "fatal:" prefix.

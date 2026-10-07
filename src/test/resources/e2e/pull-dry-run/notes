@@ -1,0 +1,2 @@
+"pull" runs two commands for git and for Mercurial, and one for CVS and for Subversion.  The
+directories must exist, because "pull" skips a directory that does not exist.

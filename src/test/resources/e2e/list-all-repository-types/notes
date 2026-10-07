@@ -1,0 +1,3 @@
+A "...ROOT:" section appends the module (by default, the directory's base name) to the root, and a
+"...REPOS:" section does not.  For every version control system except CVS, the module is folded
+into the repository and is then null; only CVS keeps a separate module.

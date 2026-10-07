@@ -1,0 +1,2 @@
+The replacer for svn output replaces the padding between the status columns and the file name by
+the absolute directory.

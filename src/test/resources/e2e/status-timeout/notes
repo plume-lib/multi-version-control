@@ -1,0 +1,2 @@
+A command that exceeds --timeout is killed, and the program says so and goes on to the next
+command.  Both of the commands that "status" runs for a git clone time out.

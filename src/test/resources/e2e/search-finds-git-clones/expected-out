@@ -1,0 +1,2 @@
+GIT ${HOME}/alpha ${HOME}/remote.git null
+GIT ${HOME}/deeply/nested/directory/beta ${HOME}/remote.git null

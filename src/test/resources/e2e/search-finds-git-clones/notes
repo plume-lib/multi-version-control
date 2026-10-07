@@ -1,0 +1,3 @@
+Searching finds clones at any depth, ignores directories that are not clones, and does not report
+the bare repository remote.git (which has no .git subdirectory).  The clones are reported in
+alphabetical order.

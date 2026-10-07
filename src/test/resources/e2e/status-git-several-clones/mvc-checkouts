@@ -1,0 +1,4 @@
+GITREPOS: ${HOME}/remote.git
+~/clean
+~/dirty
+~/ahead

@@ -1,0 +1,7 @@
+When a pull fails, the program prints git's message, with the directory added to the "error:"
+prefix so that the reader knows which clone failed.
+
+The program also tries to delete the two lines "Please, commit your changes or stash them before
+you can merge." and "Aborting", but git has not used that wording for years (it now says "Please
+commit your changes or stash them before you merge."), so those lines are not deleted.  The goal
+file records the current behavior.

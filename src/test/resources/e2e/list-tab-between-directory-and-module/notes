@@ -1,0 +1,3 @@
+A tab does not separate a directory from a module, even though a tab does separate the two words of
+a section header.  The whole line, tab included, is used as the directory name.  The goal file
+records the current behavior; the two separators ought to be consistent.

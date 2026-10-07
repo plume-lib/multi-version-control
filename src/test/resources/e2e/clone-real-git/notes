@@ -1,0 +1,3 @@
+This test actually clones, from a repository on the local file system.  The program creates the
+missing parent directory and says so.  It does not print the output of the git command, because
+git succeeded.  The postcheck examines the files that the program created.

@@ -1,0 +1,2 @@
+The file name is made absolute, so that the output is meaningful without knowing which directory
+the command ran in.

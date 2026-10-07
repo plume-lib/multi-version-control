@@ -1,0 +1,2 @@
+"status" prints nothing for a clone with nothing to report.  That is the whole point of the
+program: its output is short enough to read, and empty output means there is nothing to do.

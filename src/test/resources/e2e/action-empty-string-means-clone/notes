@@ -1,0 +1,4 @@
+The empty string is accepted as an action, and means "clone", because the program tests
+"checkout".startsWith(actionString) and every string starts with the empty string.  The empty
+string should instead be rejected like any other unrecognized action.  The goal file records the
+current (wrong) behavior.

@@ -1,0 +1,4 @@
+--checkouts=/dev/null
+--search
+--dir=~/no-such-directory
+list

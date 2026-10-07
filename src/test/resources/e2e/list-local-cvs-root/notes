@@ -1,0 +1,2 @@
+If the last colon-separated component of a remote ":ext:" CVSROOT is a directory on this machine,
+the program uses that local directory as the root.

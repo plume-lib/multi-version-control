@@ -1,0 +1,1 @@
+The search does not look inside a .git directory, so the clone within one is not reported.
