@@ -1,0 +1,2 @@
+"git status --porcelain" succeeds even though a branch that is not checked out refers to a commit
+that does not exist.  Looking for unpushed commits fails, and the program reports git's error.

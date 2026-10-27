@@ -1,0 +1,2 @@
+A branch is reported if a fetched pull-request head contains its commits, but the pull request was
+closed without landing, so its changes are not in the main branch.

@@ -3,4 +3,8 @@
   cd ${HOME}/git/options
   git fetch -p
   cd ${HOME}/git/options
-  git config --get-regexp ^remote\..*\.url$
+  git remote
+  cd ${HOME}/git/options
+  git ls-remote origin refs/pull/*/head
+  cd ${HOME}/git/options
+  git for-each-ref --format=%(objectname) %(refname:lstrip=3) refs/pull/origin/

@@ -1,0 +1,3 @@
+  cd ${HOME}/clone
+  git rev-list -n 1 --branches --not --remotes
+fatal: bad object broken

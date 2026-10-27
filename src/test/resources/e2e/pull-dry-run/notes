@@ -1,2 +1,3 @@
-"pull" runs two commands for git and for Mercurial, and one for CVS and for Subversion.  The
+"pull" runs two commands for git and for Mercurial, and one for CVS and for Subversion.  For git,
+it also runs "git remote", even in a dry run, and lists the pull-request heads of each remote.  The
 directories must exist, because "pull" skips a directory that does not exist.

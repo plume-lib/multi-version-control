@@ -1,4 +1,4 @@
   cd ${HOME}/clone
   git status --porcelain
   cd ${HOME}/clone
-  git rev-list -n 1 --branches --not --remotes --glob=refs/pull/*
+  git rev-list -n 1 --branches --not --remotes

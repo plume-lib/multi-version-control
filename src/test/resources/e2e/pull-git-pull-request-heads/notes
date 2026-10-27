@@ -1,3 +1,5 @@
-"pull" fetches the pull-request heads of a remote whose URL is on GitHub.  The clone's remote has a
-GitHub URL, which "url.<base>.insteadOf" redirects to a local repository, because no test needs
-network access.  A remote that is not on GitHub contributes no pull-request heads.
+"pull" fetches the pull-request heads of each remote, but only those that are relevant to the
+clone.  Pull request 1's head is a commit that the clone has.  Pull request 2's head is a commit
+that the clone lacks, so it is not fetched.  Pull request 3's head is a commit that the clone lacks,
+but an earlier pull fetched an earlier head of pull request 3.  The remote no longer has pull
+request 4, so its ref is deleted.  Remote "other" has pull request 5, and is not on GitHub.
