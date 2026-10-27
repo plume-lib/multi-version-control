@@ -4,6 +4,8 @@
   git pull -q
   cd ${HOME}/git/options
   git fetch -p
+  cd ${HOME}/git/options
+  git config --get-regexp ^remote\..*\.url$
   cd ${HOME}/hg/hg
   hg -q update
   cd ${HOME}/hg/hg

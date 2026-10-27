@@ -2,4 +2,4 @@
   git status --porcelain
  M ${HOME}/clone/file.txt
   cd ${HOME}/clone
-  git log --branches --not --remotes
+  git rev-list -n 1 --branches --not --remotes --glob=refs/pull/*

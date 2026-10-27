@@ -1,0 +1,3 @@
+"pull" fetches the pull-request heads of a remote whose URL is on GitHub.  The clone's remote has a
+GitHub URL, which "url.<base>.insteadOf" redirects to a local repository, because no test needs
+network access.  A remote that is not on GitHub contributes no pull-request heads.

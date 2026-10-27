@@ -1,0 +1,2 @@
+This is like status-git-pull-request-head, but the clone has not fetched the pull-request heads,
+so the program cannot tell that the branch's commits were pushed.

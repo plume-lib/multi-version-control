@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,6 +20,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.exec.CommandLine;
@@ -103,6 +105,15 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *                but not pushed, or have shelved/stashed changes.
  *   list      -- List the clones/checkouts that this program is aware of.
  * </pre>
+ *
+ * <p>For a git clone, "status" reports a local branch whose changes are on no remote. A branch's
+ * changes are on a remote if a remote branch contains its commits, or if a pull-request head that
+ * has been fetched into a ref under {@code refs/pull/} contains them, or if the changes are in a
+ * remote's main branch ({@code HEAD}, {@code master}, or {@code main}), as after the branch has
+ * been squash-merged. For a git clone, "pull" fetches the pull-request heads of each remote that is
+ * on GitHub into {@code refs/pull/}; GitHub keeps them even after a pull request's branch has been
+ * deleted. A fork's pull requests are in the repository that it was forked from, so a clone of a
+ * fork needs a remote for that repository.
  *
  * <p>(The {@code commit} action is not supported, because that is not something that should be done
  * in an automated way &mdash; it needs a user-written commit message.)
@@ -1501,6 +1512,10 @@ public class MultiVersionControl {
       pb4.command(new ArrayList<>());
       pb4.directory(dir);
       boolean showNormalOutput = false;
+      // If true, report whether a local git branch has changes that are on no remote.
+      boolean checkUnpushedGitChanges = false;
+      // If true, fetch the pull-request heads of each GitHub remote of a git clone.
+      boolean fetchGitPullRequestHeads = false;
       // Set pb.command() to be the command to be executed.
       switch (action) {
         case LIST -> {
@@ -1679,12 +1694,7 @@ public class MultiVersionControl {
 
               // Necessary because "git status --porcelain" does not report:
               //   # Your branch is ahead of 'origin/master' by 1 commit.
-              // If you have pushed but not pulled, then this will report
-              pb2.command(gitExecutable, "log", "--branches", "--not", "--remotes");
-              addArgs(pb2, gitArg);
-              replacers.add(
-                  new Replacer(
-                      "^commit .*(.*\\n)+", "unpushed commits: " + pb2.directory() + "\n"));
+              checkUnpushedGitChanges = true;
 
               // TODO: use pb3 to look for stashes, using `git stash list`.
 
@@ -1780,6 +1790,7 @@ public class MultiVersionControl {
               addArgs(pb, gitArg);
               // prune branches; alternately do "git remote prune origin"; "git gc" doesn't do this.
               pb2.command(gitExecutable, "fetch", "-p");
+              fetchGitPullRequestHeads = true;
             }
             case HG -> {
               replacers.add(new Replacer("(^|\\n)([?!AMR] ) +", "$1$2 " + dir + "/"));
@@ -1879,6 +1890,12 @@ public class MultiVersionControl {
       if (!pb3.command().isEmpty()) {
         performCommand(pb3, replacers3, showNormalOutput);
       }
+      if (fetchGitPullRequestHeads) {
+        fetchGitPullRequestHeads(dir, replacers);
+      }
+      if (checkUnpushedGitChanges && hasUnpushedGitChanges(dir)) {
+        System.out.println("unpushed commits: " + dir);
+      }
       // TODO:
       // if (!pb4.command().isEmpty()) {
       //   int isAncestorStatus = performCommand(pb4, replacers4, showNormalOutput);
@@ -1941,6 +1958,219 @@ public class MultiVersionControl {
     }
     return (defaultPath.startsWith("https://hg.codespot.com/")
         || invalidCertificatePattern.matcher(defaultPath).matches());
+  }
+
+  /**
+   * The git option that selects the pull-request heads that have been fetched from a remote. A
+   * commit that is reachable from one of them has been pushed, even if no remote branch contains
+   * it.
+   */
+  private static final String GIT_PULL_REQUEST_HEADS = "--glob=refs/pull/*";
+
+  /**
+   * Matches a line of output of {@code git config --get-regexp} for the URL of a remote that is on
+   * GitHub. Group 1 is the remote's name.
+   */
+  private static final @Regex(1) Pattern GITHUB_REMOTE_URL =
+      Pattern.compile("^remote\\.(.*)\\.url (?:\\S*[@/])?github\\.com[:/].*$");
+
+  /**
+   * Fetches the heads of the pull requests of each GitHub remote of a git clone. The head of pull
+   * request N of remote R is stored in ref {@code refs/pull/R/N}. GitHub keeps a pull request's
+   * head even after the pull request's branch has been deleted.
+   *
+   * @param dir a directory containing a git clone
+   * @param replacers replacements to make in the output of a failed fetch before displaying it
+   */
+  private void fetchGitPullRequestHeads(File dir, List<Replacer> replacers) {
+    // "git remote get-url" would apply "url.<base>.insteadOf" rewriting, but "git config" does not.
+    String remoteUrls = gitOutput(dir, "config", "--get-regexp", "^remote\\..*\\.url$");
+    if (remoteUrls == null) {
+      return;
+    }
+    Set<String> remotes = new LinkedHashSet<>();
+    for (String line : remoteUrls.lines().toList()) {
+      Matcher m = GITHUB_REMOTE_URL.matcher(line);
+      if (m.matches()) {
+        @SuppressWarnings("nullness:assignment") // group 1 is not optional, so it is non-null
+        @NonNull String remote = m.group(1);
+        remotes.add(remote);
+      }
+    }
+    for (String remote : remotes) {
+      ProcessBuilder pb =
+          new ProcessBuilder(
+              gitExecutable, "fetch", "-q", remote, "+refs/pull/*/head:refs/pull/" + remote + "/*");
+      pb.directory(dir);
+      pb.redirectErrorStream(true);
+      performCommand(pb, replacers, false);
+    }
+  }
+
+  /**
+   * The maximum number of commits of a remote's main branch that {@link #isInGitMainBranch}
+   * examines.
+   */
+  private static final int MAX_MAIN_BRANCH_COMMITS = 1000;
+
+  /**
+   * Returns true if some local branch of a git clone has changes that are on no remote. A branch's
+   * changes are on a remote if its commits are reachable from a remote branch or from a fetched
+   * pull-request head, or if its changes are in a remote's main branch (see {@link
+   * #isInGitMainBranch}).
+   *
+   * @param dir a directory containing a git clone
+   * @return true if some local branch has changes that are on no remote
+   */
+  private boolean hasUnpushedGitChanges(File dir) {
+    String unpushed =
+        gitOutput(
+            dir, "rev-list", "-n", "1", "--branches", "--not", "--remotes", GIT_PULL_REQUEST_HEADS);
+    if (unpushed == null || unpushed.isEmpty()) {
+      // If git failed, then the "git status" command has already reported the problem.
+      return false;
+    }
+    String branches = gitOutput(dir, "for-each-ref", "--format=%(refname)", "refs/heads");
+    String mainBranches =
+        gitOutput(
+            dir,
+            "for-each-ref",
+            "--format=%(objectname) %(tree)",
+            "refs/remotes/*/HEAD",
+            "refs/remotes/*/master",
+            "refs/remotes/*/main");
+    if (branches == null || mainBranches == null) {
+      return true;
+    }
+    Set<String> mainBranchHeads = new LinkedHashSet<>(mainBranches.lines().toList());
+    for (String branch : branches.lines().toList()) {
+      String branchUnpushed =
+          gitOutput(
+              dir, "rev-list", "-n", "1", branch, "--not", "--remotes", GIT_PULL_REQUEST_HEADS);
+      if (branchUnpushed == null) {
+        return true;
+      }
+      if (!branchUnpushed.isEmpty() && !isInGitMainBranch(dir, branch, mainBranchHeads)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Returns true if a branch's changes are in some commit of a remote's main branch, as happens
+   * when the branch has been squash-merged into it. That is, merging the branch into the commit
+   * yields the commit's own tree. The commits examined are the heads of the main branches and their
+   * first-parent ancestors that are not ancestors of the branch, at most {@link
+   * #MAX_MAIN_BRANCH_COMMITS} for each main branch.
+   *
+   * <p>Returns false for a branch that was squash-merged along with later commits that changed the
+   * same lines, and for a branch whose changes the main branch has since changed.
+   *
+   * @param dir a directory containing a git clone
+   * @param branch a branch of the clone
+   * @param mainBranchHeads the heads of the remotes' main branches, each a commit and its tree,
+   *     separated by a space
+   * @return true if the branch's changes are in some commit of a remote's main branch
+   */
+  private boolean isInGitMainBranch(File dir, String branch, Set<String> mainBranchHeads) {
+    Set<String> examined = new LinkedHashSet<>();
+    for (String mainBranchHead : mainBranchHeads) {
+      int headSpace = mainBranchHead.indexOf(' ');
+      String mainBranchCommit =
+          headSpace == -1 ? mainBranchHead : mainBranchHead.substring(0, headSpace);
+      // The head might be an ancestor of the branch, and then the list below omits it.
+      List<String> candidates = new ArrayList<>();
+      candidates.add(mainBranchHead);
+      String ancestors =
+          gitOutput(
+              dir,
+              "rev-list",
+              "--first-parent",
+              "--no-commit-header",
+              "--format=%H %T",
+              "-n",
+              Integer.toString(MAX_MAIN_BRANCH_COMMITS),
+              mainBranchCommit,
+              "--not",
+              branch);
+      if (ancestors != null) {
+        candidates.addAll(ancestors.lines().toList());
+      }
+      for (String candidate : candidates) {
+        int space = candidate.indexOf(' ');
+        if (space == -1) {
+          continue;
+        }
+        String commit = candidate.substring(0, space);
+        String tree = candidate.substring(space + 1);
+        if (!examined.add(commit)) {
+          continue;
+        }
+        // "git merge-tree" fails if the merge has conflicts.
+        String mergedTree =
+            gitOutput(dir, "merge-tree", "--write-tree", "--no-messages", commit, branch);
+        if (mergedTree != null && mergedTree.strip().equals(tree)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Runs git in the given directory and returns its standard output. If {@link #show} is set,
+   * prints the command first. If {@link #dryRun} is set, does not run git and returns the empty
+   * string. If git runs longer than {@link #timeout}, kills it and says so.
+   *
+   * @param dir the directory in which to run git
+   * @param args the arguments to git
+   * @return git's standard output, or null if git failed, timed out, or could not be run
+   */
+  private @Nullable String gitOutput(File dir, String... args) {
+    List<String> command = new ArrayList<>(args.length + 1);
+    command.add(gitExecutable);
+    command.addAll(Arrays.asList(args));
+    ProcessBuilder pb = new ProcessBuilder(command);
+    pb.directory(dir);
+    pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+    if (show) {
+      System.out.println(command(pb));
+    }
+    if (dryRun) {
+      return "";
+    }
+    // The output goes to a file rather than a pipe, because a process that is killed for timing
+    // out might leave a child process that holds the pipe open.
+    Path outputFile = null;
+    try {
+      outputFile = Files.createTempFile("mvc-git-", ".txt");
+      pb.redirectOutput(outputFile.toFile());
+      Process process = pb.start();
+      if (!process.waitFor(timeout, TimeUnit.SECONDS)) {
+        process.destroyForcibly();
+        System.out.printf("Timed out (limit: %ss):%n", timeout);
+        System.out.println(command(pb));
+        return null;
+      }
+      String output = Files.readString(outputFile, UTF_8);
+      if (debugProcessOutput) {
+        System.out.println("preoutput=<<<" + output + ">>>");
+      }
+      return process.exitValue() == 0 ? output : null;
+    } catch (IOException e) {
+      return null;
+    } catch (InterruptedException e) {
+      throw new Error(e);
+    } finally {
+      if (outputFile != null) {
+        try {
+          Files.deleteIfExists(outputFile);
+        } catch (IOException e) {
+          // The file is in the temporary directory, so leaving it behind does little harm.
+        }
+      }
+    }
   }
 
   /**
