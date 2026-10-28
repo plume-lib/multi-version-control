@@ -1,0 +1,2 @@
+A branch is not reported if its changes are in a remote's main branch, even if the main branch's
+history includes commits that share no history with the branch and that change the same file.

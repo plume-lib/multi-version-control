@@ -1,3 +1,4 @@
   cd ${HOME}/clone
-  git rev-list -n 1 --branches --not --remotes
+  git rev-list --branches --not --remotes
 fatal: bad object broken
+unpushed commits: ${HOME}/clone

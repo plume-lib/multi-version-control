@@ -118,9 +118,11 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *
  * <p>For a git clone, "pull" fetches pull-request heads (such as GitHub's {@code refs/pull/N/head},
  * which GitHub keeps even after a pull request's branch has been deleted) into {@code
- * refs/pull/REMOTE/N}. It fetches only the pull requests whose head commit the clone already has,
- * or whose head it fetched before. A fork's pull requests are in the repository that it was forked
- * from, so a clone of a fork needs a remote for that repository.
+ * refs/pull/REMOTE/N}. It does so only if some local branch has commits that are on no remote, and
+ * then only for a remote on GitHub. It fetches only the pull requests whose head commit the clone
+ * has and is on no remote branch, or whose head it fetched before. It deletes a ref under {@code
+ * refs/pull/} whose remote is not a GitHub remote of the clone. A fork's pull requests are in the
+ * repository that it was forked from, so a clone of a fork needs a remote for that repository.
  *
  * <p>(The {@code commit} action is not supported, because that is not something that should be done
  * in an automated way &mdash; it needs a user-written commit message.)
@@ -2029,53 +2031,127 @@ public class MultiVersionControl {
   private static final @Regex(2) Pattern LS_REMOTE_PULL_REQUEST_HEAD =
       Pattern.compile("^(\\S+)\trefs/pull/([^/]+)/head$");
 
+  /** Matches the name of a remote's URL in git's configuration. Group 1 is the remote's name. */
+  private static final @Regex(1) Pattern REMOTE_URL_KEY = Pattern.compile("^remote\\.(.*)\\.url$");
+
   /**
-   * Fetches the pull-request heads of each remote of a git clone. See {@link
-   * #fetchGitPullRequestHeads(File, String)}.
+   * Fetches the pull-request heads of each GitHub remote of a git clone, if some local branch has
+   * commits that are on no remote. See {@link #fetchGitPullRequestHeads(File, String, Map, boolean,
+   * StringBuilder)}. Deletes each ref {@code refs/pull/REMOTE/N} whose remote is not a GitHub
+   * remote of the clone, as after the remote has been removed or renamed.
    *
    * @param dir a directory containing a git clone
    */
   private void fetchGitPullRequestHeads(File dir) {
-    // "git remote" only reads the clone's configuration, so it runs even in a dry run, which then
-    // shows the commands that use each remote.
-    String remotes = gitOutput(gitCommand(dir, "remote"), null, true);
-    if (remotes == null) {
+    // "git config", "git for-each-ref", and "git rev-list" only read the clone, so they run even in
+    // a dry run, which then shows the commands that use each remote.
+    String config =
+        gitOutput(
+            gitCommand(dir, "config", "--get-regexp", "^(remote\\..*\\.url|core\\.sshcommand)$"),
+            null,
+            true);
+    if (config == null) {
       return;
     }
-    for (String remote : remotes.lines().toList()) {
-      fetchGitPullRequestHeads(dir, remote);
+    Set<String> gitHubRemotes = new LinkedHashSet<>();
+    boolean sshCommandConfigured = false;
+    for (String line : config.lines().toList()) {
+      int space = line.indexOf(' ');
+      if (space == -1) {
+        continue;
+      }
+      String key = line.substring(0, space);
+      Matcher m = REMOTE_URL_KEY.matcher(key);
+      if (key.equals("core.sshcommand")) {
+        sshCommandConfigured = true;
+      } else if (m.matches() && line.substring(space + 1).contains("github.com")) {
+        @SuppressWarnings("nullness:assignment") // group 1 is not optional, so it is non-null
+        @NonNull String remote = m.group(1);
+        gitHubRemotes.add(remote);
+      }
+    }
+
+    String localHeadsOutput =
+        gitOutput(
+            gitCommand(dir, "for-each-ref", "--format=%(objectname) %(refname)", "refs/pull/"),
+            null,
+            true);
+    if (localHeadsOutput == null) {
+      return;
+    }
+    // Maps each GitHub remote to a map from a pull request's number to its fetched head commit.
+    Map<String, @Modifiable Map<String, String>> localHeads = new HashMap<>();
+    for (String remote : gitHubRemotes) {
+      localHeads.put(remote, new HashMap<>());
+    }
+    StringBuilder deletions = new StringBuilder();
+    for (String line : localHeadsOutput.lines().toList()) {
+      int space = line.indexOf(' ');
+      if (space == -1) {
+        continue;
+      }
+      String ref = line.substring(space + 1);
+      // A ref such as refs/pull/R/S/1 belongs to a remote named "R/S".
+      int slash = ref.lastIndexOf('/');
+      if (slash < "refs/pull/".length()) {
+        continue;
+      }
+      String remote = ref.substring("refs/pull/".length(), slash);
+      Map<String, String> remoteLocalHeads = localHeads.get(remote);
+      if (remoteLocalHeads == null) {
+        deletions.append("delete ").append(ref).append('\n');
+      } else {
+        remoteLocalHeads.put(ref.substring(slash + 1), line.substring(0, space));
+      }
+    }
+
+    // Pull-request heads matter only to a local branch whose commits are on no remote.
+    String unpushed =
+        gitOutput(
+            gitCommand(dir, "rev-list", "-n", "1", "--branches", "--not", "--remotes"), null, true);
+    if (unpushed != null && !unpushed.isEmpty()) {
+      for (String remote : gitHubRemotes) {
+        @SuppressWarnings("nullness:assignment") // localHeads has a key for each GitHub remote
+        @NonNull Map<String, String> remoteLocalHeads = localHeads.get(remote);
+        fetchGitPullRequestHeads(dir, remote, remoteLocalHeads, sshCommandConfigured, deletions);
+      }
+    }
+
+    if (deletions.length() != 0) {
+      gitOutput(gitCommand(dir, "update-ref", "--stdin"), deletions.toString(), false);
     }
   }
 
   /**
-   * Fetches the pull-request heads of a remote of a git clone. The head of pull request N, which is
-   * ref {@code refs/pull/N/head} of the remote, is fetched into ref {@code refs/pull/REMOTE/N}.
-   * Only the pull requests whose head commit the clone already has, or whose head the clone fetched
-   * before, are fetched; a remote might have thousands of other pull requests. A ref is deleted
-   * when the remote no longer has its pull request.
+   * Fetches the pull-request heads of a GitHub remote of a git clone. The head of pull request N,
+   * which is ref {@code refs/pull/N/head} of the remote, is fetched into ref {@code
+   * refs/pull/REMOTE/N}. Only the pull requests whose head commit the clone has and is on no remote
+   * branch, or whose head the clone fetched before, are fetched; a remote might have thousands of
+   * other pull requests, most of them landed. A ref is to be deleted when the remote no longer has
+   * its pull request.
    *
    * @param dir a directory containing a git clone
-   * @param remote a remote of the clone
+   * @param remote a GitHub remote of the clone
+   * @param localHeads maps the number of each pull request of the remote that the clone fetched
+   *     before to its fetched head commit
+   * @param sshCommandConfigured true if git's configuration sets {@code core.sshCommand}
+   * @param deletions to which to append an instruction for {@code git update-ref --stdin} that
+   *     deletes each ref whose pull request the remote no longer has
    */
-  private void fetchGitPullRequestHeads(File dir, String remote) {
+  private void fetchGitPullRequestHeads(
+      File dir,
+      String remote,
+      Map<String, String> localHeads,
+      boolean sshCommandConfigured,
+      StringBuilder deletions) {
     ProcessBuilder lsRemote = gitCommand(dir, "ls-remote", remote, "refs/pull/*/head");
-    // Fail rather than prompt, as for a remote whose repository has been deleted.
-    lsRemote.environment().put("GIT_TERMINAL_PROMPT", "0");
+    disableGitPrompts(lsRemote, sshCommandConfigured);
     String remoteHeadsOutput = gitOutput(lsRemote, null, false);
-    String refPrefix = "refs/pull/" + remote + "/";
-    // The components of a ref under refPrefix that precede the pull request's number.
-    int refPrefixComponents = 2 + remote.split("/", -1).length;
-    String localHeadsOutput =
-        gitOutput(
-            dir,
-            "for-each-ref",
-            "--format=%(objectname) %(refname:lstrip=" + refPrefixComponents + ")",
-            refPrefix);
-    if (remoteHeadsOutput == null || localHeadsOutput == null) {
+    if (remoteHeadsOutput == null) {
       return;
     }
 
-    // Each maps a pull request's number to its head commit.
+    // Maps a pull request's number to its head commit.
     Map<String, String> remoteHeads = new LinkedHashMap<>();
     for (String line : remoteHeadsOutput.lines().toList()) {
       Matcher m = LS_REMOTE_PULL_REQUEST_HEAD.matcher(line);
@@ -2087,62 +2163,61 @@ public class MultiVersionControl {
         remoteHeads.put(number, commit);
       }
     }
-    Map<String, String> localHeads = new HashMap<>();
-    for (String line : localHeadsOutput.lines().toList()) {
-      int space = line.indexOf(' ');
-      if (space == -1) {
-        continue;
-      }
-      String number = line.substring(space + 1);
-      // A ref such as refs/pull/R/S/1 belongs to a remote named "R/S".
-      if (!number.contains("/")) {
-        localHeads.put(number, line.substring(0, space));
-      }
-    }
 
-    Set<String> presentCommits = new HashSet<>();
+    Set<String> unpushedHeads = new HashSet<>();
     if (!remoteHeads.isEmpty()) {
-      String objectNames =
+      // "--ignore-missing" ignores a head commit that the clone lacks.
+      String unpushedOutput =
           gitOutput(
-              gitCommand(dir, "cat-file", "--batch-check=%(objectname)"),
+              gitCommand(dir, "rev-list", "--ignore-missing", "--stdin", "--not", "--remotes"),
               String.join("\n", remoteHeads.values()) + "\n",
               false);
-      if (objectNames == null) {
+      if (unpushedOutput == null) {
         return;
       }
-      // The line for an object that the clone lacks is "<object> missing".
-      for (String line : objectNames.lines().toList()) {
-        if (!line.contains(" ")) {
-          presentCommits.add(line);
-        }
-      }
+      unpushedHeads.addAll(unpushedOutput.lines().toList());
     }
 
-    List<String> fetchCommand =
-        new ArrayList<>(List.of("fetch", "-q", "--no-write-fetch-head", remote));
-    int fetchCommandSize = fetchCommand.size();
+    String refPrefix = "refs/pull/" + remote + "/";
+    StringBuilder refspecs = new StringBuilder();
     for (Map.Entry<String, String> entry : remoteHeads.entrySet()) {
       String number = entry.getKey();
       String commit = entry.getValue();
       String localCommit = localHeads.get(number);
-      if (!commit.equals(localCommit) && (localCommit != null || presentCommits.contains(commit))) {
-        fetchCommand.add("+refs/pull/" + number + "/head:" + refPrefix + number);
+      if (!commit.equals(localCommit) && (localCommit != null || unpushedHeads.contains(commit))) {
+        refspecs.append("+refs/pull/").append(number).append("/head:");
+        refspecs.append(refPrefix).append(number).append('\n');
       }
     }
-    if (fetchCommand.size() > fetchCommandSize) {
-      ProcessBuilder fetch = gitCommand(dir, fetchCommand.toArray(new String[0]));
-      fetch.environment().put("GIT_TERMINAL_PROMPT", "0");
-      gitOutput(fetch, null, false);
+    if (refspecs.length() != 0) {
+      ProcessBuilder fetch =
+          gitCommand(dir, "fetch", "-q", "--no-write-fetch-head", "--stdin", remote);
+      disableGitPrompts(fetch, sshCommandConfigured);
+      gitOutput(fetch, refspecs.toString(), false);
     }
 
-    StringBuilder deletions = new StringBuilder();
     for (String number : localHeads.keySet()) {
       if (!remoteHeads.containsKey(number)) {
         deletions.append("delete ").append(refPrefix).append(number).append('\n');
       }
     }
-    if (deletions.length() != 0) {
-      gitOutput(gitCommand(dir, "update-ref", "--stdin"), deletions.toString(), false);
+  }
+
+  /**
+   * Makes a git command that contacts a remote fail rather than prompt for credentials, as for a
+   * remote whose repository has been deleted. Does not change the ssh command if the user has
+   * customized it.
+   *
+   * @param pb a command made by {@link #gitCommand}
+   * @param sshCommandConfigured true if git's configuration sets {@code core.sshCommand}
+   */
+  private void disableGitPrompts(ProcessBuilder pb, boolean sshCommandConfigured) {
+    Map<String, String> env = pb.environment();
+    env.put("GIT_TERMINAL_PROMPT", "0");
+    if (!sshCommandConfigured
+        && !env.containsKey("GIT_SSH_COMMAND")
+        && !env.containsKey("GIT_SSH")) {
+      env.put("GIT_SSH_COMMAND", "ssh -o BatchMode=yes");
     }
   }
 
@@ -2150,37 +2225,49 @@ public class MultiVersionControl {
    * Returns true if some local branch of a git clone has changes that are on no remote. A branch's
    * changes are on a remote if its commits are reachable from a remote branch, or if its changes,
    * or those of a fetched pull-request head that contains its commits, are in a remote's main
-   * branch (see {@link #isInGitMainBranch}).
+   * branch (see {@link #isInGitMainBranch}). If git fails, reports the failure and returns true.
    *
    * @param dir a directory containing a git clone
-   * @return true if some local branch has changes that are on no remote
+   * @return true if some local branch has changes that are on no remote, or if git fails
    */
   private boolean hasUnpushedGitChanges(File dir) {
-    String unpushed = gitOutput(dir, "rev-list", "-n", "1", "--branches", "--not", "--remotes");
-    if (unpushed == null || unpushed.isEmpty()) {
-      // If git failed, then gitOutput has reported the problem.
-      return false;
-    }
-    String branchHeads = gitOutput(dir, "for-each-ref", "--format=%(objectname)", "refs/heads");
-    String mainBranchHeads =
-        gitOutput(
-            dir,
-            "for-each-ref",
-            "--format=%(objectname)",
-            "refs/remotes/*/HEAD",
-            "refs/remotes/*/master",
-            "refs/remotes/*/main");
-    if (branchHeads == null || mainBranchHeads == null) {
+    List<String> revList = new ArrayList<>(List.of("rev-list", "--branches", "--not", "--remotes"));
+    revList.addAll(gitArg);
+    // If git fails, then gitOutput reports the problem.
+    String unpushedOutput = gitOutput(dir, revList.toArray(new String[0]));
+    if (unpushedOutput == null) {
       return true;
     }
-    Set<String> mainBranchCommits = new LinkedHashSet<>(mainBranchHeads.lines().toList());
-    for (String branchHead : new LinkedHashSet<>(branchHeads.lines().toList())) {
-      String branchUnpushed =
-          gitOutput(dir, "rev-list", "-n", "1", branchHead, "--not", "--remotes");
-      if (branchUnpushed == null) {
+    if (unpushedOutput.isEmpty()) {
+      return false;
+    }
+    Set<String> unpushedCommits = new HashSet<>(unpushedOutput.lines().toList());
+    String remotes = gitOutput(dir, "remote");
+    String branchHeads =
+        gitOutput(dir, "for-each-ref", "--format=%(objectname) %(authordate:unix)", "refs/heads");
+    if (remotes == null || branchHeads == null) {
+      return true;
+    }
+    Set<String> mainBranchCommits = new LinkedHashSet<>();
+    if (!remotes.isEmpty()) {
+      // A pattern such as refs/remotes/*/master would not match a remote whose name contains "/".
+      List<String> mainBranchesCommand = new ArrayList<>();
+      mainBranchesCommand.add("for-each-ref");
+      mainBranchesCommand.add("--format=%(objectname)");
+      for (String remote : remotes.lines().toList()) {
+        for (String branch : List.of("HEAD", "master", "main")) {
+          mainBranchesCommand.add("refs/remotes/" + remote + "/" + branch);
+        }
+      }
+      String mainBranchHeads = gitOutput(dir, mainBranchesCommand.toArray(new String[0]));
+      if (mainBranchHeads == null) {
         return true;
       }
-      if (branchUnpushed.isEmpty()) {
+      mainBranchCommits.addAll(mainBranchHeads.lines().toList());
+    }
+    for (Map.Entry<String, Long> branchHead : authorDates(branchHeads).entrySet()) {
+      String commit = branchHead.getKey();
+      if (!unpushedCommits.contains(commit)) {
         continue;
       }
       // A pull request might have been squash-merged along with later commits that changed the
@@ -2188,13 +2275,18 @@ public class MultiVersionControl {
       // branch is not.
       String pullRequestHeads =
           gitOutput(
-              dir, "for-each-ref", "--contains", branchHead, "--format=%(objectname)", "refs/pull");
+              dir,
+              "for-each-ref",
+              "--contains",
+              commit,
+              "--format=%(objectname) %(authordate:unix)",
+              "refs/pull");
       if (pullRequestHeads == null) {
         return true;
       }
-      Set<String> commits = new LinkedHashSet<>();
-      commits.add(branchHead);
-      commits.addAll(pullRequestHeads.lines().toList());
+      Map<String, Long> commits = new LinkedHashMap<>();
+      commits.put(commit, branchHead.getValue());
+      commits.putAll(authorDates(pullRequestHeads));
       if (!isInGitMainBranch(dir, commits, mainBranchCommits)) {
         return true;
       }
@@ -2203,36 +2295,63 @@ public class MultiVersionControl {
   }
 
   /**
+   * Parses output of {@code git for-each-ref --format='%(objectname) %(authordate:unix)'}.
+   *
+   * @param forEachRefOutput the output of {@code git for-each-ref}
+   * @return a map from each commit in the output to its author date, in seconds since the epoch
+   */
+  private static Map<String, Long> authorDates(String forEachRefOutput) {
+    Map<String, Long> result = new LinkedHashMap<>();
+    for (String line : forEachRefOutput.lines().toList()) {
+      int space = line.indexOf(' ');
+      if (space != -1) {
+        result.put(line.substring(0, space), Long.parseLong(line.substring(space + 1)));
+      }
+    }
+    return result;
+  }
+
+  /**
+   * The maximum number of commits of a main branch that {@link #isInGitMainBranch} examines for
+   * each given commit.
+   */
+  private static final int MAX_MAIN_BRANCH_CANDIDATES = 50;
+
+  /**
    * Returns true if the changes of some of the given commits are in some commit of a remote's main
    * branch, as happens when a commit has been squash-merged into the main branch. That is, merging
    * the given commit into that main-branch commit yields the main-branch commit's own tree.
    *
-   * <p>The main-branch commits examined are the heads of the main branches and their first-parent
-   * ancestors that are not ancestors of the given commit and that change some file that the given
-   * commit changes, relative to its merge base with the main branch.
+   * <p>For each main-branch head, the main-branch commits examined are the oldest {@link
+   * #MAX_MAIN_BRANCH_CANDIDATES} of its first-parent ancestors that descend from the given commit's
+   * merge base with it, that are not ancestors of the given commit, that were committed no earlier
+   * than the given commit was authored, and that change some file that the given commit changes,
+   * relative to the merge base.
    *
    * <p>Returns true even if the main branch has changed the same lines since then. Returns false
    * for a commit that was squash-merged along with later commits that changed the same lines.
    *
    * @param dir a directory containing a git clone
-   * @param commits commits of the clone
+   * @param commits maps commits of the clone to their author dates, in seconds since the epoch
    * @param mainBranchCommits the heads of the remotes' main branches
    * @return true if the changes of some of the commits are in some commit of a remote's main branch
    */
-  private boolean isInGitMainBranch(File dir, Set<String> commits, Set<String> mainBranchCommits) {
-    // The merges to perform, each a main-branch commit and a given commit, one per line.
-    StringBuilder merges = new StringBuilder();
-    // The trees of the main-branch commits, in the same order as the merges.
-    List<String> trees = new ArrayList<>();
-    for (String commit : commits) {
+  private boolean isInGitMainBranch(
+      File dir, Map<String, Long> commits, Set<String> mainBranchCommits) {
+    // Maps each merge to perform, a main-branch commit and a given commit, to the main-branch
+    // commit's tree.
+    Map<String, String> merges = new LinkedHashMap<>();
+    for (Map.Entry<String, Long> entry : commits.entrySet()) {
+      String commit = entry.getKey();
+      long authorDate = entry.getValue();
       for (String mainBranchCommit : mainBranchCommits) {
         // "git merge-base" fails without error output if the commits have no merge base.
         String mergeBase = gitOutput(dir, "merge-base", mainBranchCommit, commit);
         if (mergeBase == null) {
           continue;
         }
-        String changedFiles =
-            gitOutput(dir, "diff", "--name-only", "-z", mergeBase.strip(), commit);
+        mergeBase = mergeBase.strip();
+        String changedFiles = gitOutput(dir, "diff", "--name-only", "-z", mergeBase, commit);
         if (changedFiles == null) {
           continue;
         }
@@ -2247,6 +2366,8 @@ public class MultiVersionControl {
                 + "\n--\n"
                 + String.join("\n", changedFiles.split("\0"))
                 + "\n";
+        // "git merge-tree --stdin" fails for all the merges if one of them is of commits that have
+        // no merge base, as can be a main-branch commit that does not descend from the merge base.
         String candidates =
             gitOutput(
                 gitCommand(
@@ -2254,31 +2375,44 @@ public class MultiVersionControl {
                     "--literal-pathspecs",
                     "rev-list",
                     "--first-parent",
+                    "--ancestry-path=" + mergeBase,
                     "--no-commit-header",
-                    "--format=%H %T",
+                    "--format=%H %T %ct",
                     "--stdin"),
                 revListInput,
                 false);
         if (candidates == null) {
           continue;
         }
+        // The merges with the candidates, newest first, each with the candidate's tree.
+        List<Map.Entry<String, String>> candidateMerges = new ArrayList<>();
         for (String candidate : candidates.lines().toList()) {
-          int space = candidate.indexOf(' ');
-          if (space != -1) {
-            merges.append(candidate, 0, space).append(' ').append(commit).append('\n');
-            trees.add(candidate.substring(space + 1));
+          int treeStart = candidate.indexOf(' ') + 1;
+          int dateStart = candidate.lastIndexOf(' ') + 1;
+          if (0 < treeStart
+              && treeStart < dateStart
+              && Long.parseLong(candidate.substring(dateStart)) >= authorDate) {
+            candidateMerges.add(
+                Map.entry(
+                    candidate.substring(0, treeStart) + commit,
+                    candidate.substring(treeStart, dateStart - 1)));
           }
+        }
+        int size = candidateMerges.size();
+        for (Map.Entry<String, String> merge :
+            candidateMerges.subList(Math.max(0, size - MAX_MAIN_BRANCH_CANDIDATES), size)) {
+          merges.put(merge.getKey(), merge.getValue());
         }
       }
     }
-    if (trees.isEmpty()) {
+    if (merges.isEmpty()) {
       return false;
     }
 
     String results =
         gitOutput(
             gitCommand(dir, "merge-tree", "--stdin", "--name-only", "--no-messages"),
-            merges.toString(),
+            String.join("\n", merges.keySet()) + "\n",
             false);
     if (results == null) {
       return false;
@@ -2287,7 +2421,7 @@ public class MultiVersionControl {
     // files that have conflicts, and an empty string, each terminated by NUL.
     String[] fields = results.split("\0", -1);
     int i = 0;
-    for (String tree : trees) {
+    for (String tree : merges.values()) {
       if (i + 1 >= fields.length) {
         break;
       }
