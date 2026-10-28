@@ -2213,6 +2213,8 @@ public class MultiVersionControl {
   private void disableGitPrompts(ProcessBuilder pb, boolean sshCommandConfigured) {
     Map<String, String> env = pb.environment();
     env.put("GIT_TERMINAL_PROMPT", "0");
+    // An empty GIT_ASKPASS overrides core.askPass and SSH_ASKPASS, so git runs no askpass helper.
+    env.put("GIT_ASKPASS", "");
     if (!sshCommandConfigured
         && !env.containsKey("GIT_SSH_COMMAND")
         && !env.containsKey("GIT_SSH")) {
