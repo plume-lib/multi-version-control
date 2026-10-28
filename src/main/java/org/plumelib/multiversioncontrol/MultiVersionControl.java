@@ -114,7 +114,8 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  * remote's main branch ({@code HEAD}, {@code master}, or {@code main}), as after the branch has
  * been squash-merged. The changes are also on a remote if a fetched pull-request head contains the
  * branch's commits and the pull request's changes are in a remote's main branch, as after the pull
- * request has been squash-merged with commits that the clone never fetched.
+ * request has been squash-merged with commits that the clone never fetched. Determining whether
+ * changes are in a remote's main branch requires Git 2.40 or later.
  *
  * <p>For a git clone, "pull" fetches pull-request heads (such as GitHub's {@code refs/pull/N/head},
  * which GitHub keeps even after a pull request's branch has been deleted) into {@code
