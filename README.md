@@ -9,6 +9,9 @@ See the [documentation](http://plumelib.org/multi-version-control/api/org/plumel
 
 ## Installation
 
+For Git clones, `mvc status` requires Git 2.40 or later to determine whether
+a branch has been squash-merged.
+
 ```sh
 cd SOME_DIRECTORY
 git clone https://github.com/plume-lib/multi-version-control

@@ -3,4 +3,5 @@ Timed out (limit: 1s):
   ${HOME}/slow-git status --porcelain
 Timed out (limit: 1s):
   cd ${HOME}/clone
-  ${HOME}/slow-git log --branches --not --remotes
+  ${HOME}/slow-git rev-list --branches --not --remotes
+unpushed commits: ${HOME}/clone

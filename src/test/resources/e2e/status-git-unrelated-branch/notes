@@ -1,0 +1,2 @@
+A branch that shares no history with a remote's main branch is reported, and the failure to find
+a merge base with the main branch is not.

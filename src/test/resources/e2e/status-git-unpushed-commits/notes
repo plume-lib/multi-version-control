@@ -1,2 +1,2 @@
-"git status --porcelain" does not report unpushed commits, so the program also runs
-"git log --branches --not --remotes" and replaces its output by a one-line summary.
+"git status --porcelain" does not report unpushed commits, so the program also looks for a branch
+whose changes are on no remote, and reports it by a one-line summary.

@@ -1,0 +1,2 @@
+A branch is not reported if a fetched pull-request head contains its commits.  The branch's
+change is not in the main branch, because a later commit of the pull request changed the same line.

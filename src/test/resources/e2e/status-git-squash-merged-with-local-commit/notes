@@ -1,0 +1,2 @@
+A branch is reported if it has a commit after the ones that were squash-merged, because that
+commit's change is on no remote.

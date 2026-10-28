@@ -1,0 +1,2 @@
+A branch whose commits are on no remote is not reported if the commits change nothing, such as
+merges of the remote's main branch.

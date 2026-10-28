@@ -4,6 +4,14 @@
   git pull -q
   cd ${HOME}/git/options
   git fetch -p
+  cd ${HOME}/git/options
+  git config --get-regexp ^(remote\..*\.url|core\.sshcommand)$
+  cd ${HOME}/git/options
+  git for-each-ref --format=%(objectname) %(refname) refs/pull/
+  cd ${HOME}/git/options
+  git rev-list -n 1 --branches --not --remotes
+  cd ${HOME}/git/options
+  git ls-remote origin refs/pull/*/head
   cd ${HOME}/hg/hg
   hg -q update
   cd ${HOME}/hg/hg

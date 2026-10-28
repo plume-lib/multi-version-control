@@ -1,0 +1,7 @@
+"pull" fetches the pull-request heads of each GitHub remote, but only those that are relevant to
+the clone.  Pull request 1's head is a commit that the clone has and that is on no remote branch.
+Pull request 2's head is a commit that the clone lacks, so it is not fetched.  Pull request 3's
+head is a commit that the clone lacks, but an earlier pull fetched an earlier head of pull request
+3.  The remote no longer has pull request 4, so its ref is deleted.  Pull request 5's head is in
+the main branch, so it is not fetched.  Remote "other" has pull request 6, and is not on GitHub.
+Remote "gone" no longer exists, so the ref of its pull request 7 is deleted.

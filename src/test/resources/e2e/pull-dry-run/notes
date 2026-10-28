@@ -1,2 +1,4 @@
-"pull" runs two commands for git and for Mercurial, and one for CVS and for Subversion.  The
-directories must exist, because "pull" skips a directory that does not exist.
+"pull" runs two commands for git and for Mercurial, and one for CVS and for Subversion.  For git,
+it also runs "git config", "git for-each-ref", and "git rev-list", even in a dry run, and lists the
+pull-request heads of each GitHub remote, because a local branch has a commit that is on no remote.
+The directories must exist, because "pull" skips a directory that does not exist.
