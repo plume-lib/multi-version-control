@@ -2179,21 +2179,20 @@ public class MultiVersionControl {
     }
 
     String refPrefix = "refs/pull/" + remote + "/";
-    StringBuilder refspecs = new StringBuilder();
+    List<String> refspecs = new ArrayList<>();
     for (Map.Entry<String, String> entry : remoteHeads.entrySet()) {
       String number = entry.getKey();
       String commit = entry.getValue();
       String localCommit = localHeads.get(number);
       if (!commit.equals(localCommit) && (localCommit != null || unpushedHeads.contains(commit))) {
-        refspecs.append("+refs/pull/").append(number).append("/head:");
-        refspecs.append(refPrefix).append(number).append('\n');
+        refspecs.add("+refs/pull/" + number + "/head:" + refPrefix + number + "\n");
       }
     }
-    if (refspecs.length() != 0) {
+    if (!refspecs.isEmpty()) {
       ProcessBuilder fetch =
           gitCommand(dir, "fetch", "-q", "--no-write-fetch-head", "--stdin", remote);
       disableGitPrompts(fetch, sshCommandConfigured);
-      gitOutput(fetch, refspecs.toString(), false);
+      gitOutput(fetch, String.join("", refspecs), false);
     }
 
     for (String number : localHeads.keySet()) {
