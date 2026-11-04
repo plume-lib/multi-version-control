@@ -1,0 +1,3 @@
+When git cannot reach the remote repository, its four-line message is condensed to one line that
+names the clone.  The line appears once:  the program runs "git fetch" before "git pull", and it
+skips the pull when the fetch fails.

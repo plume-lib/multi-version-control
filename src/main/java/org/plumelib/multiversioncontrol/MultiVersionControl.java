@@ -1507,6 +1507,23 @@ public class MultiVersionControl {
           replacers.add(new Replacer("(^|\\n)([?]) ", "$1$2 " + dir + "/"));
         }
         case GIT -> {
+          // When git cannot reach a remote repository, its message is four lines long, such as:
+          //   ERROR: Repository not found.
+          //   fatal: Could not read from remote repository.
+          //
+          //   Please make sure you have the correct access rights
+          //   and the repository exists.
+          // where the first line comes from the server.  Condense it to one line.
+          replacers.add(
+              new Replacer(
+                  "(^|\\n)ERROR: ([^\\n]*?)\\.?\\r?\\n(fatal: Could not read from remote"
+                      + " repository)\\.",
+                  "$1$3 ($2)."));
+          replacers.add(
+              new Replacer(
+                  "\\n\\r?\\nPlease make sure you have the correct access rights\\r?\\n"
+                      + "and the repository exists\\.\\r?\\n",
+                  "\n"));
           replacers.add(new Replacer("(^|\\n)fatal:", "$1fatal in " + dir + ":"));
           replacers.add(new Replacer("(^|\\n)warning:", "$1warning in " + dir + ":"));
           replacers.add(
@@ -1581,6 +1598,8 @@ public class MultiVersionControl {
       boolean checkUnpushedGitChanges = false;
       // If true, fetch the pull-request heads of each GitHub remote of a git clone.
       boolean fetchGitPullRequestHeads = false;
+      // If true, run pb2 only if pb completes normally.
+      boolean pb2RequiresPbSuccess = false;
       // Set pb.command() to be the command to be executed.
       switch (action) {
         case LIST -> {
@@ -1851,10 +1870,13 @@ public class MultiVersionControl {
                   new Replacer(
                       "((^|\\n)CONFLICT \\(content\\): Merge conflict in )", "$1" + dir + "/"));
               replacers.add(new Replacer("(^|\\n)([ACDMRU]\t)", "$1$2" + dir + "/"));
-              pb.command(gitExecutable, "pull", "-q" /*, "--recurse-submodules"*/);
-              addArgs(pb, gitArg);
               // prune branches; alternately do "git remote prune origin"; "git gc" doesn't do this.
-              pb2.command(gitExecutable, "fetch", "-p");
+              pb.command(gitExecutable, "fetch", "-p");
+              pb2.command(gitExecutable, "pull", "-q" /*, "--recurse-submodules"*/);
+              addArgs(pb2, gitArg);
+              // A fetch usually fails because the remote repository is unreachable.  Then the pull
+              // would fail too and would repeat the fetch's error message.
+              pb2RequiresPbSuccess = true;
               fetchGitPullRequestHeads = true;
             }
             case HG -> {
@@ -1948,8 +1970,8 @@ public class MultiVersionControl {
         pb5.directory(dir);
         performCommand(pb5, Collections.emptyList(), true);
       }
-      performCommand(pb, replacers, showNormalOutput);
-      if (!pb2.command().isEmpty()) {
+      int pbStatus = performCommand(pb, replacers, showNormalOutput);
+      if (!pb2.command().isEmpty() && (pbStatus == 0 || !pb2RequiresPbSuccess)) {
         performCommand(pb2, replacers, showNormalOutput);
       }
       if (!pb3.command().isEmpty()) {
