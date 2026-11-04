@@ -1,3 +1,4 @@
-When git cannot reach the remote repository, its four-line message is condensed to one line that
-names the clone.  The line appears once:  the program runs "git fetch" before "git pull", and it
-skips the pull when the fetch fails.
+When git cannot reach the remote repository, its five-line message is condensed to one line that
+names the clone.  The line appears once:  "git pull --prune" contacts the remote only once, and
+the program does not then fetch the pull-request heads of the remote, though the remote is on
+GitHub and a local branch has unpushed commits.

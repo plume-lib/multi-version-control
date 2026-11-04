@@ -1497,6 +1497,8 @@ public class MultiVersionControl {
         System.out.flush();
       }
       File dir = c.directory;
+      // The directory, quoted for use in a replacement string, where "$" and "\" are special.
+      String quotedDir = Matcher.quoteReplacement(dir.toString());
 
       List<Replacer> replacers = new ArrayList<>();
       List<Replacer> replacers3 = new ArrayList<>();
@@ -1504,40 +1506,42 @@ public class MultiVersionControl {
       switch (c.repoType) {
         case BZR -> {}
         case CVS -> {
-          replacers.add(new Replacer("(^|\\n)([?]) ", "$1$2 " + dir + "/"));
+          replacers.add(new Replacer("(^|\\n)([?]) ", "$1$2 " + quotedDir + "/"));
         }
         case GIT -> {
-          // When git cannot reach a remote repository, its message is four lines long, such as:
+          // When git cannot reach a remote repository, its message can span five lines, such as:
           //   ERROR: Repository not found.
           //   fatal: Could not read from remote repository.
-          //
+          //   <blank line>
           //   Please make sure you have the correct access rights
           //   and the repository exists.
-          // where the first line comes from the server.  Condense it to one line.
+          // The first line comes from the server.  An HTTPS server's line starts with "remote:",
+          // as in "remote: Repository not found." before "fatal: repository 'URL' not found".
+          // Condense the message to one line, such as
+          //   fatal in DIR: Could not read from remote repository (Repository not found).
           replacers.add(
               new Replacer(
-                  "(^|\\n)ERROR: ([^\\n]*?)\\.?\\r?\\n(fatal: Could not read from remote"
-                      + " repository)\\.",
+                  "(^|\\n)(?:ERROR|remote): ([^\\n]*?)\\.?\\r?\\n(fatal: [^\\n]*?)\\.?(?=\\r?\\n|$)",
                   "$1$3 ($2)."));
           replacers.add(
               new Replacer(
                   "\\n\\r?\\nPlease make sure you have the correct access rights\\r?\\n"
                       + "and the repository exists\\.\\r?\\n",
                   "\n"));
-          replacers.add(new Replacer("(^|\\n)fatal:", "$1fatal in " + dir + ":"));
-          replacers.add(new Replacer("(^|\\n)warning:", "$1warning in " + dir + ":"));
+          replacers.add(new Replacer("(^|\\n)fatal:", "$1fatal in " + quotedDir + ":"));
+          replacers.add(new Replacer("(^|\\n)warning:", "$1warning in " + quotedDir + ":"));
           replacers.add(
               new Replacer(
                   "(^|\\n)(There is no tracking information for the current branch\\.)",
-                  "$1" + dir + ": $2"));
+                  "$1" + quotedDir + ": $2"));
           replacers.add(
-              new Replacer("(^|\\n)(Your configuration specifies to merge)", dir + ": $1$2"));
+              new Replacer("(^|\\n)(Your configuration specifies to merge)", quotedDir + ": $1$2"));
         }
         case HG -> {
           // "real URL" is for bitbucket.org.  (Should be early in list.)
           replacers.add(new Replacer("(^|\\n)real URL is .*\\n", "$1"));
-          replacers.add(new Replacer("(^|\\n)(abort: .*)", "$1$2: " + dir));
-          replacers.add(new Replacer("(^|\\n)([MARC!?I]) ", "$1$2 " + dir + "/"));
+          replacers.add(new Replacer("(^|\\n)(abort: .*)", "$1$2: " + quotedDir));
+          replacers.add(new Replacer("(^|\\n)([MARC!?I]) ", "$1$2 " + quotedDir + "/"));
           replacers.add(
               new Replacer(
                   "(^|\\n)(\\*\\*\\* failed to import extension .*: No module named demandload\\n)",
@@ -1563,13 +1567,13 @@ public class MultiVersionControl {
         }
         case SVN -> {
           replacers.add(
-              new Replacer("(svn: Network connection closed unexpectedly)", "$1 for " + dir));
-          replacers.add(new Replacer("(svn: Repository) (UUID)", "$1 " + dir + " $2"));
+              new Replacer("(svn: Network connection closed unexpectedly)", "$1 for " + quotedDir));
+          replacers.add(new Replacer("(svn: Repository) (UUID)", "$1 " + quotedDir + " $2"));
           replacers.add(
               new Replacer(
                   "(svn: E155037: Previous operation has not finished; run 'cleanup' if it was"
                       + " interrupted)",
-                  "$1; for " + dir));
+                  "$1; for " + quotedDir));
         }
         default -> {
           assert false;
@@ -1583,7 +1587,7 @@ public class MultiVersionControl {
                   + "(remote: )?Warning: No xauth data; using fake authentication data for X11"
                   + " forwarding\\.\r*\n",
               ""));
-      replacers.add(new Replacer("(working copy ')", "$1" + dir));
+      replacers.add(new Replacer("(working copy ')", "$1" + quotedDir));
 
       pb.command("echo", "command", "not", "set");
       pb.directory(dir);
@@ -1598,8 +1602,6 @@ public class MultiVersionControl {
       boolean checkUnpushedGitChanges = false;
       // If true, fetch the pull-request heads of each GitHub remote of a git clone.
       boolean fetchGitPullRequestHeads = false;
-      // If true, run pb2 only if pb completes normally.
-      boolean pb2RequiresPbSuccess = false;
       // Set pb.command() to be the command to be executed.
       switch (action) {
         case LIST -> {
@@ -1692,17 +1694,19 @@ public class MultiVersionControl {
                       + "(\nFiles .* and .* differ)?" // no output if only whitespace differences
                   );
               replacers.add(new Replacer(removeRegexp, ""));
-              replacers.add(new Replacer("(^|\\n)Index: ", "$1" + dir + "/"));
+              replacers.add(new Replacer("(^|\\n)Index: ", "$1" + quotedDir + "/"));
               replacers.add(
-                  new Replacer("(^|\\n)(cvs \\[diff aborted)(\\]:)", "$1$2 in " + dir + "$3"));
-              replacers.add(new Replacer("(^|\\n)(Permission denied)", "$1$2 in " + dir));
+                  new Replacer(
+                      "(^|\\n)(cvs \\[diff aborted)(\\]:)", "$1$2 in " + quotedDir + "$3"));
+              replacers.add(new Replacer("(^|\\n)(Permission denied)", "$1$2 in " + quotedDir));
               replacers.add(
                   new Replacer(
                       "(^|\\n)(cvs diff: )(cannot find revision control)",
-                      "$1$2 in " + dir + ": $3"));
-              replacers.add(new Replacer("(^|\\n)(cvs diff: cannot find )", "$1$2" + dir));
-              replacers.add(new Replacer("(^|\\n)(cvs diff: in directory )", "$1$2" + dir + "/"));
-              replacers.add(new Replacer("(^|\\n)(cvs diff: ignoring )", "$1$2" + dir + "/"));
+                      "$1$2 in " + quotedDir + ": $3"));
+              replacers.add(new Replacer("(^|\\n)(cvs diff: cannot find )", "$1$2" + quotedDir));
+              replacers.add(
+                  new Replacer("(^|\\n)(cvs diff: in directory )", "$1$2" + quotedDir + "/"));
+              replacers.add(new Replacer("(^|\\n)(cvs diff: ignoring )", "$1$2" + quotedDir + "/"));
             }
             case GIT -> {
               pb.command(gitExecutable, "status");
@@ -1755,23 +1759,24 @@ public class MultiVersionControl {
                           + " to include in what will be committed\\)\\n",
                       "$1"));
 
-              replacers.add(new Replacer("(^|\\n)(#\tmodified:   )", "$1" + dir + "/"));
+              replacers.add(new Replacer("(^|\\n)(#\tmodified:   )", "$1" + quotedDir + "/"));
               // This must come after the above, since it matches a prefix of the above
-              replacers.add(new Replacer("(^|\\n)(#\t)", "$1untracked: " + dir + "/"));
+              replacers.add(new Replacer("(^|\\n)(#\t)", "$1untracked: " + quotedDir + "/"));
               replacers.add(
                   new Replacer(
                       "(^|\\n)# Your branch is ahead of .*\\n",
-                      "$1unpushed changesets: " + dir + "\n"));
-              replacers.add(new Replacer("(^|\\n)([?][?]) ", "$1$2 " + dir + "/"));
+                      "$1unpushed changesets: " + quotedDir + "\n"));
+              replacers.add(new Replacer("(^|\\n)([?][?]) ", "$1$2 " + quotedDir + "/"));
               replacers.add(
                   new Replacer(
-                      "(^|\\n)([ACDMRU][ ACDMRTU]|[ ACDMRU][ACDMRTU]) ", "$1$2 " + dir + "/"));
+                      "(^|\\n)([ACDMRU][ ACDMRTU]|[ ACDMRU][ACDMRTU]) ",
+                      "$1$2 " + quotedDir + "/"));
 
               // Useful info, but don't bother to report it, for consistency with other VCSes
               replacers.add(
                   new Replacer(
                       "(^|\\n)# Your branch is behind .*\\n",
-                      "$1unpushed changesets: " + dir + "\n"));
+                      "$1unpushed changesets: " + quotedDir + "\n"));
 
               // Could remove all other output, but this could suppress messages
               // replacers.add(new Replacer("(^|\\n)#.*\\n", "$1"));
@@ -1806,7 +1811,7 @@ public class MultiVersionControl {
               replacers.add(
                   new Replacer(
                       "^comparing with .*\\nsearching for changes\\nchangeset[^\001]*",
-                      "unpushed changesets: " + dir + "\n"));
+                      "unpushed changesets: " + quotedDir + "\n"));
               replacers.add(
                   new Replacer(
                       "^\\n?comparing with .*\\nsearching for changes\\nno changes found\n", ""));
@@ -1814,13 +1819,14 @@ public class MultiVersionControl {
               addArgs(pb3, hgArg);
               // Shelve is an optional extension, so don't print anything if not installed.
               replacers3.add(new Replacer("^hg: unknown command 'shelve'\\n(.*\\n)+", ""));
-              replacers3.add(new Replacer("^(.*\\n)+", "shelved changes: " + dir + "\n"));
+              replacers3.add(new Replacer("^(.*\\n)+", "shelved changes: " + quotedDir + "\n"));
             }
             case SVN -> {
               // Handle some changes.
               // "svn status" outputs an eighth column, if you pass the --show-updates switch: [* ]
               replacers.add(
-                  new Replacer("(^|\\n)([ACDIMRX?!~ ][CM ][L ][+ ][$ ]) *", "$1$2 " + dir + "/"));
+                  new Replacer(
+                      "(^|\\n)([ACDIMRX?!~ ][CM ][L ][+ ][$ ]) *", "$1$2 " + quotedDir + "/"));
               pb.command(svnExecutable, "status");
               addArgs(pb, svnArg);
             }
@@ -1838,11 +1844,11 @@ public class MultiVersionControl {
               replacers.add(
                   new Replacer(
                       "(^|\\n)(cvs update: ((in|skipping) directory|conflicts found in )) +",
-                      "$1$2 " + dir + "/"));
+                      "$1$2 " + quotedDir + "/"));
               replacers.add(
                   new Replacer(
                       "(^|\\n)(Merging differences between 1.16 and 1.17 into )",
-                      "$1$2 " + dir + "/"));
+                      "$1$2 " + quotedDir + "/"));
               assert c.repository != null;
               pb.command(
                   cvsExecutable,
@@ -1855,12 +1861,13 @@ public class MultiVersionControl {
               addArgs(pb, cvsArg);
               //         $filter = "grep -v \"config: unrecognized keyword
               // 'UseNewInfoFmtStrings'\"";
-              replacers.add(new Replacer("(cvs update: move away )", "$1" + dir + "/"));
-              replacers.add(new Replacer("(cvs \\[update aborted)(\\])", "$1 in " + dir + "$2"));
+              replacers.add(new Replacer("(cvs update: move away )", "$1" + quotedDir + "/"));
+              replacers.add(
+                  new Replacer("(cvs \\[update aborted)(\\])", "$1 in " + quotedDir + "$2"));
             }
             case GIT -> {
               replacers.add(new Replacer("(^|\\n)Already up-to-date\\.\\n", "$1"));
-              replacers.add(new Replacer("(^|\\n)error:", "$1error in " + dir + ":"));
+              replacers.add(new Replacer("(^|\\n)error:", "$1error in " + quotedDir + ":"));
               replacers.add(
                   new Replacer(
                       "(^|\\n)Please, commit your changes or stash them before you can merge.\\n"
@@ -1868,19 +1875,16 @@ public class MultiVersionControl {
                       "$1"));
               replacers.add(
                   new Replacer(
-                      "((^|\\n)CONFLICT \\(content\\): Merge conflict in )", "$1" + dir + "/"));
-              replacers.add(new Replacer("(^|\\n)([ACDMRU]\t)", "$1$2" + dir + "/"));
-              // prune branches; alternately do "git remote prune origin"; "git gc" doesn't do this.
-              pb.command(gitExecutable, "fetch", "-p");
-              pb2.command(gitExecutable, "pull", "-q" /*, "--recurse-submodules"*/);
-              addArgs(pb2, gitArg);
-              // A fetch usually fails because the remote repository is unreachable.  Then the pull
-              // would fail too and would repeat the fetch's error message.
-              pb2RequiresPbSuccess = true;
+                      "((^|\\n)CONFLICT \\(content\\): Merge conflict in )",
+                      "$1" + quotedDir + "/"));
+              replacers.add(new Replacer("(^|\\n)([ACDMRU]\t)", "$1$2" + quotedDir + "/"));
+              // "--prune" prunes remote-tracking branches; "git gc" doesn't do this.
+              pb.command(gitExecutable, "pull", "-q", "--prune" /*, "--recurse-submodules"*/);
+              addArgs(pb, gitArg);
               fetchGitPullRequestHeads = true;
             }
             case HG -> {
-              replacers.add(new Replacer("(^|\\n)([?!AMR] ) +", "$1$2 " + dir + "/"));
+              replacers.add(new Replacer("(^|\\n)([?!AMR] ) +", "$1$2 " + quotedDir + "/"));
               replacers.add(new Replacer("(^|\\n)abort: ", "$1"));
               pb.command(hgExecutable, "-q", "update");
               addArgs(pb, hgArg);
@@ -1895,8 +1899,9 @@ public class MultiVersionControl {
               }
             }
             case SVN -> {
-              replacers.add(new Replacer("(^|\\n)([?!AMR] ) +", "$1$2 " + dir + "/"));
-              replacers.add(new Replacer("(svn: Failed to add file ')(.*')", "$1" + dir + "/$2"));
+              replacers.add(new Replacer("(^|\\n)([?!AMR] ) +", "$1$2 " + quotedDir + "/"));
+              replacers.add(
+                  new Replacer("(svn: Failed to add file ')(.*')", "$1" + quotedDir + "/$2"));
               assert c.repository != null;
               pb.command(svnExecutable, "-q", "update");
               addArgs(pb, svnArg);
@@ -1970,14 +1975,18 @@ public class MultiVersionControl {
         pb5.directory(dir);
         performCommand(pb5, Collections.emptyList(), true);
       }
-      int pbStatus = performCommand(pb, replacers, showNormalOutput);
-      if (!pb2.command().isEmpty() && (pbStatus == 0 || !pb2RequiresPbSuccess)) {
+      CommandResult pbResult = performCommand(pb, replacers, showNormalOutput);
+      if (!pb2.command().isEmpty()) {
         performCommand(pb2, replacers, showNormalOutput);
       }
       if (!pb3.command().isEmpty()) {
         performCommand(pb3, replacers3, showNormalOutput);
       }
-      if (fetchGitPullRequestHeads) {
+      // If the pull could not reach a remote, then the user has already been told so, and fetching
+      // the pull-request heads would contact the remote and fail again.
+      if (fetchGitPullRequestHeads
+          && (pbResult.exitValue() == 0
+              || !UNREACHABLE_GIT_REMOTE.matcher(pbResult.output()).find())) {
         fetchGitPullRequestHeads(dir);
       }
       if (checkUnpushedGitChanges && hasUnpushedGitChanges(dir)) {
@@ -1985,7 +1994,7 @@ public class MultiVersionControl {
       }
       // TODO:
       // if (!pb4.command().isEmpty()) {
-      //   int isAncestorStatus = performCommand(pb4, replacers4, showNormalOutput);
+      //   int isAncestorStatus = performCommand(pb4, replacers4, showNormalOutput).exitValue();
       //   if (isAncestorStatus == 0) {
       //     // TODO: Output this message only for non-master branches.
       //     // System.out.println("No changes committed in " + dir);
@@ -2053,6 +2062,16 @@ public class MultiVersionControl {
    */
   private static final @Regex(2) Pattern LS_REMOTE_PULL_REQUEST_HEAD =
       Pattern.compile("^(\\S+)\trefs/pull/([^/]+)/head$");
+
+  /**
+   * Matches git's error message about a remote repository that git cannot reach, such as "fatal:
+   * Could not read from remote repository." or "fatal: repository 'URL' not found".
+   */
+  private static final Pattern UNREACHABLE_GIT_REMOTE =
+      Pattern.compile(
+          "(^|\\n)fatal: (Could not read from remote repository|repository '[^'\\n]*' not found"
+              + "|Authentication failed for |unable to access |could not read Username for "
+              + "|'[^'\\n]*' does not appear to be a git repository)");
 
   /** Matches the name of a remote's URL in git's configuration. Group 1 is the remote's name. */
   private static final @Regex(1) Pattern REMOTE_URL_KEY = Pattern.compile("^remote\\.(.*)\\.url$");
@@ -2546,15 +2565,17 @@ public class MultiVersionControl {
    * @param replacers replacements to make in the output before displaying it, to reduce verbosity
    * @param showNormalOutput if true, then display the output even if the process completed
    *     normally. Ordinarily, output is displayed only if the process completed erroneously.
-   * @return the status code: 0 for normal completion, non-zero for erroneous completion
+   * @return the result of running the command, whose output is not affected by {@code replacers};
+   *     in a dry run, a normal completion with no output
    */
-  int performCommand(ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
+  CommandResult performCommand(
+      ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
     if (show) {
       System.out.println(command(pb));
       System.out.flush();
     }
     if (dryRun) {
-      return 0;
+      return new CommandResult(0, false, "", "");
     }
     CommandResult result = runCommand(pb, null, true);
     int exitValue = result.exitValue();
@@ -2622,7 +2643,7 @@ public class MultiVersionControl {
     }
     System.out.flush();
 
-    return exitValue;
+    return result;
   }
 
   /**
