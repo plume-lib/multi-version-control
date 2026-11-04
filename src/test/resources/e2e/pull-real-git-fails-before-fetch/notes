@@ -1,0 +1,2 @@
+When "git pull" fails before it fetches, the program fetches anyway.  The fetch updates
+origin/master and prunes origin/feature, whose branch the remote no longer has.
