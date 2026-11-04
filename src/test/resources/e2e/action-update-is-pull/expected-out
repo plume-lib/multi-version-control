@@ -1,7 +1,5 @@
   cd ${HOME}/git/options
-  git pull -q
-  cd ${HOME}/git/options
-  git fetch -p
+  git pull -q --prune
   cd ${HOME}/git/options
   git config --get-regexp ^(remote\..*\.url|core\.sshcommand)$
   cd ${HOME}/git/options

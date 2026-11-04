@@ -1,0 +1,3 @@
+Timed out (limit: 1s):
+  cd ${HOME}/clone
+  ${HOME}/slow-git pull -q --prune
