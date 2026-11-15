@@ -111,11 +111,13 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *
  * <p>For a git clone, "status" reports a local branch whose changes are on no remote. A branch's
  * changes are on a remote if a remote branch contains its commits, or if the changes are in a
- * remote's main branch ({@code HEAD}, {@code master}, or {@code main}), as after the branch has
- * been squash-merged. The changes are also on a remote if a fetched pull-request head contains the
- * branch's commits and the pull request's changes are in a remote's main branch, as after the pull
- * request has been squash-merged with commits that the clone never fetched. Determining whether
- * changes are in a remote's main branch requires Git 2.40 or later.
+ * landing branch, as after the branch has been squash-merged. A landing branch is a remote's main
+ * branch ({@code HEAD}, {@code master}, or {@code main}) or a remote branch that some local branch
+ * tracks, such as {@code origin/develop} when local branch {@code develop} tracks it. The changes
+ * are also on a remote if a fetched pull-request head contains the branch's commits and the pull
+ * request's changes are in a landing branch, as after the pull request has been squash-merged with
+ * commits that the clone never fetched. Determining whether changes are in a landing branch
+ * requires Git 2.40 or later.
  *
  * <p>For a git clone, "pull" fetches pull-request heads (such as GitHub's {@code refs/pull/N/head},
  * which GitHub keeps even after a pull request's branch has been deleted) into {@code
@@ -2314,7 +2316,8 @@ public class MultiVersionControl {
    * Returns true if some local branch of a git clone has changes that are on no remote. A branch's
    * changes are on a remote if its commits are reachable from a remote branch, or if its changes,
    * or those of a fetched pull-request head that contains its commits, are in a remote's main
-   * branch (see {@link #isInGitMainBranch}). If git fails, reports the failure and returns true.
+   * branch or in a remote branch that some local branch tracks (see {@link #isInGitBranches}). If
+   * git fails, reports the failure and returns true.
    *
    * @param dir a directory containing a git clone
    * @return true if some local branch has changes that are on no remote, or if git fails
@@ -2334,34 +2337,34 @@ public class MultiVersionControl {
     String remotes = gitOutput(dir, "remote");
     String branchHeads =
         gitOutput(dir, "for-each-ref", "--format=%(objectname) %(authordate:unix)", "refs/heads");
-    if (remotes == null || branchHeads == null) {
+    String upstreams = gitOutput(dir, "for-each-ref", "--format=%(upstream)", "refs/heads");
+    if (remotes == null || branchHeads == null || upstreams == null) {
       return true;
     }
-    Set<String> mainBranchCommits = new LinkedHashSet<>();
-    if (!remotes.isEmpty()) {
-      // A pattern such as refs/remotes/*/master would not match a remote whose name contains "/".
-      List<String> mainBranchesCommand = new ArrayList<>();
-      mainBranchesCommand.add("for-each-ref");
-      mainBranchesCommand.add("--format=%(objectname)");
-      for (String remote : remotes.lines().toList()) {
-        for (String branch : List.of("HEAD", "master", "main")) {
-          mainBranchesCommand.add("refs/remotes/" + remote + "/" + branch);
-        }
+    // A pattern such as refs/remotes/*/master would not match a remote whose name contains "/".
+    List<String> mainBranchRefs = new ArrayList<>();
+    for (String remote : remotes.lines().toList()) {
+      for (String branch : List.of("HEAD", "master", "main")) {
+        mainBranchRefs.add("refs/remotes/" + remote + "/" + branch);
       }
-      String mainBranchHeads = gitOutput(dir, mainBranchesCommand.toArray(new String[0]));
-      if (mainBranchHeads == null) {
-        return true;
-      }
-      mainBranchCommits.addAll(mainBranchHeads.lines().toList());
     }
+    Set<String> mainBranchCommits = refHeads(dir, mainBranchRefs);
+    // An upstream that is a local branch, under refs/heads/, is not on a remote.
+    List<String> trackedBranchRefs =
+        upstreams.lines().filter(upstream -> upstream.startsWith("refs/remotes/")).toList();
+    Set<String> trackedBranchCommits = refHeads(dir, trackedBranchRefs);
+    if (mainBranchCommits == null || trackedBranchCommits == null) {
+      return true;
+    }
+    trackedBranchCommits.removeAll(mainBranchCommits);
     for (Map.Entry<String, Long> branchHead : authorDates(branchHeads).entrySet()) {
       String commit = branchHead.getKey();
       if (!unpushedCommits.contains(commit)) {
         continue;
       }
       // A pull request might have been squash-merged along with later commits that changed the
-      // same lines as the branch, and then the pull request's head is in the main branch but the
-      // branch is not.
+      // same lines as the branch, and then the pull request's changes are in a landing branch but
+      // the branch's changes are not.
       String pullRequestHeads =
           gitOutput(
               dir,
@@ -2376,11 +2379,40 @@ public class MultiVersionControl {
       Map<String, Long> commits = new LinkedHashMap<>();
       commits.put(commit, branchHead.getValue());
       commits.putAll(authorDates(pullRequestHeads));
-      if (!isInGitMainBranch(dir, commits, mainBranchCommits)) {
+      // A clone can track many remote branches, each of which isInGitBranches examines, so it
+      // examines the tracked branches only for changes that are in no main branch.
+      if (!isInGitBranches(dir, commits, mainBranchCommits)
+          && !isInGitBranches(dir, commits, trackedBranchCommits)) {
         return true;
       }
     }
     return false;
+  }
+
+  /**
+   * Returns the commits that the given refs of a git clone point to. Omits a ref that the clone
+   * does not have.
+   *
+   * @param dir a directory containing a git clone
+   * @param refs full names of refs, such as {@code refs/remotes/origin/master}
+   * @return the commits that the refs point to, or null if git fails
+   */
+  private @Nullable @Modifiable @IteratorPolyMod Set<String> refHeads(File dir, List<String> refs) {
+    Set<String> result = new LinkedHashSet<>();
+    // With no patterns, "git for-each-ref" would output every ref.
+    if (refs.isEmpty()) {
+      return result;
+    }
+    List<String> command = new ArrayList<>();
+    command.add("for-each-ref");
+    command.add("--format=%(objectname)");
+    command.addAll(refs);
+    String output = gitOutput(dir, command.toArray(new String[0]));
+    if (output == null) {
+      return null;
+    }
+    result.addAll(output.lines().toList());
+    return result;
   }
 
   /**
@@ -2401,41 +2433,39 @@ public class MultiVersionControl {
   }
 
   /**
-   * The maximum number of commits of a main branch that {@link #isInGitMainBranch} examines for
-   * each given commit.
+   * The maximum number of commits of a branch that {@link #isInGitBranches} examines for each given
+   * commit.
    */
-  private static final int MAX_MAIN_BRANCH_CANDIDATES = 50;
+  private static final int MAX_BRANCH_CANDIDATES = 50;
 
   /**
-   * Returns true if the changes of some of the given commits are in some commit of a remote's main
-   * branch, as happens when a commit has been squash-merged into the main branch. That is, merging
-   * the given commit into that main-branch commit yields the main-branch commit's own tree.
+   * Returns true if the changes of some of the given commits are in some commit of the given
+   * branches, as happens when a commit has been squash-merged into one of them. That is, merging
+   * the given commit into that branch commit yields the branch commit's own tree.
    *
-   * <p>For each main-branch head, the main-branch commits examined are the oldest {@link
-   * #MAX_MAIN_BRANCH_CANDIDATES} of its first-parent ancestors that descend from the given commit's
+   * <p>For each branch head, the branch commits examined are the oldest {@link
+   * #MAX_BRANCH_CANDIDATES} of its first-parent ancestors that descend from the given commit's
    * merge base with it, that are not ancestors of the given commit, that were committed no earlier
    * than the given commit was authored, and that change some file that the given commit changes,
    * relative to the merge base.
    *
-   * <p>Returns true even if the main branch has changed the same lines since then. Returns false
-   * for a commit that was squash-merged along with later commits that changed the same lines.
+   * <p>Returns true even if the branch has changed the same lines since then. Returns false for a
+   * commit that was squash-merged along with later commits that changed the same lines.
    *
    * @param dir a directory containing a git clone
    * @param commits maps commits of the clone to their author dates, in seconds since the epoch
-   * @param mainBranchCommits the heads of the remotes' main branches
-   * @return true if the changes of some of the commits are in some commit of a remote's main branch
+   * @param branchHeads the heads of some branches of the clone, such as remote main branches
+   * @return true if the changes of some of the commits are in some commit of the branches
    */
-  private boolean isInGitMainBranch(
-      File dir, Map<String, Long> commits, Set<String> mainBranchCommits) {
-    // Maps each merge to perform, a main-branch commit and a given commit, to the main-branch
-    // commit's tree.
+  private boolean isInGitBranches(File dir, Map<String, Long> commits, Set<String> branchHeads) {
+    // Maps each merge to perform, a branch commit and a given commit, to the branch commit's tree.
     Map<String, String> merges = new LinkedHashMap<>();
     for (Map.Entry<String, Long> entry : commits.entrySet()) {
       String commit = entry.getKey();
       long authorDate = entry.getValue();
-      for (String mainBranchCommit : mainBranchCommits) {
+      for (String branchHead : branchHeads) {
         // "git merge-base" fails without error output if the commits have no merge base.
-        String mergeBase = gitOutput(dir, "merge-base", mainBranchCommit, commit);
+        String mergeBase = gitOutput(dir, "merge-base", branchHead, commit);
         if (mergeBase == null) {
           continue;
         }
@@ -2445,18 +2475,18 @@ public class MultiVersionControl {
           continue;
         }
         if (changedFiles.isEmpty()) {
-          // Merging the commit into the main-branch commit yields the main-branch commit's tree.
+          // Merging the commit into the branch head yields the branch head's tree.
           return true;
         }
         String revListInput =
-            mainBranchCommit
+            branchHead
                 + "\n^"
                 + commit
                 + "\n--\n"
                 + String.join("\n", changedFiles.split("\0"))
                 + "\n";
         // "git merge-tree --stdin" fails for all the merges if one of them is of commits that have
-        // no merge base, as can be a main-branch commit that does not descend from the merge base.
+        // no merge base, as can be a branch commit that does not descend from the merge base.
         String candidates =
             gitOutput(
                 gitCommand(
@@ -2489,7 +2519,7 @@ public class MultiVersionControl {
         }
         int size = candidateMerges.size();
         for (Map.Entry<String, String> merge :
-            candidateMerges.subList(Math.max(0, size - MAX_MAIN_BRANCH_CANDIDATES), size)) {
+            candidateMerges.subList(Math.max(0, size - MAX_BRANCH_CANDIDATES), size)) {
           merges.put(merge.getKey(), merge.getValue());
         }
       }
