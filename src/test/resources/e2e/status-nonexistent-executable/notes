@@ -1,3 +1,2 @@
-The program reports, once, that it cannot run the version control program.  The clone has a
-modified file, but the program does not report it, because the version control program does not
-exist.  The program reports unpushed commits, because it could not tell that there are none.
+The version control program does not exist, so the program reports that it cannot run it, and exits
+with status 2 before reporting any clone's status.
