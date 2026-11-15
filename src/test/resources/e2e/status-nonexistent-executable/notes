@@ -1,6 +1,3 @@
-The clone has a modified file, but the program does not report it and exits with status 0, because
-the version control program does not exist.  The program reports unpushed commits, because it could
-not tell that there are none.  The goal files record the current (wrong) behavior: a user who
-misspells --git-executable is not told so.  The program does try to report this, but the report is
-unreachable, because commons-exec passes the failure to the result handler instead of throwing
-IOException from the asynchronous execute method.
+The program reports, once, that it cannot run the version control program.  The clone has a
+modified file, but the program does not report it, because the version control program does not
+exist.  The program reports unpushed commits, because it could not tell that there are none.

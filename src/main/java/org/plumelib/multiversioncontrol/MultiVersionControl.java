@@ -27,9 +27,10 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.exec.CommandLine;
-import org.apache.commons.exec.DefaultExecuteResultHandler;
 import org.apache.commons.exec.DefaultExecutor;
+import org.apache.commons.exec.ExecuteException;
 import org.apache.commons.exec.ExecuteWatchdog;
+import org.apache.commons.exec.Executor;
 import org.apache.commons.exec.PumpStreamHandler;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.initialization.qual.UnknownInitialization;
@@ -2692,9 +2693,13 @@ public class MultiVersionControl {
     return result;
   }
 
+  /** The programs that {@link #runCommand} has reported that it cannot run. */
+  private final @Modifiable Set<String> unrunnablePrograms = new HashSet<>();
+
   /**
    * Runs {@code pb}'s command and waits for it to finish. If the command runs longer than {@link
-   * #timeout}, kills it and says so.
+   * #timeout}, kills it and says so. If the command's program cannot be run, as when it does not
+   * exist, says so the first time.
    *
    * @param pb the command to run, with its directory and environment
    * @param input the command's standard input, or null if it has none
@@ -2720,7 +2725,6 @@ public class MultiVersionControl {
     String[] argArray = Arrays.copyOfRange(args, 1, args.length);
     // Pass each argument verbatim; commons-exec's quoting would add literal quotation marks.
     cmdLine.addArguments(argArray, false);
-    DefaultExecuteResultHandler resultHandler = new DefaultExecuteResultHandler();
     @SuppressWarnings("nullness") // defaults to non-null and was never reset
     @NonNull File defaultDirectory = pb.directory();
     DefaultExecutor executor =
@@ -2751,24 +2755,25 @@ public class MultiVersionControl {
                 outPump, errPump, new ByteArrayInputStream(input.getBytes(UTF_8)));
     executor.setStreamHandler(streamHandler);
 
-    try {
-      executor.execute(cmdLine, pb.environment(), resultHandler);
-    } catch (IOException e) {
-      String msg = e.toString();
-      if (msg.startsWith("java.io.IOException: Cannot run program \"")
-          && msg.endsWith(", No such file or directory")) {
-        System.err.println(msg.substring(21));
-      } else {
-        throw new UncheckedIOException(e);
-      }
-    }
-
+    // Running the command synchronously avoids the asynchronous form's DefaultExecuteResultHandler,
+    // whose waitFor method checks whether the command has finished only every 50 milliseconds.
     int exitValue;
     try {
-      resultHandler.waitFor();
-      exitValue = resultHandler.getExitValue();
-    } catch (InterruptedException e) {
-      throw new Error(e);
+      exitValue = executor.execute(cmdLine, pb.environment());
+    } catch (ExecuteException e) {
+      // The command exited with a non-zero exit value.
+      exitValue = e.getExitValue();
+    } catch (IOException e) {
+      // ProcessBuilder.start's message starts with this text, followed by an explanation whose
+      // wording differs among JDKs.
+      String message = e.getMessage();
+      if (message == null || !message.startsWith("Cannot run program \"")) {
+        throw new UncheckedIOException(e);
+      }
+      if (unrunnablePrograms.add(args[0])) {
+        System.err.printf("Cannot run program \"%s\"%n", args[0]);
+      }
+      exitValue = Executor.INVALID_EXITVALUE;
     }
     // A stream's last line might not end with a line separator.
     try {
