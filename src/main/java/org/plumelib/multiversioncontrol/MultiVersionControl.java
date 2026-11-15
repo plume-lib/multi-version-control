@@ -27,9 +27,10 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.exec.CommandLine;
-import org.apache.commons.exec.DefaultExecuteResultHandler;
 import org.apache.commons.exec.DefaultExecutor;
+import org.apache.commons.exec.ExecuteException;
 import org.apache.commons.exec.ExecuteWatchdog;
+import org.apache.commons.exec.Executor;
 import org.apache.commons.exec.PumpStreamHandler;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.initialization.qual.UnknownInitialization;
@@ -2694,7 +2695,9 @@ public class MultiVersionControl {
 
   /**
    * Runs {@code pb}'s command and waits for it to finish. If the command runs longer than {@link
-   * #timeout}, kills it and says so.
+   * #timeout}, kills it and says so. If the command cannot be started, as when its program does not
+   * exist, prints the reason and exits this program with status 2. If the command starts but its
+   * output cannot be collected, prints the command and the reason, and returns a failed result.
    *
    * @param pb the command to run, with its directory and environment
    * @param input the command's standard input, or null if it has none
@@ -2720,7 +2723,6 @@ public class MultiVersionControl {
     String[] argArray = Arrays.copyOfRange(args, 1, args.length);
     // Pass each argument verbatim; commons-exec's quoting would add literal quotation marks.
     cmdLine.addArguments(argArray, false);
-    DefaultExecuteResultHandler resultHandler = new DefaultExecuteResultHandler();
     @SuppressWarnings("nullness") // defaults to non-null and was never reset
     @NonNull File defaultDirectory = pb.directory();
     DefaultExecutor executor =
@@ -2751,24 +2753,38 @@ public class MultiVersionControl {
                 outPump, errPump, new ByteArrayInputStream(input.getBytes(UTF_8)));
     executor.setStreamHandler(streamHandler);
 
-    try {
-      executor.execute(cmdLine, pb.environment(), resultHandler);
-    } catch (IOException e) {
-      String msg = e.toString();
-      if (msg.startsWith("java.io.IOException: Cannot run program \"")
-          && msg.endsWith(", No such file or directory")) {
-        System.err.println(msg.substring(21));
-      } else {
-        throw new UncheckedIOException(e);
-      }
-    }
-
+    // Running the command synchronously avoids the asynchronous form's DefaultExecuteResultHandler,
+    // whose waitFor method checks whether the command has finished only every 50 milliseconds.
     int exitValue;
     try {
-      resultHandler.waitFor();
-      exitValue = resultHandler.getExitValue();
-    } catch (InterruptedException e) {
-      throw new Error(e);
+      exitValue = executor.execute(cmdLine, pb.environment());
+    } catch (ExecuteException e) {
+      // The command exited with a non-zero exit value.
+      exitValue = e.getExitValue();
+    } catch (IOException e) {
+      String message = e.getMessage();
+      // ProcessBuilder.start's message starts with this text, followed by the program's working
+      // directory and the reason, such as "error=2, No such file or directory".
+      if (message != null && message.startsWith("Cannot run program \"")) {
+        // The usual cause is a missing or misspelled executable, such as a wrong --git-executable.
+        // Continuing would make every later command fail, and the results of the failed commands
+        // would be misreported as the status of each clone.
+        System.out.flush();
+        if (programFileExists(args[0], defaultDirectory)) {
+          System.err.println(message);
+        } else {
+          // The JDK's wording of this common reason differs among JDKs, so use a fixed wording.
+          System.err.printf(
+              "Cannot run program \"%s\": %s%n",
+              args[0], args[0].contains(File.separator) ? "no such file" : "not found in PATH");
+        }
+        System.exit(2);
+      }
+      // The command started, but a later step failed, such as collecting the command's output.
+      System.out.println(command(pb));
+      System.out.println(e);
+      System.out.flush();
+      exitValue = Executor.INVALID_EXITVALUE;
     }
     // A stream's last line might not end with a line separator.
     try {
@@ -2788,6 +2804,33 @@ public class MultiVersionControl {
 
     String errorOutput = mergeErrorOutput ? "" : errStream.toString(UTF_8);
     return new CommandResult(exitValue, timedOut, outStream.toString(UTF_8), errorOutput);
+  }
+
+  /**
+   * Returns true if the file that a command would run exists. Like {@link ProcessBuilder}, this
+   * looks up a program name that contains no file separator, such as "git", in the PATH of this
+   * JVM, and resolves any other relative program name, such as "bin/git", against the command's
+   * working directory.
+   *
+   * @param program a program name, such as "git" or "/usr/bin/hg"
+   * @param directory the working directory in which the program would run
+   * @return true if the program's file exists
+   */
+  static boolean programFileExists(String program, File directory) {
+    if (program.contains(File.separator)) {
+      File file = new File(program);
+      return (file.isAbsolute() ? file : new File(directory, program)).isFile();
+    }
+    String path = System.getenv("PATH");
+    // When PATH is not set, exec searches this default.
+    for (String entry : (path == null ? "/bin:/usr/bin" : path).split(File.pathSeparator, -1)) {
+      // An empty entry denotes the working directory.
+      File dir = entry.isEmpty() ? directory : new File(entry);
+      if (new File(dir, program).isFile()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
