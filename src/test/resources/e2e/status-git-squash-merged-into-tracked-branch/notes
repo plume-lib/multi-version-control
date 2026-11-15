@@ -1,0 +1,3 @@
+A branch whose commits are on no remote is not reported if its changes are in a remote branch
+that a local branch tracks, as happens after its pull request is squash-merged into a branch
+other than the main branch and its remote branch deleted.
