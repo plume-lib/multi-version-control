@@ -2336,9 +2336,12 @@ public class MultiVersionControl {
     Set<String> unpushedCommits = new HashSet<>(unpushedOutput.lines().toList());
     String remotes = gitOutput(dir, "remote");
     String branchHeads =
-        gitOutput(dir, "for-each-ref", "--format=%(objectname) %(authordate:unix)", "refs/heads");
-    String upstreams = gitOutput(dir, "for-each-ref", "--format=%(upstream)", "refs/heads");
-    if (remotes == null || branchHeads == null || upstreams == null) {
+        gitOutput(
+            dir,
+            "for-each-ref",
+            "--format=%(objectname) %(authordate:unix) %(upstream)",
+            "refs/heads");
+    if (remotes == null || branchHeads == null) {
       return true;
     }
     // A pattern such as refs/remotes/*/master would not match a remote whose name contains "/".
@@ -2349,9 +2352,14 @@ public class MultiVersionControl {
       }
     }
     Set<String> mainBranchCommits = refHeads(dir, mainBranchRefs);
-    // An upstream that is a local branch, under refs/heads/, is not on a remote.
+    // The upstream is the last field, because a ref name contains no space. An upstream that is a
+    // local branch, under refs/heads/, is not on a remote.
     List<String> trackedBranchRefs =
-        upstreams.lines().filter(upstream -> upstream.startsWith("refs/remotes/")).toList();
+        branchHeads
+            .lines()
+            .map(line -> line.substring(line.lastIndexOf(' ') + 1))
+            .filter(upstream -> upstream.startsWith("refs/remotes/"))
+            .toList();
     Set<String> trackedBranchCommits = refHeads(dir, trackedBranchRefs);
     if (mainBranchCommits == null || trackedBranchCommits == null) {
       return true;
@@ -2390,8 +2398,8 @@ public class MultiVersionControl {
   }
 
   /**
-   * Returns the commits that the given refs of a git clone point to. Omits a ref that the clone
-   * does not have.
+   * Returns the commits that the given refs of the given git clone point to. Omits a ref that the
+   * clone does not have.
    *
    * @param dir a directory containing a git clone
    * @param refs full names of refs, such as {@code refs/remotes/origin/master}
@@ -2416,7 +2424,8 @@ public class MultiVersionControl {
   }
 
   /**
-   * Parses output of {@code git for-each-ref --format='%(objectname) %(authordate:unix)'}.
+   * Parses output of {@code git for-each-ref --format='%(objectname) %(authordate:unix)'}, or of a
+   * format that has further fields after those two, such as {@code %(upstream)}.
    *
    * @param forEachRefOutput the output of {@code git for-each-ref}
    * @return a map from each commit in the output to its author date, in seconds since the epoch
@@ -2426,7 +2435,11 @@ public class MultiVersionControl {
     for (String line : forEachRefOutput.lines().toList()) {
       int space = line.indexOf(' ');
       if (space != -1) {
-        result.put(line.substring(0, space), Long.parseLong(line.substring(space + 1)));
+        int dateEnd = line.indexOf(' ', space + 1);
+        if (dateEnd == -1) {
+          dateEnd = line.length();
+        }
+        result.put(line.substring(0, space), Long.parseLong(line.substring(space + 1, dateEnd)));
       }
     }
     return result;

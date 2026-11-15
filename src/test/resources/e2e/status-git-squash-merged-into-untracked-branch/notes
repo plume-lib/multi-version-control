@@ -1,0 +1,4 @@
+A branch is reported if its changes are only in a remote branch that is not a main branch and that
+no local branch tracks.  The program does not examine every remote branch, because a clone can
+have many.  The branch's upstream here is a local branch that points to that remote branch, and a
+local branch is not on a remote, so the program does not examine it either.
