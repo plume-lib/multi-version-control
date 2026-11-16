@@ -110,15 +110,16 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *   list      -- List the clones/checkouts that this program is aware of.
  * </pre>
  *
- * <p>For a git clone, "status" reports a local branch whose changes are on no remote. A branch's
- * changes are on a remote if a remote branch contains its commits, or if the changes are in a
- * landing branch, as after the branch has been squash-merged. A landing branch is a remote's main
- * branch ({@code HEAD}, {@code master}, or {@code main}) or a remote branch that some local branch
- * tracks, such as {@code origin/develop} when local branch {@code develop} tracks it. The changes
- * are also on a remote if a fetched pull-request head contains the branch's commits and the pull
- * request's changes are in a landing branch, as after the pull request has been squash-merged with
- * commits that the clone never fetched. Determining whether changes are in a landing branch
- * requires Git 2.40 or later.
+ * <p>For a git clone, "status" reports each local branch whose changes are on no remote, by a line
+ * such as "unpushed commits: /home/me/myproject (branches feature, master)". A branch's changes are
+ * on a remote if a remote branch contains its commits, or if the changes are in a landing branch,
+ * as after the branch has been squash-merged. A landing branch is a remote's main branch ({@code
+ * HEAD}, {@code master}, or {@code main}) or a remote branch that some local branch tracks, such as
+ * {@code origin/develop} when local branch {@code develop} tracks it. The changes are also on a
+ * remote if a fetched pull-request head contains the branch's commits and the pull request's
+ * changes are in a landing branch, as after the pull request has been squash-merged with commits
+ * that the clone never fetched. Determining whether changes are in a landing branch requires Git
+ * 2.40 or later.
  *
  * <p>For a git clone, "pull" fetches pull-request heads (such as GitHub's {@code refs/pull/N/head},
  * which GitHub keeps even after a pull request's branch has been deleted) into {@code
@@ -2024,8 +2025,18 @@ public class MultiVersionControl {
       if (fetchGitPullRequestHeads && !remoteUnreachable) {
         fetchGitPullRequestHeads(dir);
       }
-      if (checkUnpushedGitChanges && hasUnpushedGitChanges(dir)) {
-        System.out.println("unpushed commits: " + dir);
+      if (checkUnpushedGitChanges) {
+        List<String> unpushedBranches = unpushedGitBranches(dir);
+        if (unpushedBranches == null) {
+          // git failed, so this program cannot tell whether there are unpushed commits.
+          System.out.println("unpushed commits: " + dir);
+        } else if (!unpushedBranches.isEmpty()) {
+          System.out.printf(
+              "unpushed commits: %s (%s %s)%n",
+              dir,
+              unpushedBranches.size() == 1 ? "branch" : "branches",
+              String.join(", ", unpushedBranches));
+        }
       }
       // TODO:
       // if (!pb4.command().isEmpty()) {
@@ -2314,25 +2325,28 @@ public class MultiVersionControl {
   }
 
   /**
-   * Returns true if some local branch of a git clone has changes that are on no remote. A branch's
-   * changes are on a remote if its commits are reachable from a remote branch, or if its changes,
-   * or those of a fetched pull-request head that contains its commits, are in a remote's main
-   * branch or in a remote branch that some local branch tracks (see {@link #isInGitBranches}). If
-   * git fails, reports the failure and returns true.
+   * Returns the names of the local branches of the given git clone that have changes that are on no
+   * remote, such as {@code [feature/x, master]}. A branch's changes are on a remote if its commits
+   * are reachable from a remote branch, or if its changes, or those of a fetched pull-request head
+   * that contains its commits, are in a remote's main branch or in a remote branch that some local
+   * branch tracks (see {@link #isInGitBranches}). If git fails, reports the failure, and if it
+   * fails while examining one branch, includes that branch in the result.
    *
    * @param dir a directory containing a git clone
-   * @return true if some local branch has changes that are on no remote, or if git fails
+   * @return the names of the local branches that have changes that are on no remote, or null if git
+   *     fails before examining any branch
    */
-  private boolean hasUnpushedGitChanges(File dir) {
+  private @Nullable List<String> unpushedGitBranches(File dir) {
     List<String> revList = new ArrayList<>(List.of("rev-list", "--branches", "--not", "--remotes"));
     revList.addAll(gitArg);
     // If git fails, then gitOutput reports the problem.
     String unpushedOutput = gitOutput(dir, revList.toArray(new String[0]));
     if (unpushedOutput == null) {
-      return true;
+      return null;
     }
+    List<String> result = new ArrayList<>();
     if (unpushedOutput.isEmpty()) {
-      return false;
+      return result;
     }
     Set<String> unpushedCommits = new HashSet<>(unpushedOutput.lines().toList());
     String remotes = gitOutput(dir, "remote");
@@ -2340,10 +2354,10 @@ public class MultiVersionControl {
         gitOutput(
             dir,
             "for-each-ref",
-            "--format=%(objectname) %(authordate:unix) %(upstream)",
+            "--format=%(objectname) %(authordate:unix) %(refname:lstrip=2) %(upstream)",
             "refs/heads");
     if (remotes == null || branchHeads == null) {
-      return true;
+      return null;
     }
     // A pattern such as refs/remotes/*/master would not match a remote whose name contains "/".
     List<String> mainBranchRefs = new ArrayList<>();
@@ -2353,49 +2367,91 @@ public class MultiVersionControl {
       }
     }
     Set<String> mainBranchCommits = refHeads(dir, mainBranchRefs);
-    // The upstream is the last field, because a ref name contains no space. An upstream that is a
-    // local branch, under refs/heads/, is not on a remote.
+    List<GitBranch> branches = new ArrayList<>();
+    for (String line : branchHeads.lines().toList()) {
+      // The upstream is the last field because it can contain a space, as when a branch's
+      // configured merge ref does.
+      String[] fields = line.split(" ", 4);
+      if (fields.length == 4) {
+        branches.add(new GitBranch(fields[2], fields[0], Long.parseLong(fields[1]), fields[3]));
+      }
+    }
+    // An upstream that is a local branch, under refs/heads/, is not on a remote.
     List<String> trackedBranchRefs =
-        branchHeads
-            .lines()
-            .map(line -> line.substring(line.lastIndexOf(' ') + 1))
+        branches.stream()
+            .map(GitBranch::upstream)
             .filter(upstream -> upstream.startsWith("refs/remotes/"))
             .toList();
     Set<String> trackedBranchCommits = refHeads(dir, trackedBranchRefs);
     if (mainBranchCommits == null || trackedBranchCommits == null) {
-      return true;
+      return null;
     }
     trackedBranchCommits.removeAll(mainBranchCommits);
-    for (Map.Entry<String, Long> branchHead : authorDates(branchHeads).entrySet()) {
-      String commit = branchHead.getKey();
-      if (!unpushedCommits.contains(commit)) {
-        continue;
-      }
-      // A pull request might have been squash-merged along with later commits that changed the
-      // same lines as the branch, and then the pull request's changes are in a landing branch but
-      // the branch's changes are not.
-      String pullRequestHeads =
-          gitOutput(
-              dir,
-              "for-each-ref",
-              "--contains",
-              commit,
-              "--format=%(objectname) %(authordate:unix)",
-              "refs/pull");
-      if (pullRequestHeads == null) {
-        return true;
-      }
-      Map<String, Long> commits = new LinkedHashMap<>();
-      commits.put(commit, branchHead.getValue());
-      commits.putAll(authorDates(pullRequestHeads));
-      // A clone can track many remote branches, each of which isInGitBranches examines, so it
-      // examines the tracked branches only for changes that are in no main branch.
-      if (!isInGitBranches(dir, commits, mainBranchCommits)
-          && !isInGitBranches(dir, commits, trackedBranchCommits)) {
-        return true;
+    // Maps each examined branch head commit to true if its changes are on no remote.
+    Map<String, Boolean> commitIsUnpushed = new HashMap<>();
+    for (GitBranch branch : branches) {
+      if (unpushedCommits.contains(branch.commit())
+          && commitIsUnpushed.computeIfAbsent(
+              branch.commit(),
+              commit ->
+                  isUnpushedGitCommit(
+                      dir, commit, branch.authorDate(), mainBranchCommits, trackedBranchCommits))) {
+        result.add(branch.name());
       }
     }
-    return false;
+    return result;
+  }
+
+  /**
+   * A local branch of a git clone.
+   *
+   * @param name the branch's name, such as {@code feature/x}
+   * @param commit the branch's head commit
+   * @param authorDate the head commit's author date, in seconds since the epoch
+   * @param upstream the full name of the branch's upstream, such as {@code
+   *     refs/remotes/origin/feature/x}, or the empty string if the branch has no upstream
+   */
+  private static record GitBranch(String name, String commit, long authorDate, String upstream) {}
+
+  /**
+   * Returns true if the changes of the given commit are in no landing branch of the given git
+   * clone, as {@link #unpushedGitBranches} defines it. If git fails, reports the failure and
+   * returns true.
+   *
+   * @param dir a directory containing a git clone
+   * @param commit a commit of the clone that is reachable from no remote branch
+   * @param authorDate the commit's author date, in seconds since the epoch
+   * @param mainBranchCommits the heads of the remotes' main branches
+   * @param trackedBranchCommits the heads of the remote branches that some local branch tracks
+   * @return true if the commit's changes are in no landing branch, or if git fails
+   */
+  private boolean isUnpushedGitCommit(
+      File dir,
+      String commit,
+      long authorDate,
+      Set<String> mainBranchCommits,
+      Set<String> trackedBranchCommits) {
+    // A pull request might have been squash-merged along with later commits that changed the
+    // same lines as the branch, and then the pull request's changes are in a landing branch but
+    // the branch's changes are not.
+    String pullRequestHeads =
+        gitOutput(
+            dir,
+            "for-each-ref",
+            "--contains",
+            commit,
+            "--format=%(objectname) %(authordate:unix)",
+            "refs/pull");
+    if (pullRequestHeads == null) {
+      return true;
+    }
+    Map<String, Long> commits = new LinkedHashMap<>();
+    commits.put(commit, authorDate);
+    commits.putAll(authorDates(pullRequestHeads));
+    // A clone can track many remote branches, each of which isInGitBranches examines, so it
+    // examines the tracked branches only for changes that are in no main branch.
+    return !isInGitBranches(dir, commits, mainBranchCommits)
+        && !isInGitBranches(dir, commits, trackedBranchCommits);
   }
 
   /**
@@ -2425,8 +2481,7 @@ public class MultiVersionControl {
   }
 
   /**
-   * Parses output of {@code git for-each-ref --format='%(objectname) %(authordate:unix)'}, or of a
-   * format that has further fields after those two, such as {@code %(upstream)}.
+   * Parses output of {@code git for-each-ref --format='%(objectname) %(authordate:unix)'}.
    *
    * @param forEachRefOutput the output of {@code git for-each-ref}
    * @return a map from each commit in the output to its author date, in seconds since the epoch
@@ -2436,11 +2491,7 @@ public class MultiVersionControl {
     for (String line : forEachRefOutput.lines().toList()) {
       int space = line.indexOf(' ');
       if (space != -1) {
-        int dateEnd = line.indexOf(' ', space + 1);
-        if (dateEnd == -1) {
-          dateEnd = line.length();
-        }
-        result.put(line.substring(0, space), Long.parseLong(line.substring(space + 1, dateEnd)));
+        result.put(line.substring(0, space), Long.parseLong(line.substring(space + 1)));
       }
     }
     return result;

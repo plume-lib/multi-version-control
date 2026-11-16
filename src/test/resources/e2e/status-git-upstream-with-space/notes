@@ -1,0 +1,2 @@
+A branch whose configured merge ref contains a space, so that its upstream contains a space, is
+reported.

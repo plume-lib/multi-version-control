@@ -1,0 +1,2 @@
+The one-line summary of a clone names each branch whose changes are on no remote, including two
+branches at the same commit, and omits a branch whose commits have been pushed and the main branch.
