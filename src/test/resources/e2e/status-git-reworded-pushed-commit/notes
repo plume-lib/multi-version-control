@@ -1,0 +1,3 @@
+A branch is not reported if its rewritten commits have the same changes as its upstream, as
+happens when a pushed commit's message is changed and the branch is not pushed again.  Only the
+commit message would be lost.

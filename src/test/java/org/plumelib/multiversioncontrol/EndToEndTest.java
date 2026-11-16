@@ -470,14 +470,13 @@ final class EndToEndTest {
     // prints a "Picked up ..." line to standard error.  Those variables are set by default in some
     // Docker images and in some corporate environments.
     env.keySet()
-        .removeIf(
-            k ->
-                k.startsWith("GIT_")
-                    || k.startsWith("HG")
-                    || k.startsWith("SVN_")
-                    || k.equals("JAVA_TOOL_OPTIONS")
-                    || k.equals("_JAVA_OPTIONS")
-                    || k.equals("JDK_JAVA_OPTIONS"));
+        .removeIf(k ->
+            k.startsWith("GIT_")
+                || k.startsWith("HG")
+                || k.startsWith("SVN_")
+                || k.equals("JAVA_TOOL_OPTIONS")
+                || k.equals("_JAVA_OPTIONS")
+                || k.equals("JDK_JAVA_OPTIONS"));
     env.put("HOME", home.toString());
     env.put("XDG_CONFIG_HOME", home.resolve(".config").toString());
     env.put("GIT_CONFIG_GLOBAL", "/dev/null");

@@ -1,8 +1,8 @@
 [versions]
 
-checker-framework = "4.3.1"
+checker-framework = "4.4.0"
 
-google-java-format = "1.36.1"
+google-java-format = "2.0.0"
 
 jacoco = "0.8.16"
 
@@ -52,7 +52,7 @@ svnkit = { module = "org.tmatesoft.svnkit:svnkit", version = "1.10.11" }
 
 [plugins]
 
-com-diffplug-spotless = { id = "com.diffplug.spotless", version = "8.10.4" }
+com-diffplug-spotless = { id = "com.diffplug.spotless", version = "8.11.0" }
 
 com-gradleup-shadow = { id = "com.gradleup.shadow", version = "9.6.1" }
 

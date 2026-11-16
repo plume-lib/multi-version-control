@@ -1,0 +1,2 @@
+error in ${HOME}/clone: cannot pull with rebase: You have unstaged changes.
+error in ${HOME}/clone: Please commit or stash them.

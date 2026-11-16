@@ -1,0 +1,2 @@
+When "git pull" times out, the program does not then contact the remote again to fetch its
+pull-request heads, though the remote is on GitHub and a local branch has unpushed commits.

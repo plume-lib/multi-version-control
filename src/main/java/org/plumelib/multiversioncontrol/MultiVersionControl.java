@@ -27,9 +27,10 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.exec.CommandLine;
-import org.apache.commons.exec.DefaultExecuteResultHandler;
 import org.apache.commons.exec.DefaultExecutor;
+import org.apache.commons.exec.ExecuteException;
 import org.apache.commons.exec.ExecuteWatchdog;
+import org.apache.commons.exec.Executor;
 import org.apache.commons.exec.PumpStreamHandler;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.initialization.qual.UnknownInitialization;
@@ -111,11 +112,13 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  *
  * <p>For a git clone, "status" reports a local branch whose changes are on no remote. A branch's
  * changes are on a remote if a remote branch contains its commits, or if the changes are in a
- * remote's main branch ({@code HEAD}, {@code master}, or {@code main}), as after the branch has
- * been squash-merged. The changes are also on a remote if a fetched pull-request head contains the
- * branch's commits and the pull request's changes are in a remote's main branch, as after the pull
- * request has been squash-merged with commits that the clone never fetched. Determining whether
- * changes are in a remote's main branch requires Git 2.40 or later.
+ * landing branch, as after the branch has been squash-merged. A landing branch is a remote's main
+ * branch ({@code HEAD}, {@code master}, or {@code main}) or a remote branch that some local branch
+ * tracks, such as {@code origin/develop} when local branch {@code develop} tracks it. The changes
+ * are also on a remote if a fetched pull-request head contains the branch's commits and the pull
+ * request's changes are in a landing branch, as after the pull request has been squash-merged with
+ * commits that the clone never fetched. Determining whether changes are in a landing branch
+ * requires Git 2.40 or later.
  *
  * <p>For a git clone, "pull" fetches pull-request heads (such as GitHub's {@code refs/pull/N/head},
  * which GitHub keeps even after a pull request's branch has been deleted) into {@code
@@ -1446,8 +1449,24 @@ public class MultiVersionControl {
      * @param replacement the replacement text
      */
     public Replacer(@Regex String regexp, String replacement) {
+      if (replacement.contains("$DIR")) {
+        throw new IllegalArgumentException("Use the three-argument constructor: " + replacement);
+      }
       this.regexp = Pattern.compile(regexp);
       this.replacement = replacement;
+    }
+
+    /**
+     * Create a new Replacer whose replacement text mentions a directory.
+     *
+     * @param regexp the regular expression matching text that should be replaced
+     * @param replacement the replacement text, in which each "$DIR" stands for {@code dir}
+     * @param dir a directory, such as a clone
+     */
+    public Replacer(@Regex String regexp, String replacement, File dir) {
+      this.regexp = Pattern.compile(regexp);
+      // quoteReplacement matters because "$" and "\" are special in a replacement string.
+      this.replacement = replacement.replace("$DIR", Matcher.quoteReplacement(dir.toString()));
     }
 
     /**
@@ -1503,23 +1522,45 @@ public class MultiVersionControl {
       switch (c.repoType) {
         case BZR -> {}
         case CVS -> {
-          replacers.add(new Replacer("(^|\\n)([?]) ", "$1$2 " + dir + "/"));
+          replacers.add(new Replacer("(^|\\n)([?]) ", "$1$2 $DIR/", dir));
         }
         case GIT -> {
-          replacers.add(new Replacer("(^|\\n)fatal:", "$1fatal in " + dir + ":"));
-          replacers.add(new Replacer("(^|\\n)warning:", "$1warning in " + dir + ":"));
+          // When git cannot reach a remote repository, its message can span five lines, such as:
+          //   ERROR: Repository not found.
+          //   fatal: Could not read from remote repository.
+          //   <blank line>
+          //   Please make sure you have the correct access rights
+          //   and the repository exists.
+          // The first line comes from the server.  An HTTPS server's line starts with "remote:",
+          // as in "remote: Repository not found." before "fatal: repository 'URL' not found".
+          // Condense the message to one line, such as
+          //   fatal in DIR: Could not read from remote repository (Repository not found).
+          replacers.add(
+              new Replacer(
+                  "(^|\\n)(?:ERROR|remote): ([^\\n]*?)\\.?\\r?\\n((?:"
+                      + UNREACHABLE_GIT_REMOTE_REGEX
+                      + ")[^\\n]*?)\\.?(?=\\r?\\n|$)",
+                  "$1$3 ($2)."));
+          replacers.add(
+              new Replacer(
+                  "\\n\\r?\\nPlease make sure you have the correct access rights\\r?\\n"
+                      + "and the repository exists\\.\\r?\\n",
+                  "\n"));
+          replacers.add(new Replacer("(^|\\n)fatal:", "$1fatal in $DIR:", dir));
+          replacers.add(new Replacer("(^|\\n)warning:", "$1warning in $DIR:", dir));
           replacers.add(
               new Replacer(
                   "(^|\\n)(There is no tracking information for the current branch\\.)",
-                  "$1" + dir + ": $2"));
+                  "$1$DIR: $2",
+                  dir));
           replacers.add(
-              new Replacer("(^|\\n)(Your configuration specifies to merge)", dir + ": $1$2"));
+              new Replacer("(^|\\n)(Your configuration specifies to merge)", "$1$DIR: $2", dir));
         }
         case HG -> {
           // "real URL" is for bitbucket.org.  (Should be early in list.)
           replacers.add(new Replacer("(^|\\n)real URL is .*\\n", "$1"));
-          replacers.add(new Replacer("(^|\\n)(abort: .*)", "$1$2: " + dir));
-          replacers.add(new Replacer("(^|\\n)([MARC!?I]) ", "$1$2 " + dir + "/"));
+          replacers.add(new Replacer("(^|\\n)(abort: .*)", "$1$2: $DIR", dir));
+          replacers.add(new Replacer("(^|\\n)([MARC!?I]) ", "$1$2 $DIR/", dir));
           replacers.add(
               new Replacer(
                   "(^|\\n)(\\*\\*\\* failed to import extension .*: No module named demandload\\n)",
@@ -1545,13 +1586,14 @@ public class MultiVersionControl {
         }
         case SVN -> {
           replacers.add(
-              new Replacer("(svn: Network connection closed unexpectedly)", "$1 for " + dir));
-          replacers.add(new Replacer("(svn: Repository) (UUID)", "$1 " + dir + " $2"));
+              new Replacer("(svn: Network connection closed unexpectedly)", "$1 for $DIR", dir));
+          replacers.add(new Replacer("(svn: Repository) (UUID)", "$1 $DIR $2", dir));
           replacers.add(
               new Replacer(
                   "(svn: E155037: Previous operation has not finished; run 'cleanup' if it was"
                       + " interrupted)",
-                  "$1; for " + dir));
+                  "$1; for $DIR",
+                  dir));
         }
         default -> {
           assert false;
@@ -1565,10 +1607,13 @@ public class MultiVersionControl {
                   + "(remote: )?Warning: No xauth data; using fake authentication data for X11"
                   + " forwarding\\.\r*\n",
               ""));
-      replacers.add(new Replacer("(working copy ')", "$1" + dir));
+      replacers.add(new Replacer("(working copy ')", "$1$DIR", dir));
 
       pb.command("echo", "command", "not", "set");
       pb.directory(dir);
+      // Undo any change that an earlier clone's command made, as by useEnglishMessages.
+      pb.environment().clear();
+      pb.environment().putAll(System.getenv());
       pb2.command(new ArrayList<>());
       pb2.directory(dir);
       pb3.command(new ArrayList<>());
@@ -1580,6 +1625,8 @@ public class MultiVersionControl {
       boolean checkUnpushedGitChanges = false;
       // If true, fetch the pull-request heads of each GitHub remote of a git clone.
       boolean fetchGitPullRequestHeads = false;
+      // True if pb is "git pull".
+      boolean gitPull = false;
       // Set pb.command() to be the command to be executed.
       switch (action) {
         case LIST -> {
@@ -1672,17 +1719,18 @@ public class MultiVersionControl {
                       + "(\nFiles .* and .* differ)?" // no output if only whitespace differences
                   );
               replacers.add(new Replacer(removeRegexp, ""));
-              replacers.add(new Replacer("(^|\\n)Index: ", "$1" + dir + "/"));
+              replacers.add(new Replacer("(^|\\n)Index: ", "$1$DIR/", dir));
               replacers.add(
-                  new Replacer("(^|\\n)(cvs \\[diff aborted)(\\]:)", "$1$2 in " + dir + "$3"));
-              replacers.add(new Replacer("(^|\\n)(Permission denied)", "$1$2 in " + dir));
+                  new Replacer("(^|\\n)(cvs \\[diff aborted)(\\]:)", "$1$2 in $DIR$3", dir));
+              replacers.add(new Replacer("(^|\\n)(Permission denied)", "$1$2 in $DIR", dir));
               replacers.add(
                   new Replacer(
                       "(^|\\n)(cvs diff: )(cannot find revision control)",
-                      "$1$2 in " + dir + ": $3"));
-              replacers.add(new Replacer("(^|\\n)(cvs diff: cannot find )", "$1$2" + dir));
-              replacers.add(new Replacer("(^|\\n)(cvs diff: in directory )", "$1$2" + dir + "/"));
-              replacers.add(new Replacer("(^|\\n)(cvs diff: ignoring )", "$1$2" + dir + "/"));
+                      "$1$2 in $DIR: $3",
+                      dir));
+              replacers.add(new Replacer("(^|\\n)(cvs diff: cannot find )", "$1$2$DIR", dir));
+              replacers.add(new Replacer("(^|\\n)(cvs diff: in directory )", "$1$2$DIR/", dir));
+              replacers.add(new Replacer("(^|\\n)(cvs diff: ignoring )", "$1$2$DIR/", dir));
             }
             case GIT -> {
               pb.command(gitExecutable, "status");
@@ -1735,23 +1783,21 @@ public class MultiVersionControl {
                           + " to include in what will be committed\\)\\n",
                       "$1"));
 
-              replacers.add(new Replacer("(^|\\n)(#\tmodified:   )", "$1" + dir + "/"));
+              replacers.add(new Replacer("(^|\\n)(#\tmodified:   )", "$1$DIR/", dir));
               // This must come after the above, since it matches a prefix of the above
-              replacers.add(new Replacer("(^|\\n)(#\t)", "$1untracked: " + dir + "/"));
+              replacers.add(new Replacer("(^|\\n)(#\t)", "$1untracked: $DIR/", dir));
               replacers.add(
                   new Replacer(
                       "(^|\\n)# Your branch is ahead of .*\\n",
-                      "$1unpushed changesets: " + dir + "\n"));
-              replacers.add(new Replacer("(^|\\n)([?][?]) ", "$1$2 " + dir + "/"));
+                      "$1unpushed changesets: $DIR\n",
+                      dir));
+              replacers.add(new Replacer("(^|\\n)([?][?]) ", "$1$2 $DIR/", dir));
               replacers.add(
                   new Replacer(
-                      "(^|\\n)([ACDMRU][ ACDMRTU]|[ ACDMRU][ACDMRTU]) ", "$1$2 " + dir + "/"));
+                      "(^|\\n)([ACDMRU][ ACDMRTU]|[ ACDMRU][ACDMRTU]) ", "$1$2 $DIR/", dir));
 
               // Useful info, but don't bother to report it, for consistency with other VCSes
-              replacers.add(
-                  new Replacer(
-                      "(^|\\n)# Your branch is behind .*\\n",
-                      "$1unpushed changesets: " + dir + "\n"));
+              replacers.add(new Replacer("(^|\\n)# Your branch is behind .*\\n", "$1"));
 
               // Could remove all other output, but this could suppress messages
               // replacers.add(new Replacer("(^|\\n)#.*\\n", "$1"));
@@ -1786,7 +1832,8 @@ public class MultiVersionControl {
               replacers.add(
                   new Replacer(
                       "^comparing with .*\\nsearching for changes\\nchangeset[^\001]*",
-                      "unpushed changesets: " + dir + "\n"));
+                      "unpushed changesets: $DIR\n",
+                      dir));
               replacers.add(
                   new Replacer(
                       "^\\n?comparing with .*\\nsearching for changes\\nno changes found\n", ""));
@@ -1794,13 +1841,13 @@ public class MultiVersionControl {
               addArgs(pb3, hgArg);
               // Shelve is an optional extension, so don't print anything if not installed.
               replacers3.add(new Replacer("^hg: unknown command 'shelve'\\n(.*\\n)+", ""));
-              replacers3.add(new Replacer("^(.*\\n)+", "shelved changes: " + dir + "\n"));
+              replacers3.add(new Replacer("^(.*\\n)+", "shelved changes: $DIR\n", dir));
             }
             case SVN -> {
               // Handle some changes.
               // "svn status" outputs an eighth column, if you pass the --show-updates switch: [* ]
               replacers.add(
-                  new Replacer("(^|\\n)([ACDIMRX?!~ ][CM ][L ][+ ][$ ]) *", "$1$2 " + dir + "/"));
+                  new Replacer("(^|\\n)([ACDIMRX?!~ ][CM ][L ][+ ][$ ]) *", "$1$2 $DIR/", dir));
               pb.command(svnExecutable, "status");
               addArgs(pb, svnArg);
             }
@@ -1818,11 +1865,13 @@ public class MultiVersionControl {
               replacers.add(
                   new Replacer(
                       "(^|\\n)(cvs update: ((in|skipping) directory|conflicts found in )) +",
-                      "$1$2 " + dir + "/"));
+                      "$1$2 $DIR/",
+                      dir));
               replacers.add(
                   new Replacer(
                       "(^|\\n)(Merging differences between 1.16 and 1.17 into )",
-                      "$1$2 " + dir + "/"));
+                      "$1$2 $DIR/",
+                      dir));
               assert c.repository != null;
               pb.command(
                   cvsExecutable,
@@ -1835,12 +1884,12 @@ public class MultiVersionControl {
               addArgs(pb, cvsArg);
               //         $filter = "grep -v \"config: unrecognized keyword
               // 'UseNewInfoFmtStrings'\"";
-              replacers.add(new Replacer("(cvs update: move away )", "$1" + dir + "/"));
-              replacers.add(new Replacer("(cvs \\[update aborted)(\\])", "$1 in " + dir + "$2"));
+              replacers.add(new Replacer("(cvs update: move away )", "$1$DIR/", dir));
+              replacers.add(new Replacer("(cvs \\[update aborted)(\\])", "$1 in $DIR$2", dir));
             }
             case GIT -> {
               replacers.add(new Replacer("(^|\\n)Already up-to-date\\.\\n", "$1"));
-              replacers.add(new Replacer("(^|\\n)error:", "$1error in " + dir + ":"));
+              replacers.add(new Replacer("(^|\\n)error:", "$1error in $DIR:", dir));
               replacers.add(
                   new Replacer(
                       "(^|\\n)Please, commit your changes or stash them before you can merge.\\n"
@@ -1848,16 +1897,17 @@ public class MultiVersionControl {
                       "$1"));
               replacers.add(
                   new Replacer(
-                      "((^|\\n)CONFLICT \\(content\\): Merge conflict in )", "$1" + dir + "/"));
-              replacers.add(new Replacer("(^|\\n)([ACDMRU]\t)", "$1$2" + dir + "/"));
-              pb.command(gitExecutable, "pull", "-q" /*, "--recurse-submodules"*/);
+                      "((^|\\n)CONFLICT \\(content\\): Merge conflict in )", "$1$DIR/", dir));
+              replacers.add(new Replacer("(^|\\n)([ACDMRU]\t)", "$1$2$DIR/", dir));
+              // "--prune" prunes remote-tracking branches; "git gc" doesn't do this.
+              pb.command(gitExecutable, "pull", "-q", "--prune" /*, "--recurse-submodules"*/);
               addArgs(pb, gitArg);
-              // prune branches; alternately do "git remote prune origin"; "git gc" doesn't do this.
-              pb2.command(gitExecutable, "fetch", "-p");
+              useEnglishMessages(pb);
+              gitPull = true;
               fetchGitPullRequestHeads = true;
             }
             case HG -> {
-              replacers.add(new Replacer("(^|\\n)([?!AMR] ) +", "$1$2 " + dir + "/"));
+              replacers.add(new Replacer("(^|\\n)([?!AMR] ) +", "$1$2 $DIR/", dir));
               replacers.add(new Replacer("(^|\\n)abort: ", "$1"));
               pb.command(hgExecutable, "-q", "update");
               addArgs(pb, hgArg);
@@ -1872,8 +1922,8 @@ public class MultiVersionControl {
               }
             }
             case SVN -> {
-              replacers.add(new Replacer("(^|\\n)([?!AMR] ) +", "$1$2 " + dir + "/"));
-              replacers.add(new Replacer("(svn: Failed to add file ')(.*')", "$1" + dir + "/$2"));
+              replacers.add(new Replacer("(^|\\n)([?!AMR] ) +", "$1$2 $DIR/", dir));
+              replacers.add(new Replacer("(svn: Failed to add file ')(.*')", "$1$DIR/$2", dir));
               assert c.repository != null;
               pb.command(svnExecutable, "-q", "update");
               addArgs(pb, svnArg);
@@ -1947,14 +1997,30 @@ public class MultiVersionControl {
         pb5.directory(dir);
         performCommand(pb5, Collections.emptyList(), true);
       }
-      performCommand(pb, replacers, showNormalOutput);
+      CommandResult pbResult = performCommand(pb, replacers, showNormalOutput);
       if (!pb2.command().isEmpty()) {
         performCommand(pb2, replacers, showNormalOutput);
       }
       if (!pb3.command().isEmpty()) {
         performCommand(pb3, replacers3, showNormalOutput);
       }
-      if (fetchGitPullRequestHeads) {
+      // True if pb's command failed because a remote did not respond or could not be reached.
+      boolean remoteUnreachable =
+          pbResult.timedOut()
+              || (pbResult.exitValue() != 0
+                  && UNREACHABLE_GIT_REMOTE.matcher(pbResult.output()).find());
+      if (gitPull && pbResult.exitValue() != 0 && !remoteUnreachable) {
+        // "git pull" fails before it fetches in some cases, such as when pull.rebase is set and the
+        // working tree has uncommitted changes.  Fetch anyway, to update and prune the
+        // remote-tracking branches.
+        ProcessBuilder fetch = gitCommand(dir, "fetch", "-q", "--prune");
+        fetch.redirectErrorStream(true);
+        useEnglishMessages(fetch);
+        performCommand(fetch, replacers, showNormalOutput);
+      }
+      // If a remote did not respond or could not be reached, then the user has already been told
+      // so, and fetching the pull-request heads would contact the remote and fail again.
+      if (fetchGitPullRequestHeads && !remoteUnreachable) {
         fetchGitPullRequestHeads(dir);
       }
       if (checkUnpushedGitChanges && hasUnpushedGitChanges(dir)) {
@@ -1962,7 +2028,7 @@ public class MultiVersionControl {
       }
       // TODO:
       // if (!pb4.command().isEmpty()) {
-      //   int isAncestorStatus = performCommand(pb4, replacers4, showNormalOutput);
+      //   int isAncestorStatus = performCommand(pb4, replacers4, showNormalOutput).exitValue();
       //   if (isAncestorStatus == 0) {
       //     // TODO: Output this message only for non-master branches.
       //     // System.out.println("No changes committed in " + dir);
@@ -2030,6 +2096,30 @@ public class MultiVersionControl {
    */
   private static final @Regex(2) Pattern LS_REMOTE_PULL_REQUEST_HEAD =
       Pattern.compile("^(\\S+)\trefs/pull/([^/]+)/head$");
+
+  /**
+   * Matches the start of git's error message about a remote repository that git cannot reach, such
+   * as "fatal: Could not read from remote repository." or "fatal: repository 'URL' not found". The
+   * message is in English if git ran with {@link #useEnglishMessages}.
+   */
+  private static final @Regex String UNREACHABLE_GIT_REMOTE_REGEX =
+      "fatal: (?:Could not read from remote repository|repository '[^'\\n]*' not found"
+          + "|Authentication failed for |unable to access |could not read Username for "
+          + "|'[^'\\n]*' does not appear to be a git repository"
+          + "|the remote end hung up unexpectedly)";
+
+  /** Matches a line that starts git's message about a remote repository that git cannot reach. */
+  private static final Pattern UNREACHABLE_GIT_REMOTE =
+      Pattern.compile("(^|\\n)" + UNREACHABLE_GIT_REMOTE_REGEX);
+
+  /**
+   * Makes a command print its messages in English, which the program's regular expressions expect.
+   *
+   * @param pb a command
+   */
+  private static void useEnglishMessages(ProcessBuilder pb) {
+    pb.environment().put("LC_ALL", "C");
+  }
 
   /** Matches the name of a remote's URL in git's configuration. Group 1 is the remote's name. */
   private static final @Regex(1) Pattern REMOTE_URL_KEY = Pattern.compile("^remote\\.(.*)\\.url$");
@@ -2226,7 +2316,8 @@ public class MultiVersionControl {
    * Returns true if some local branch of a git clone has changes that are on no remote. A branch's
    * changes are on a remote if its commits are reachable from a remote branch, or if its changes,
    * or those of a fetched pull-request head that contains its commits, are in a remote's main
-   * branch (see {@link #isInGitMainBranch}). If git fails, reports the failure and returns true.
+   * branch or in a remote branch that some local branch tracks (see {@link #isInGitBranches}). If
+   * git fails, reports the failure and returns true.
    *
    * @param dir a directory containing a git clone
    * @return true if some local branch has changes that are on no remote, or if git fails
@@ -2245,35 +2336,43 @@ public class MultiVersionControl {
     Set<String> unpushedCommits = new HashSet<>(unpushedOutput.lines().toList());
     String remotes = gitOutput(dir, "remote");
     String branchHeads =
-        gitOutput(dir, "for-each-ref", "--format=%(objectname) %(authordate:unix)", "refs/heads");
+        gitOutput(
+            dir,
+            "for-each-ref",
+            "--format=%(objectname) %(authordate:unix) %(upstream)",
+            "refs/heads");
     if (remotes == null || branchHeads == null) {
       return true;
     }
-    Set<String> mainBranchCommits = new LinkedHashSet<>();
-    if (!remotes.isEmpty()) {
-      // A pattern such as refs/remotes/*/master would not match a remote whose name contains "/".
-      List<String> mainBranchesCommand = new ArrayList<>();
-      mainBranchesCommand.add("for-each-ref");
-      mainBranchesCommand.add("--format=%(objectname)");
-      for (String remote : remotes.lines().toList()) {
-        for (String branch : List.of("HEAD", "master", "main")) {
-          mainBranchesCommand.add("refs/remotes/" + remote + "/" + branch);
-        }
+    // A pattern such as refs/remotes/*/master would not match a remote whose name contains "/".
+    List<String> mainBranchRefs = new ArrayList<>();
+    for (String remote : remotes.lines().toList()) {
+      for (String branch : List.of("HEAD", "master", "main")) {
+        mainBranchRefs.add("refs/remotes/" + remote + "/" + branch);
       }
-      String mainBranchHeads = gitOutput(dir, mainBranchesCommand.toArray(new String[0]));
-      if (mainBranchHeads == null) {
-        return true;
-      }
-      mainBranchCommits.addAll(mainBranchHeads.lines().toList());
     }
+    Set<String> mainBranchCommits = refHeads(dir, mainBranchRefs);
+    // The upstream is the last field, because a ref name contains no space. An upstream that is a
+    // local branch, under refs/heads/, is not on a remote.
+    List<String> trackedBranchRefs =
+        branchHeads
+            .lines()
+            .map(line -> line.substring(line.lastIndexOf(' ') + 1))
+            .filter(upstream -> upstream.startsWith("refs/remotes/"))
+            .toList();
+    Set<String> trackedBranchCommits = refHeads(dir, trackedBranchRefs);
+    if (mainBranchCommits == null || trackedBranchCommits == null) {
+      return true;
+    }
+    trackedBranchCommits.removeAll(mainBranchCommits);
     for (Map.Entry<String, Long> branchHead : authorDates(branchHeads).entrySet()) {
       String commit = branchHead.getKey();
       if (!unpushedCommits.contains(commit)) {
         continue;
       }
       // A pull request might have been squash-merged along with later commits that changed the
-      // same lines as the branch, and then the pull request's head is in the main branch but the
-      // branch is not.
+      // same lines as the branch, and then the pull request's changes are in a landing branch but
+      // the branch's changes are not.
       String pullRequestHeads =
           gitOutput(
               dir,
@@ -2288,7 +2387,10 @@ public class MultiVersionControl {
       Map<String, Long> commits = new LinkedHashMap<>();
       commits.put(commit, branchHead.getValue());
       commits.putAll(authorDates(pullRequestHeads));
-      if (!isInGitMainBranch(dir, commits, mainBranchCommits)) {
+      // A clone can track many remote branches, each of which isInGitBranches examines, so it
+      // examines the tracked branches only for changes that are in no main branch.
+      if (!isInGitBranches(dir, commits, mainBranchCommits)
+          && !isInGitBranches(dir, commits, trackedBranchCommits)) {
         return true;
       }
     }
@@ -2296,7 +2398,34 @@ public class MultiVersionControl {
   }
 
   /**
-   * Parses output of {@code git for-each-ref --format='%(objectname) %(authordate:unix)'}.
+   * Returns the commits that the given refs of the given git clone point to. Omits a ref that the
+   * clone does not have.
+   *
+   * @param dir a directory containing a git clone
+   * @param refs full names of refs, such as {@code refs/remotes/origin/master}
+   * @return the commits that the refs point to, or null if git fails
+   */
+  private @Nullable @Modifiable @IteratorPolyMod Set<String> refHeads(File dir, List<String> refs) {
+    Set<String> result = new LinkedHashSet<>();
+    // With no patterns, "git for-each-ref" would output every ref.
+    if (refs.isEmpty()) {
+      return result;
+    }
+    List<String> command = new ArrayList<>();
+    command.add("for-each-ref");
+    command.add("--format=%(objectname)");
+    command.addAll(refs);
+    String output = gitOutput(dir, command.toArray(new String[0]));
+    if (output == null) {
+      return null;
+    }
+    result.addAll(output.lines().toList());
+    return result;
+  }
+
+  /**
+   * Parses output of {@code git for-each-ref --format='%(objectname) %(authordate:unix)'}, or of a
+   * format that has further fields after those two, such as {@code %(upstream)}.
    *
    * @param forEachRefOutput the output of {@code git for-each-ref}
    * @return a map from each commit in the output to its author date, in seconds since the epoch
@@ -2306,48 +2435,50 @@ public class MultiVersionControl {
     for (String line : forEachRefOutput.lines().toList()) {
       int space = line.indexOf(' ');
       if (space != -1) {
-        result.put(line.substring(0, space), Long.parseLong(line.substring(space + 1)));
+        int dateEnd = line.indexOf(' ', space + 1);
+        if (dateEnd == -1) {
+          dateEnd = line.length();
+        }
+        result.put(line.substring(0, space), Long.parseLong(line.substring(space + 1, dateEnd)));
       }
     }
     return result;
   }
 
   /**
-   * The maximum number of commits of a main branch that {@link #isInGitMainBranch} examines for
-   * each given commit.
+   * The maximum number of commits of a branch that {@link #isInGitBranches} examines for each given
+   * commit.
    */
-  private static final int MAX_MAIN_BRANCH_CANDIDATES = 50;
+  private static final int MAX_BRANCH_CANDIDATES = 50;
 
   /**
-   * Returns true if the changes of some of the given commits are in some commit of a remote's main
-   * branch, as happens when a commit has been squash-merged into the main branch. That is, merging
-   * the given commit into that main-branch commit yields the main-branch commit's own tree.
+   * Returns true if the changes of some of the given commits are in some commit of the given
+   * branches, as happens when a commit has been squash-merged into one of them. That is, merging
+   * the given commit into that branch commit yields the branch commit's own tree.
    *
-   * <p>For each main-branch head, the main-branch commits examined are the oldest {@link
-   * #MAX_MAIN_BRANCH_CANDIDATES} of its first-parent ancestors that descend from the given commit's
+   * <p>For each branch head, the branch commits examined are the oldest {@link
+   * #MAX_BRANCH_CANDIDATES} of its first-parent ancestors that descend from the given commit's
    * merge base with it, that are not ancestors of the given commit, that were committed no earlier
    * than the given commit was authored, and that change some file that the given commit changes,
    * relative to the merge base.
    *
-   * <p>Returns true even if the main branch has changed the same lines since then. Returns false
-   * for a commit that was squash-merged along with later commits that changed the same lines.
+   * <p>Returns true even if the branch has changed the same lines since then. Returns false for a
+   * commit that was squash-merged along with later commits that changed the same lines.
    *
    * @param dir a directory containing a git clone
    * @param commits maps commits of the clone to their author dates, in seconds since the epoch
-   * @param mainBranchCommits the heads of the remotes' main branches
-   * @return true if the changes of some of the commits are in some commit of a remote's main branch
+   * @param branchHeads the heads of some branches of the clone, such as remote main branches
+   * @return true if the changes of some of the commits are in some commit of the branches
    */
-  private boolean isInGitMainBranch(
-      File dir, Map<String, Long> commits, Set<String> mainBranchCommits) {
-    // Maps each merge to perform, a main-branch commit and a given commit, to the main-branch
-    // commit's tree.
+  private boolean isInGitBranches(File dir, Map<String, Long> commits, Set<String> branchHeads) {
+    // Maps each merge to perform, a branch commit and a given commit, to the branch commit's tree.
     Map<String, String> merges = new LinkedHashMap<>();
     for (Map.Entry<String, Long> entry : commits.entrySet()) {
       String commit = entry.getKey();
       long authorDate = entry.getValue();
-      for (String mainBranchCommit : mainBranchCommits) {
+      for (String branchHead : branchHeads) {
         // "git merge-base" fails without error output if the commits have no merge base.
-        String mergeBase = gitOutput(dir, "merge-base", mainBranchCommit, commit);
+        String mergeBase = gitOutput(dir, "merge-base", branchHead, commit);
         if (mergeBase == null) {
           continue;
         }
@@ -2357,18 +2488,18 @@ public class MultiVersionControl {
           continue;
         }
         if (changedFiles.isEmpty()) {
-          // Merging the commit into the main-branch commit yields the main-branch commit's tree.
+          // Merging the commit into the branch head yields the branch head's tree.
           return true;
         }
         String revListInput =
-            mainBranchCommit
+            branchHead
                 + "\n^"
                 + commit
                 + "\n--\n"
                 + String.join("\n", changedFiles.split("\0"))
                 + "\n";
         // "git merge-tree --stdin" fails for all the merges if one of them is of commits that have
-        // no merge base, as can be a main-branch commit that does not descend from the merge base.
+        // no merge base, as can be a branch commit that does not descend from the merge base.
         String candidates =
             gitOutput(
                 gitCommand(
@@ -2401,7 +2532,7 @@ public class MultiVersionControl {
         }
         int size = candidateMerges.size();
         for (Map.Entry<String, String> merge :
-            candidateMerges.subList(Math.max(0, size - MAX_MAIN_BRANCH_CANDIDATES), size)) {
+            candidateMerges.subList(Math.max(0, size - MAX_BRANCH_CANDIDATES), size)) {
           merges.put(merge.getKey(), merge.getValue());
         }
       }
@@ -2523,15 +2654,17 @@ public class MultiVersionControl {
    * @param replacers replacements to make in the output before displaying it, to reduce verbosity
    * @param showNormalOutput if true, then display the output even if the process completed
    *     normally. Ordinarily, output is displayed only if the process completed erroneously.
-   * @return the status code: 0 for normal completion, non-zero for erroneous completion
+   * @return the result of running the command, whose output is not affected by {@code replacers};
+   *     in a dry run, a normal completion with no output
    */
-  int performCommand(ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
+  CommandResult performCommand(
+      ProcessBuilder pb, List<Replacer> replacers, boolean showNormalOutput) {
     if (show) {
       System.out.println(command(pb));
       System.out.flush();
     }
     if (dryRun) {
-      return 0;
+      return new CommandResult(0, false, "", "");
     }
     CommandResult result = runCommand(pb, null, true);
     int exitValue = result.exitValue();
@@ -2599,12 +2732,14 @@ public class MultiVersionControl {
     }
     System.out.flush();
 
-    return exitValue;
+    return result;
   }
 
   /**
    * Runs {@code pb}'s command and waits for it to finish. If the command runs longer than {@link
-   * #timeout}, kills it and says so.
+   * #timeout}, kills it and says so. If the command cannot be started, as when its program does not
+   * exist, prints the reason and exits this program with status 2. If the command starts but its
+   * output cannot be collected, prints the command and the reason, and returns a failed result.
    *
    * @param pb the command to run, with its directory and environment
    * @param input the command's standard input, or null if it has none
@@ -2630,7 +2765,6 @@ public class MultiVersionControl {
     String[] argArray = Arrays.copyOfRange(args, 1, args.length);
     // Pass each argument verbatim; commons-exec's quoting would add literal quotation marks.
     cmdLine.addArguments(argArray, false);
-    DefaultExecuteResultHandler resultHandler = new DefaultExecuteResultHandler();
     @SuppressWarnings("nullness") // defaults to non-null and was never reset
     @NonNull File defaultDirectory = pb.directory();
     DefaultExecutor executor =
@@ -2661,24 +2795,38 @@ public class MultiVersionControl {
                 outPump, errPump, new ByteArrayInputStream(input.getBytes(UTF_8)));
     executor.setStreamHandler(streamHandler);
 
-    try {
-      executor.execute(cmdLine, pb.environment(), resultHandler);
-    } catch (IOException e) {
-      String msg = e.toString();
-      if (msg.startsWith("java.io.IOException: Cannot run program \"")
-          && msg.endsWith(", No such file or directory")) {
-        System.err.println(msg.substring(21));
-      } else {
-        throw new UncheckedIOException(e);
-      }
-    }
-
+    // Running the command synchronously avoids the asynchronous form's DefaultExecuteResultHandler,
+    // whose waitFor method checks whether the command has finished only every 50 milliseconds.
     int exitValue;
     try {
-      resultHandler.waitFor();
-      exitValue = resultHandler.getExitValue();
-    } catch (InterruptedException e) {
-      throw new Error(e);
+      exitValue = executor.execute(cmdLine, pb.environment());
+    } catch (ExecuteException e) {
+      // The command exited with a non-zero exit value.
+      exitValue = e.getExitValue();
+    } catch (IOException e) {
+      String message = e.getMessage();
+      // ProcessBuilder.start's message starts with this text, followed by the program's working
+      // directory and the reason, such as "error=2, No such file or directory".
+      if (message != null && message.startsWith("Cannot run program \"")) {
+        // The usual cause is a missing or misspelled executable, such as a wrong --git-executable.
+        // Continuing would make every later command fail, and the results of the failed commands
+        // would be misreported as the status of each clone.
+        System.out.flush();
+        if (programFileExists(args[0], defaultDirectory)) {
+          System.err.println(message);
+        } else {
+          // The JDK's wording of this common reason differs among JDKs, so use a fixed wording.
+          System.err.printf(
+              "Cannot run program \"%s\": %s%n",
+              args[0], args[0].contains(File.separator) ? "no such file" : "not found in PATH");
+        }
+        System.exit(2);
+      }
+      // The command started, but a later step failed, such as collecting the command's output.
+      System.out.println(command(pb));
+      System.out.println(e);
+      System.out.flush();
+      exitValue = Executor.INVALID_EXITVALUE;
     }
     // A stream's last line might not end with a line separator.
     try {
@@ -2698,6 +2846,33 @@ public class MultiVersionControl {
 
     String errorOutput = mergeErrorOutput ? "" : errStream.toString(UTF_8);
     return new CommandResult(exitValue, timedOut, outStream.toString(UTF_8), errorOutput);
+  }
+
+  /**
+   * Returns true if the file that a command would run exists. Like {@link ProcessBuilder}, this
+   * looks up a program name that contains no file separator, such as "git", in the PATH of this
+   * JVM, and resolves any other relative program name, such as "bin/git", against the command's
+   * working directory.
+   *
+   * @param program a program name, such as "git" or "/usr/bin/hg"
+   * @param directory the working directory in which the program would run
+   * @return true if the program's file exists
+   */
+  static boolean programFileExists(String program, File directory) {
+    if (program.contains(File.separator)) {
+      File file = new File(program);
+      return (file.isAbsolute() ? file : new File(directory, program)).isFile();
+    }
+    String path = System.getenv("PATH");
+    // When PATH is not set, exec searches this default.
+    for (String entry : (path == null ? "/bin:/usr/bin" : path).split(File.pathSeparator, -1)) {
+      // An empty entry denotes the working directory.
+      File dir = entry.isEmpty() ? directory : new File(entry);
+      if (new File(dir, program).isFile()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
