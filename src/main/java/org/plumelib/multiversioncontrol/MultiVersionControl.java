@@ -111,7 +111,7 @@ import org.tmatesoft.svn.core.wc.SVNWCClient;
  * </pre>
  *
  * <p>For a git clone, "status" reports each local branch whose changes are on no remote, by a line
- * such as "unpushed commits: /home/me/myproject (branches master, feature)". A branch's changes are
+ * such as "unpushed commits: /home/me/myproject (branches feature, master)". A branch's changes are
  * on a remote if a remote branch contains its commits, or if the changes are in a landing branch,
  * as after the branch has been squash-merged. A landing branch is a remote's main branch ({@code
  * HEAD}, {@code master}, or {@code main}) or a remote branch that some local branch tracks, such as
@@ -2325,10 +2325,10 @@ public class MultiVersionControl {
   }
 
   /**
-   * Returns the names of the local branches of a git clone that have changes that are on no remote,
-   * such as {@code [master, feature/x]}. A branch's changes are on a remote if its commits are
-   * reachable from a remote branch, or if its changes, or those of a fetched pull-request head that
-   * contains its commits, are in a remote's main branch or in a remote branch that some local
+   * Returns the names of the local branches of the given git clone that have changes that are on no
+   * remote, such as {@code [feature/x, master]}. A branch's changes are on a remote if its commits
+   * are reachable from a remote branch, or if its changes, or those of a fetched pull-request head
+   * that contains its commits, are in a remote's main branch or in a remote branch that some local
    * branch tracks (see {@link #isInGitBranches}). If git fails, reports the failure, and if it
    * fails while examining one branch, includes that branch in the result.
    *
@@ -2367,12 +2367,19 @@ public class MultiVersionControl {
       }
     }
     Set<String> mainBranchCommits = refHeads(dir, mainBranchRefs);
-    // The upstream is the last field, because a ref name contains no space. An upstream that is a
-    // local branch, under refs/heads/, is not on a remote.
+    List<GitBranch> branches = new ArrayList<>();
+    for (String line : branchHeads.lines().toList()) {
+      // The upstream is the last field because it can contain a space, as when a branch's
+      // configured merge ref does.
+      String[] fields = line.split(" ", 4);
+      if (fields.length == 4) {
+        branches.add(new GitBranch(fields[2], fields[0], Long.parseLong(fields[1]), fields[3]));
+      }
+    }
+    // An upstream that is a local branch, under refs/heads/, is not on a remote.
     List<String> trackedBranchRefs =
-        branchHeads
-            .lines()
-            .map(line -> line.substring(line.lastIndexOf(' ') + 1))
+        branches.stream()
+            .map(GitBranch::upstream)
             .filter(upstream -> upstream.startsWith("refs/remotes/"))
             .toList();
     Set<String> trackedBranchCommits = refHeads(dir, trackedBranchRefs);
@@ -2382,33 +2389,34 @@ public class MultiVersionControl {
     trackedBranchCommits.removeAll(mainBranchCommits);
     // Maps each examined branch head commit to true if its changes are on no remote.
     Map<String, Boolean> commitIsUnpushed = new HashMap<>();
-    for (String line : branchHeads.lines().toList()) {
-      // The fields are the commit, its author date, the branch name, and the upstream.
-      String[] fields = line.split(" ", -1);
-      if (fields.length != 4) {
-        continue;
-      }
-      String commit = fields[0];
-      if (!unpushedCommits.contains(commit)) {
-        continue;
-      }
-      Boolean unpushed = commitIsUnpushed.get(commit);
-      if (unpushed == null) {
-        unpushed =
-            isUnpushedGitCommit(
-                dir, commit, Long.parseLong(fields[1]), mainBranchCommits, trackedBranchCommits);
-        commitIsUnpushed.put(commit, unpushed);
-      }
-      if (unpushed) {
-        result.add(fields[2]);
+    for (GitBranch branch : branches) {
+      if (unpushedCommits.contains(branch.commit())
+          && commitIsUnpushed.computeIfAbsent(
+              branch.commit(),
+              commit ->
+                  isUnpushedGitCommit(
+                      dir, commit, branch.authorDate(), mainBranchCommits, trackedBranchCommits))) {
+        result.add(branch.name());
       }
     }
     return result;
   }
 
   /**
-   * Returns true if the changes of the given commit of a git clone are in no landing branch, as
-   * {@link #unpushedGitBranches} defines it. If git fails, reports the failure and returns true.
+   * A local branch of a git clone.
+   *
+   * @param name the branch's name, such as {@code feature/x}
+   * @param commit the branch's head commit
+   * @param authorDate the head commit's author date, in seconds since the epoch
+   * @param upstream the full name of the branch's upstream, such as {@code
+   *     refs/remotes/origin/feature/x}, or the empty string if the branch has no upstream
+   */
+  private static record GitBranch(String name, String commit, long authorDate, String upstream) {}
+
+  /**
+   * Returns true if the changes of the given commit are in no landing branch of the given git
+   * clone, as {@link #unpushedGitBranches} defines it. If git fails, reports the failure and
+   * returns true.
    *
    * @param dir a directory containing a git clone
    * @param commit a commit of the clone that is reachable from no remote branch
@@ -2473,8 +2481,7 @@ public class MultiVersionControl {
   }
 
   /**
-   * Parses output of {@code git for-each-ref --format='%(objectname) %(authordate:unix)'}, or of a
-   * format that has further fields after those two, such as {@code %(upstream)}.
+   * Parses output of {@code git for-each-ref --format='%(objectname) %(authordate:unix)'}.
    *
    * @param forEachRefOutput the output of {@code git for-each-ref}
    * @return a map from each commit in the output to its author date, in seconds since the epoch
@@ -2484,11 +2491,7 @@ public class MultiVersionControl {
     for (String line : forEachRefOutput.lines().toList()) {
       int space = line.indexOf(' ');
       if (space != -1) {
-        int dateEnd = line.indexOf(' ', space + 1);
-        if (dateEnd == -1) {
-          dateEnd = line.length();
-        }
-        result.put(line.substring(0, space), Long.parseLong(line.substring(space + 1, dateEnd)));
+        result.put(line.substring(0, space), Long.parseLong(line.substring(space + 1)));
       }
     }
     return result;
