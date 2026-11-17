@@ -138,7 +138,8 @@ tasks.withType<Test>().configureEach {
   if (regenerateGoalFiles) {
     systemProperty("mvc.test.regenerate", "true")
   }
-  // Run `./gradlew test -Pe2e.command="python3 /path/to/mvc.py"` to run the end-to-end tests against
+  // Run `./gradlew test -Pe2e.command="python3 /path/to/mvc.py"` to run the end-to-end tests
+  // against
   // a different implementation of the program.  The value is split into words at whitespace.
   val e2eCommand = project.findProperty("e2e.command")
   if (e2eCommand != null) {

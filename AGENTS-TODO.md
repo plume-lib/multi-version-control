@@ -24,30 +24,7 @@ tests other than the harness), so nothing needs converting.
 
 ## Checklist
 
-- [ ] Harness: system property `mvc.test.command` / Gradle property
-  `-Pe2e.command=...` runs an external command instead of the Java program.
-- [ ] README: language-neutral description of invocation (working directory,
-  HOME, `--home`, environment variables, `user.home`), compared files,
-  normalization, and how to use `-Pe2e.command`.
-- [ ] Usage/option errors: unknown option, non-integer `--timeout`, uppercase
-  action, `-q=false` short option, abbreviation `s` for status.
-- [ ] Checkouts-file parsing: CRLF line endings, two spaces before module,
-  header with extra word / lowercase header, relative directory, relative
-  `--checkouts` path, checkouts file that is a directory, empty file.
-- [ ] Dry-run status for every VCS type (fake directories) with
-  `--git-arg`, `--hg-arg`, `--svn-arg`, `--cvs-arg`, `--insecure`.
-- [ ] Mercurial googlecode/codespot certificate workaround (dry run, status
-  and pull).
-- [ ] Fake-CVS status and pull (replacers) via `--cvs-executable`.
-- [ ] Search: hg clone whose default path has a trailing slash (no hg needed).
-- [ ] `--print-directory` for a non-git (hg) clone.
-- [ ] Clone: dry run of an existing directory; real hg clone; real svn
-  checkout; clone timeout is ten times `--timeout`.
-- [ ] Pull: real svn update; git with no tracking information; git merge
-  conflict.
-- [ ] Status: hg file states (added, removed, missing, untracked); hg shelved
-  changes; svn added/unversioned files; git merge conflict.
-- [ ] Run `./gradlew test -Pregenerate`, inspect every new goal file, write
-  `notes`, record bugs.
-- [ ] `./gradlew spotlessApply build`; markdownlint; shellcheck of new
-  scripts; final commit; delete this file and commit.
+Done so far:  harness option `-Pe2e.command`, README rewrite, and 35 new test
+cases with goal files (all committed).
+
+- [ ] `./gradlew build` passes; final commit; delete this file and commit.

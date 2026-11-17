@@ -1,64 +1,154 @@
 # End-to-end tests
 
-Each subdirectory of this directory is one end-to-end test case.  The test
-harness, `src/test/java/org/plumelib/multiversioncontrol/EndToEndTest.java`,
-runs the program in a subprocess and compares its output against the goal files
-in the test case directory.  No test inspects the program's internal state, and
-no test needs network access.
+Each subdirectory of this directory is one end-to-end test case.  A test case
+is data, not code:  it gives the program's inputs and the program's expected
+outputs.  So, the test cases can be run against any implementation of `mvc`,
+in any language, by a harness that follows this document.
 
-Each test runs in a fresh temporary directory that is used as both the working
-directory and `$HOME`, so a test cannot see, and cannot damage, the real home
-directory.  The subprocess ignores the user's git, Mercurial, and Subversion
-configuration and uses a fixed locale, time zone, and commit identity, so that
-the output does not depend on who runs the tests.
+The harness for this implementation is
+`src/test/java/org/plumelib/multiversioncontrol/EndToEndTest.java`.  It runs
+the program in a subprocess and compares the program's output against the goal
+files in the test case directory.  No test inspects the program's internal
+state, and no test needs network access.
 
 ## Files in a test case directory
 
 All of these are optional except `args`.
 
-- `args`: The command-line arguments, one per line.  A blank line, or a line
-  whose first non-whitespace character is `#`, is ignored.  A line consisting of
-  `""` denotes an empty argument.  `${HOME}` is replaced by the temporary home
-  directory.  The program is always run with `--home` set to that directory,
-  before these arguments.
-- `mvc-checkouts`: Copied to `$HOME/.mvc-checkouts`, with `${HOME}` replaced as
-  for `args`.
-- `setup.sh`: A bash script that creates the repositories that the test needs.
-  It runs before the program, in the temporary home directory.
-- `expected-out`: Goal file for standard output.  If absent, standard output
+- `args`:  The command-line arguments, one per line.  Leading and trailing
+  whitespace of each line is removed.  A blank line, or a line whose first
+  non-whitespace character is `#`, is ignored.  A line consisting of `""`
+  denotes an empty argument.  Each `${HOME}` is replaced by the temporary home
+  directory.
+- `mvc-checkouts`:  Copied to `$HOME/.mvc-checkouts`, with `${HOME}` replaced as
+  for `args`.  Its line terminators are copied unchanged (one test case uses
+  CRLF).
+- `setup.sh`:  A bash script that creates the files and repositories that the
+  test needs, such as clones and fake version control programs.  It runs before
+  the program.  If it exits with a non-zero status, the test fails.
+- `expected-out`:  Goal file for standard output.  If absent, standard output
   must be empty.
-- `expected-err`: Goal file for standard error.  If absent, standard error must
+- `expected-err`:  Goal file for standard error.  If absent, standard error must
   be empty.
-- `expected-status`: The expected exit status.  If absent, the exit status must
-  be 0.
-- `postcheck.sh`: A bash script that prints information about the files that the
-  program wrote.  It runs after the program, in the temporary home directory.
-  This is how a test checks program output that is a file rather than text on
-  standard out.
-- `expected-postcheck`: Goal file for the output of `postcheck.sh`.
-- `requires`: Whitespace-separated names of programs that must be on the PATH.
-  If any is missing, the test is skipped rather than failed.  A failure message
-  states these programs' versions, because a goal file may record the exact
-  wording of their messages.
-- `sort-output`: If this file exists, the lines of standard output are sorted
-  before comparison.  Use it only where the program does not define the output
-  order.
-- `notes`: Commentary for human readers; the harness ignores it.
+- `expected-status`:  The expected exit status, as a decimal number followed by
+  a line terminator.  If absent, the exit status must be 0.
+- `postcheck.sh`:  A bash script that prints information about the files that
+  the program wrote.  It runs after the program.  This is how a test checks
+  program output that is a file rather than text on standard out.  If it exits
+  with a non-zero status, the test fails.
+- `expected-postcheck`:  Goal file for the standard output of `postcheck.sh`.
+  If absent, that output must be empty.  It is an error for this file to exist
+  without `postcheck.sh`.
+- `requires`:  Whitespace-separated names of programs that must be on the PATH,
+  such as `git`, `hg`, `svn`, and `svnadmin`.  If any is missing, the test is
+  skipped rather than failed.  A failure message states these programs'
+  versions (the first line of the output of `PROGRAM --version`), because a
+  goal file might record the exact wording of their messages.
+- `sort-output`:  If this file exists, the lines of standard output are sorted
+  lexicographically before comparison.  Use it only where the program does not
+  define the output order.
+- `notes`:  Commentary for human readers; the harness ignores it.
 
-A test case directory may not contain any other file.  Without that
+A test case directory must not contain any other file.  Without that
 restriction, a misspelled file name would silently weaken or disable part of the
 test:  a misspelled goal file would change the test into "this stream must be
 empty", and a misspelled `sort-output` would turn off sorting.
 
-Absolute pathnames vary from run to run, so before comparing the program's
-output to a goal file, the harness replaces the temporary home directory by
-`${HOME}` and the program's `user.home` property, which the harness sets to a
-fixed placeholder, by `${USER_HOME}`.  The harness also removes the warnings
-that the JVM itself prints, from standard error only:  a line of the program's
-own standard output might start with `WARNING:`.
-
 `common.sh` is not a test case; it holds shell functions that the `setup.sh`
-scripts share.
+and `postcheck.sh` scripts share.  A script loads it with
+`. "$(dirname "$0")/../common.sh"`, so a harness must run each script by its
+path in the test case directory.
+
+## How a harness runs one test case
+
+1. If a program named in `requires` is not on the PATH, skip the test case.
+2. Create a fresh, empty temporary directory, and use its canonical (symbolic
+   link free) absolute path as the home directory, `$HOME`.  A test therefore
+   cannot see, and cannot damage, the real home directory.
+3. Write `$HOME/.mvc-checkouts` from `mvc-checkouts`, if it exists.
+4. Run `bash setup.sh`, if it exists.
+5. Run the program, with arguments `--home=$HOME` followed by the arguments
+   from `args`.
+6. Compare the program's standard output, standard error, and exit status to
+   the goal files, after normalizing them as described below.
+7. Run `bash postcheck.sh`, if it exists, and compare its normalized standard
+   output to `expected-postcheck`.
+
+Every subprocess (`setup.sh`, the program, and `postcheck.sh`) runs with
+`$HOME` as its working directory, with nothing written to its standard input,
+and with this environment:
+
+- The harness's own environment, minus every variable whose name starts with
+  `GIT_`, `HG`, or `SVN_`, and minus `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS`, and
+  `JDK_JAVA_OPTIONS`.  (The last three make a JVM print a "Picked up ..."
+  line.)
+- These settings, which make the version control programs ignore the user's
+  configuration and make the output independent of who runs the tests, and
+  when:
+
+  ```sh
+  HOME=<the temporary home directory>
+  XDG_CONFIG_HOME=$HOME/.config
+  GIT_CONFIG_GLOBAL=/dev/null
+  GIT_CONFIG_SYSTEM=/dev/null
+  GIT_AUTHOR_NAME="Test User"
+  GIT_AUTHOR_EMAIL=test@example.com
+  GIT_AUTHOR_DATE=2020-01-01T00:00:00+00:00
+  GIT_COMMITTER_NAME="Test User"
+  GIT_COMMITTER_EMAIL=test@example.com
+  GIT_COMMITTER_DATE=2020-01-01T00:00:00+00:00
+  HGRCPATH=/dev/null
+  HGUSER="Test User <test@example.com>"
+  HGPLAIN=1
+  LC_ALL=C
+  LANG=C
+  TZ=UTC
+  ```
+
+The Java implementation also runs with the Java system property `user.home`
+set to the fixed placeholder `/nonexistent/user-home`.  The program's usage
+message shows that value as the default for `--home`.
+
+## Normalization
+
+Absolute pathnames vary from run to run, so before comparing the program's
+output (and the output of `postcheck.sh`) to a goal file, the harness:
+
+- replaces each CRLF line terminator by LF;
+- replaces each occurrence of the temporary home directory by `${HOME}`;
+- replaces each occurrence of the placeholder `/nonexistent/user-home` by
+  `${USER_HOME}`.
+
+From standard error only, the harness also removes the warnings that the JVM
+itself prints on some JDK versions:  each maximal run of consecutive lines that
+start with `WARNING:`, together with one blank line that follows the run, if
+there is one.  Standard output is not filtered this way, because a line of the
+program's own standard output might start with `WARNING:`.
+
+No other normalization is done.  In particular, the comparison is exact,
+including whitespace and the final line terminator.
+
+## Running the tests
+
+To run the tests against this implementation:
+
+```sh
+./gradlew test
+```
+
+To run the tests against a different implementation, pass the command that
+runs it:
+
+```sh
+./gradlew test -Pe2e.command="python3 /path/to/mvc.py"
+```
+
+The value is split into words at whitespace, without shell quoting, and the
+harness appends `--home=$HOME` and the arguments from `args`.  (This sets the
+Java system property `mvc.test.command`, which the harness reads.)  Such an
+implementation does not receive the `user.home` setting, so it might fail the
+test cases whose goal files contain the usage message, whose formatting is that
+of the Java implementation's command-line parsing library.
 
 ## Adding a test case
 

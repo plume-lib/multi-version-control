@@ -70,8 +70,8 @@ import org.junit.jupiter.api.TestFactory;
  * <p>A test case directory may not contain any file other than those listed above. Without that
  * restriction, a misspelled file name would silently weaken or disable part of the test.
  *
- * <p>To run the tests against a different implementation of the program, set system property
- * {@code mvc.test.command} to the command that runs it; see {@link #externalCommand}.
+ * <p>To run the tests against a different implementation of the program, set system property {@code
+ * mvc.test.command} to the command that runs it; see {@link #externalCommand}.
  *
  * <p>To overwrite the goal files with the program's current output, run {@code ./gradlew test
  * -Pregenerate}. Always inspect the resulting diffs: a goal file should record what the program
