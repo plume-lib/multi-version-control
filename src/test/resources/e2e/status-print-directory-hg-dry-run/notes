@@ -1,0 +1,5 @@
+--print-directory prints the directory, and then runs "git config --get remote.origin.url" to print
+the origin URL, even for a clone that is not a git clone.  The goal file records the current
+(wrong) behavior:  for a Mercurial clone, the program should not run git.  (Without --dry-run, the
+git command fails silently in a Mercurial clone, unless the clone is inside a git clone.  If git is
+not installed, the program exits with status 2, because it cannot run git.)

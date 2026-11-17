@@ -1,0 +1,3 @@
+A trailing "/" is removed from the default path in .hg/hgrc.  A .hg/hgrc file with no [paths]
+section yields a null repository.  The program reads .hg/hgrc itself, so this test needs no hg
+program.

@@ -1,0 +1,2 @@
+The configuration file has CRLF line terminators.  A carriage return does not become part of a
+repository, directory, or module.

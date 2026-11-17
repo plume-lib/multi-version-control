@@ -1,0 +1,8 @@
+"status" runs one command for CVS and for Subversion, and three for Mercurial ("hg status", "hg
+outgoing", and "hg shelve -l").  For git, it runs "git status --porcelain" and then "git rev-list"
+to look for unpushed commits.  A dry run runs none of them, so this test needs no version control
+program.
+
+Each --*-arg value is appended to each command for the corresponding program, except that for git
+it precedes "--porcelain".  --insecure is passed to "hg outgoing", which contacts the remote, but
+not to the other hg commands.

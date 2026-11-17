@@ -1,0 +1,2 @@
+An unrecognized option is reported on standard output, followed by the usage message.  The exit
+status is 255, which differs from the exit status 1 of a missing or unrecognized action.

@@ -53,3 +53,11 @@ make_svn_checkout() {
   svn -q add "$2/file.txt"
   svn -q commit -m "Initial commit" "$2"
 }
+
+# make_fake_hg_clone DIR DEFAULT:  create a directory $HOME/DIR that looks like a Mercurial clone
+# whose default path is DEFAULT.  It is not a real clone, so no hg command works in it, but the
+# program reads .hg/hgrc itself and a dry run runs no hg command.
+make_fake_hg_clone() {
+  mkdir -p "$HOME/$1/.hg"
+  printf '[paths]\ndefault = %s\n' "$2" > "$HOME/$1/.hg/hgrc"
+}

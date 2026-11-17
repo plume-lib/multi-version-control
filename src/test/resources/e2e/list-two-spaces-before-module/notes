@@ -1,0 +1,4 @@
+The module is what follows the last space on the line, and the directory is everything before that
+space.  When two spaces separate the directory from the module, the directory name ends with a
+space.  The goal file records the current (wrong) behavior: the directory should be
+"${HOME}/two-spaces", as for "~/one-space".

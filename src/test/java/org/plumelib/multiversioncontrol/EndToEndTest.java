@@ -70,6 +70,9 @@ import org.junit.jupiter.api.TestFactory;
  * <p>A test case directory may not contain any file other than those listed above. Without that
  * restriction, a misspelled file name would silently weaken or disable part of the test.
  *
+ * <p>To run the tests against a different implementation of the program, set system property
+ * {@code mvc.test.command} to the command that runs it; see {@link #externalCommand}.
+ *
  * <p>To overwrite the goal files with the program's current output, run {@code ./gradlew test
  * -Pregenerate}. Always inspect the resulting diffs: a goal file should record what the program
  * ought to print, not merely what it does print. Regeneration leaves the goal files of a skipped
@@ -88,6 +91,15 @@ final class EndToEndTest {
   /** The class path with which to run the program. */
   private static final String classpath =
       propertyOrDefault("mvc.test.classpath", System.getProperty("java.class.path"));
+
+  /**
+   * The command that runs the program under test, as whitespace-separated words, or the empty
+   * string to run this implementation of the program. A different value, such as {@code
+   * /usr/local/bin/mvc} or {@code python3 /path/to/mvc.py}, runs the tests against a different
+   * implementation of the program. The words are not subject to shell quoting, so no word can
+   * contain a space.
+   */
+  private static final String externalCommand = propertyOrDefault("mvc.test.command", "").trim();
 
   /** If true, overwrite the goal files instead of just comparing against them. */
   private static final boolean regenerate = Boolean.getBoolean("mvc.test.regenerate");
@@ -277,16 +289,7 @@ final class EndToEndTest {
         }
       }
 
-      List<String> command = new ArrayList<>();
-      command.add(javaExecutable);
-      if (!jacocoArg.equals("")) {
-        command.add(jacocoArg);
-      }
-      command.add("-ea");
-      command.add("-Duser.home=" + userHomePlaceholder);
-      command.add("-cp");
-      command.add(classpath);
-      command.add(MultiVersionControl.class.getName());
+      List<String> command = programCommand();
       command.add("--home=" + home);
       for (String arg : arguments(caseDir)) {
         command.add(substituteHome(arg, home));
@@ -347,6 +350,28 @@ final class EndToEndTest {
         }
       }
     }
+  }
+
+  /**
+   * Returns the command that runs the program under test, without any of the program's arguments.
+   *
+   * @return the command that runs the program under test
+   */
+  private static List<String> programCommand() {
+    if (!externalCommand.equals("")) {
+      return whitespaceSeparated(externalCommand);
+    }
+    List<String> result = new ArrayList<>();
+    result.add(javaExecutable);
+    if (!jacocoArg.equals("")) {
+      result.add(jacocoArg);
+    }
+    result.add("-ea");
+    result.add("-Duser.home=" + userHomePlaceholder);
+    result.add("-cp");
+    result.add(classpath);
+    result.add(MultiVersionControl.class.getName());
+    return result;
   }
 
   /**

@@ -1,0 +1,7 @@
+"pull" prints a command's output only if the command fails.  The program makes the file and
+directory names absolute, and adds the directory to the "update aborted" message.
+
+The replacer for "cvs update: conflicts found in FILE" requires two spaces before the file name,
+so it does not apply to this message, and the file name remains relative.  The file name in the
+"C" line also remains relative, because no replacer handles that line.  The goal file records the
+current (wrong) behavior.

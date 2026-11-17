@@ -1,0 +1,11 @@
+HGREPOS: https://wiki.proj.googlecode.com/hg
+~/googlecode-subdomain
+
+HGREPOS: https://proj.googlecode.com/hg
+~/googlecode
+
+HGREPOS: https://hg.codespot.com/a/proj
+~/codespot
+
+HGREPOS: https://www.mercurial-scm.org/repo/hg
+~/other

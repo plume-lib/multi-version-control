@@ -1,0 +1,5 @@
+GITROOT: https://github.com/plume-lib
+~/options
+GITREPOS: https://github.com/plume-lib/plume-util.git extra
+gitrepos: https://github.com/plume-lib/plume-util.git
+~/after
