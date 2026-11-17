@@ -6,3 +6,5 @@ within the JDK and within libraries, which vary from version to version.
 The program should instead report the problem in a one-line message that names the file and
 contains no stack trace, as it does for a nonexistent --checkouts file (see
 list-nonexistent-checkouts-file).
+
+Bug report: https://github.com/plume-lib/multi-version-control/issues/617

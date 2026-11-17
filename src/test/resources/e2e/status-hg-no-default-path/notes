@@ -3,3 +3,5 @@ to suppress that message, but its replacer matches only Mercurial's old wording 
 default not found!"); current Mercurial says "config error: default repository not configured!".
 So the program prints noise for a repository that has nothing to report.  The goal file records the
 current behavior, which depends on the Mercurial version.
+
+Bug report: https://github.com/plume-lib/multi-version-control/issues/625
