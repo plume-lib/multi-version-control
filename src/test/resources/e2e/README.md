@@ -30,6 +30,13 @@ All of these are optional except `args`.
   must be empty.
 - `expected-err`:  Goal file for standard error.  If absent, standard error must
   be empty.
+- `expected-out-prefix`:  Goal file for the beginning of standard output.
+  Standard output must start with the contents of this file, and anything can
+  follow.  An empty file therefore permits any standard output.  Use this
+  instead of `expected-out` where the rest of the output depends on the
+  implementation, such as the list of options in a usage message.  It is an
+  error for both `expected-out` and `expected-out-prefix` to exist.
+- `expected-err-prefix`:  Like `expected-out-prefix`, but for standard error.
 - `expected-status`:  The expected exit status, as a decimal number followed by
   a line terminator.  If absent, the exit status must be 0.
 - `postcheck.sh`:  A bash script that prints information about the files that
@@ -70,7 +77,9 @@ path in the test case directory.
 5. Run the program, with arguments `--home=$HOME` followed by the arguments
    from `args`.
 6. Compare the program's standard output, standard error, and exit status to
-   the goal files, after normalizing them as described below.
+   the goal files, after normalizing them as described below.  For a stream
+   with a prefix goal file, compare only the beginning of the stream, whose
+   length is that of the prefix goal file.
 7. Run `bash postcheck.sh`, if it exists, and compare its normalized standard
    output to `expected-postcheck`.
 
@@ -145,10 +154,17 @@ runs it:
 
 The value is split into words at whitespace, without shell quoting, and the
 harness appends `--home=$HOME` and the arguments from `args`.  (This sets the
-Java system property `mvc.test.command`, which the harness reads.)  Such an
-implementation does not receive the `user.home` setting, so it might fail the
-test cases whose goal files contain the usage message, whose formatting is that
-of the Java implementation's command-line parsing library.
+Java system property `mvc.test.command`, which the harness reads.)
+
+No goal file depends on the Java implementation's command-line parsing
+library or on the wording of a Java exception.  Where the program's output
+contains such text, as in a usage message or after the program's own "Problem
+reading file NAME:" message, the test case has a prefix goal file
+(`expected-out-prefix` or `expected-err-prefix`) that checks only the part of
+the output that the program itself determines.  The one exception is a test
+case that records a bug whose current behavior is a Java stack trace; any
+correct implementation fails that test case, as it fails every test case that
+records a bug.
 
 ## Adding a test case
 
@@ -160,6 +176,10 @@ run:
 ```
 
 That writes the goal files from the program's actual output, for all test cases.
+It does not write a prefix goal file (`expected-out-prefix` or
+`expected-err-prefix`), because a person chooses how much of the output a
+prefix goal file checks; regeneration leaves each prefix goal file unchanged and
+still compares the output against it.
 Inspect the diffs before committing them: a goal file should record what the
 program ought to print, not merely what it does print.  Where the program's
 current output is wrong, the test case has a `notes` file that says so.

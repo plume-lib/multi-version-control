@@ -1,0 +1,3 @@
+Please supply exactly one argument (found 2)
+  list status
+Usage: mvc [options] {clone,status,pull,list}

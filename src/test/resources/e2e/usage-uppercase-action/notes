@@ -1,2 +1,5 @@
 Actions are case-sensitive.  As in usage-unrecognized-action, the "Unrecognized action" message is
 not terminated by a line separator.  The goal file records the current (wrong) behavior.
+
+The goal file checks standard output through the first line of the usage message.  The rest of standard output, the list of options in the usage message, is formatted by the Java
+implementation's command-line parsing library, so it is not checked.

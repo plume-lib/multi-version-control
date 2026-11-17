@@ -1,0 +1,4 @@
+With two actions, the program says so on standard output, names the actions, prints the usage
+message, and exits with status 1.  The goal file checks standard output through the first line of
+the usage message.  The rest of standard output, the list of options in the usage message, is formatted by the Java
+implementation's command-line parsing library, so it is not checked.

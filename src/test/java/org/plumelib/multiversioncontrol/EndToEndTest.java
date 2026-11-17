@@ -43,6 +43,11 @@ import org.junit.jupiter.api.TestFactory;
  *   <dt>{@code expected-out}, {@code expected-err}
  *   <dd>Goal files for the program's standard output and standard error. A missing goal file means
  *       that the stream is expected to be empty.
+ *   <dt>{@code expected-out-prefix}, {@code expected-err-prefix}
+ *   <dd>Goal files for the beginning of the program's standard output and standard error. The
+ *       stream must start with the file's contents, and anything can follow. Use one of these
+ *       instead of {@code expected-out} or {@code expected-err} when the rest of the stream depends
+ *       on the implementation, such as a usage message or an exception message.
  *   <dt>{@code expected-status}
  *   <dd>The expected exit status; the default is 0.
  *   <dt>{@code postcheck.sh}, {@code expected-postcheck}
@@ -151,7 +156,9 @@ final class EndToEndTest {
       Set.of(
           "args",
           "expected-err",
+          "expected-err-prefix",
           "expected-out",
+          "expected-out-prefix",
           "expected-postcheck",
           "expected-status",
           "mvc-checkouts",
@@ -236,6 +243,13 @@ final class EndToEndTest {
       throw new AssertionError(
           "Goal file `expected-postcheck`, but no `postcheck.sh`, in " + caseDir);
     }
+    for (String stream : List.of("out", "err")) {
+      if (Files.exists(caseDir.resolve("expected-" + stream))
+          && Files.exists(caseDir.resolve("expected-" + stream + "-prefix"))) {
+        throw new AssertionError(
+            "Both `expected-" + stream + "` and `expected-" + stream + "-prefix` in " + caseDir);
+      }
+    }
   }
 
   /**
@@ -301,12 +315,9 @@ final class EndToEndTest {
       if (Files.exists(caseDir.resolve("sort-output"))) {
         stdout = sortLines(stdout);
       }
-      checkGoal(caseDir.resolve("expected-out"), stdout, "standard output", context);
-      checkGoal(
-          caseDir.resolve("expected-err"),
-          normalizeStderr(result.stderr(), home),
-          "standard error",
-          context);
+      checkStream(caseDir, "out", stdout, "standard output", context);
+      checkStream(
+          caseDir, "err", normalizeStderr(result.stderr(), home), "standard error", context);
       checkGoal(caseDir.resolve("expected-status"), result.status() + "\n", "exit status", context);
 
       Path postcheckScript = caseDir.resolve("postcheck.sh");
@@ -419,6 +430,38 @@ final class EndToEndTest {
     }
     assertEquals(
         expected, actual, () -> "Wrong " + what + "; goal file is " + goalFile + "\n" + context);
+  }
+
+  /**
+   * Compares one of the program's output streams against its goal file: {@code expected-STREAM} if
+   * there is no {@code expected-STREAM-prefix}, and otherwise {@code expected-STREAM-prefix}. If
+   * regenerating, writes {@code expected-STREAM} instead, unless there is an {@code
+   * expected-STREAM-prefix}. A prefix goal file is written by a person, who decides how much of the
+   * output to check, so regeneration never writes one; it still checks it.
+   *
+   * @param caseDir the test case directory
+   * @param stream which stream: "out" or "err"
+   * @param actual the program's actual output on the stream, normalized
+   * @param what a description of the stream, for the failure message
+   * @param context a description of the subprocess and its environment, for the failure message
+   * @throws IOException if a goal file cannot be read or written
+   */
+  private void checkStream(Path caseDir, String stream, String actual, String what, String context)
+      throws IOException {
+    Path prefixFile = caseDir.resolve("expected-" + stream + "-prefix");
+    if (!Files.exists(prefixFile)) {
+      checkGoal(caseDir.resolve("expected-" + stream), actual, what, context);
+      return;
+    }
+    String prefix = readFile(prefixFile);
+    if (!actual.startsWith(prefix)) {
+      // Compare against the same number of characters of the actual output, so that the failure
+      // message shows where the two differ.
+      assertEquals(
+          prefix,
+          actual.substring(0, Math.min(prefix.length(), actual.length())),
+          () -> "Wrong start of " + what + "; goal file is " + prefixFile + "\n" + context);
+    }
   }
 
   /**

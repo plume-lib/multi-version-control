@@ -1,0 +1,3 @@
+Please supply exactly one argument (found 0)
+  
+Usage: mvc [options] {clone,status,pull,list}
