@@ -1,0 +1,2 @@
+"UU" is a file with a merge conflict.  The local commit is on no remote, so the program also
+reports unpushed commits.

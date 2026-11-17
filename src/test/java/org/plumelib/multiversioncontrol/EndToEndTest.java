@@ -289,7 +289,7 @@ final class EndToEndTest {
         }
       }
 
-      List<String> command = programCommand();
+      List<String> command = new ArrayList<>(programCommand());
       command.add("--home=" + home);
       for (String arg : arguments(caseDir)) {
         command.add(substituteHome(arg, home));

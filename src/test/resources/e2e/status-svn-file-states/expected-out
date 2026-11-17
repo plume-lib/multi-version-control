@@ -1,0 +1,4 @@
+A     ${HOME}/wc/added.txt
+D     ${HOME}/wc/deleted.txt
+!     ${HOME}/wc/missing.txt
+?     ${HOME}/wc/untracked.txt

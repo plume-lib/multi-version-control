@@ -1,0 +1,2 @@
+The working directory has no changes, but a change is shelved, so the program reports shelved
+changes.  The output of "hg shelve -l" is replaced by a one-line summary.

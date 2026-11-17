@@ -1,0 +1,2 @@
+When a pull leads to a merge conflict, the program prints git's message, with the file name in the
+"CONFLICT" line made absolute.

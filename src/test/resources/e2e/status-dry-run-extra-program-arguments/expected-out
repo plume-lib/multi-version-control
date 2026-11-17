@@ -1,0 +1,14 @@
+  cd ${HOME}/cvs/mod
+  cvs -q diff -b --brief -N -z3
+  cd ${HOME}/git/options
+  git status --ignore-submodules --porcelain
+  cd ${HOME}/git/options
+  git rev-list --branches --not --remotes --ignore-submodules
+  cd ${HOME}/hg/hg
+  hg status --color=never
+  cd ${HOME}/hg/hg
+  hg outgoing -l 1 --color=never --insecure
+  cd ${HOME}/hg/hg
+  hg shelve -l --color=never
+  cd ${HOME}/svn/proj
+  svn status --non-interactive

@@ -1,0 +1,2 @@
+A successful "svn -q update" prints nothing, and the program prints nothing.  The postcheck shows
+that both working copies were updated.

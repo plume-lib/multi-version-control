@@ -1,0 +1,2 @@
+HG ${HOME}/no-paths null null
+HG ${HOME}/slash https://www.mercurial-scm.org/repo/hg null

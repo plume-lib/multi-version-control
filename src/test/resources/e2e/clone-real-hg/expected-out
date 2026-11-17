@@ -1,0 +1,3 @@
+Parent directory ${HOME}/parent does not exist (creating)
+  cd ${HOME}/parent
+  hg clone ${HOME}/upstream new-clone

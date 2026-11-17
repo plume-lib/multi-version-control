@@ -1,0 +1,16 @@
+  cd ${HOME}/googlecode-subdomain
+  hg -q update
+  cd ${HOME}/googlecode-subdomain
+  hg -q fetch --config web.cacerts= --insecure
+  cd ${HOME}/googlecode
+  hg -q update
+  cd ${HOME}/googlecode
+  hg -q fetch --insecure
+  cd ${HOME}/codespot
+  hg -q update
+  cd ${HOME}/codespot
+  hg -q fetch --config web.cacerts= --insecure
+  cd ${HOME}/other
+  hg -q update
+  cd ${HOME}/other
+  hg -q fetch --insecure

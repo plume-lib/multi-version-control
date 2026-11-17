@@ -1,0 +1,3 @@
+When the current branch has no upstream, "git pull" fails.  The program prints git's message, with
+the directory prepended to its first line so that the reader knows which clone it is about.  The
+program then runs "git fetch", which succeeds and prints nothing.

@@ -1,0 +1,3 @@
+Cloning can be much slower than other operations, so "clone" multiplies --timeout by 10.  The
+fake git program takes longer than --timeout but less than 10 times --timeout, so it is not
+killed, and the program does not report a timeout.

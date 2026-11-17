@@ -1,0 +1,4 @@
+This test actually checks out, from a Subversion repository on the local file system.  An SVNROOT
+section appends the directory's base name, "trunk", to the root.  "svn checkout" creates the
+directory named after the last component of the URL, in the parent directory, which the program
+creates first.
