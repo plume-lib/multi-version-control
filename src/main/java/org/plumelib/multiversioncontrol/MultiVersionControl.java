@@ -841,7 +841,6 @@ public class MultiVersionControl {
       }
     }
 
-    @SuppressWarnings("lock:instanceof.pattern.unsafe") // todo
     @Override
     @Pure
     public boolean equals(@GuardSatisfied Checkout this, @GuardSatisfied @Nullable Object o) {
