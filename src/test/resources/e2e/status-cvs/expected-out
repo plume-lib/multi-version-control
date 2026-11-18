@@ -1,0 +1,5 @@
+${HOME}/mod/changed.txt
+${HOME}/mod/added.txt
+? ${HOME}/mod/unknown.txt
+cvs diff: in directory ${HOME}/mod/sub:
+cvs diff: cannot find ${HOME}/modgone.txt

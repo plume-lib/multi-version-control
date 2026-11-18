@@ -1,0 +1,4 @@
+GIT ${HOME}/options https://github.com/plume-lib/options null
+GIT GITREPOS: https:/github.com/plume-lib/plume-util.git https://github.com/plume-lib/extra null
+GIT gitrepos: https://github.com/plume-lib/https://github.com/plume-lib/plume-util.git null
+GIT ${HOME}/after https://github.com/plume-lib/after null

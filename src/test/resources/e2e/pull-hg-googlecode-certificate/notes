@@ -1,0 +1,3 @@
+As for "status" (see status-hg-googlecode-certificate), "pull" runs "hg fetch" with "--config
+web.cacerts=" for a clone hosted by Google Code.  --insecure is passed to "hg fetch", which
+contacts the remote, but not to "hg update".

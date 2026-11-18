@@ -43,6 +43,11 @@ import org.junit.jupiter.api.TestFactory;
  *   <dt>{@code expected-out}, {@code expected-err}
  *   <dd>Goal files for the program's standard output and standard error. A missing goal file means
  *       that the stream is expected to be empty.
+ *   <dt>{@code expected-out-prefix}, {@code expected-err-prefix}
+ *   <dd>Goal files for the beginning of the program's standard output and standard error. The
+ *       stream must start with the file's contents, and anything can follow. Use one of these
+ *       instead of {@code expected-out} or {@code expected-err} when the rest of the stream depends
+ *       on the implementation, such as a usage message or an exception message.
  *   <dt>{@code expected-status}
  *   <dd>The expected exit status; the default is 0.
  *   <dt>{@code postcheck.sh}, {@code expected-postcheck}
@@ -70,6 +75,9 @@ import org.junit.jupiter.api.TestFactory;
  * <p>A test case directory may not contain any file other than those listed above. Without that
  * restriction, a misspelled file name would silently weaken or disable part of the test.
  *
+ * <p>To run the tests against a different implementation of the program, set system property {@code
+ * mvc.test.command} to the command that runs it; see {@link #externalCommand}.
+ *
  * <p>To overwrite the goal files with the program's current output, run {@code ./gradlew test
  * -Pregenerate}. Always inspect the resulting diffs: a goal file should record what the program
  * ought to print, not merely what it does print. Regeneration leaves the goal files of a skipped
@@ -88,6 +96,15 @@ final class EndToEndTest {
   /** The class path with which to run the program. */
   private static final String classpath =
       propertyOrDefault("mvc.test.classpath", System.getProperty("java.class.path"));
+
+  /**
+   * The command that runs the program under test, as whitespace-separated words, or the empty
+   * string to run this implementation of the program. A different value, such as {@code
+   * /usr/local/bin/mvc} or {@code python3 /path/to/mvc.py}, runs the tests against a different
+   * implementation of the program. The words are not subject to shell quoting, so no word can
+   * contain a space.
+   */
+  private static final String externalCommand = propertyOrDefault("mvc.test.command", "").trim();
 
   /** If true, overwrite the goal files instead of just comparing against them. */
   private static final boolean regenerate = Boolean.getBoolean("mvc.test.regenerate");
@@ -139,7 +156,9 @@ final class EndToEndTest {
       Set.of(
           "args",
           "expected-err",
+          "expected-err-prefix",
           "expected-out",
+          "expected-out-prefix",
           "expected-postcheck",
           "expected-status",
           "mvc-checkouts",
@@ -224,6 +243,13 @@ final class EndToEndTest {
       throw new AssertionError(
           "Goal file `expected-postcheck`, but no `postcheck.sh`, in " + caseDir);
     }
+    for (String stream : List.of("out", "err")) {
+      if (Files.exists(caseDir.resolve("expected-" + stream))
+          && Files.exists(caseDir.resolve("expected-" + stream + "-prefix"))) {
+        throw new AssertionError(
+            "Both `expected-" + stream + "` and `expected-" + stream + "-prefix` in " + caseDir);
+      }
+    }
   }
 
   /**
@@ -277,16 +303,7 @@ final class EndToEndTest {
         }
       }
 
-      List<String> command = new ArrayList<>();
-      command.add(javaExecutable);
-      if (!jacocoArg.equals("")) {
-        command.add(jacocoArg);
-      }
-      command.add("-ea");
-      command.add("-Duser.home=" + userHomePlaceholder);
-      command.add("-cp");
-      command.add(classpath);
-      command.add(MultiVersionControl.class.getName());
+      List<String> command = new ArrayList<>(programCommand());
       command.add("--home=" + home);
       for (String arg : arguments(caseDir)) {
         command.add(substituteHome(arg, home));
@@ -298,12 +315,9 @@ final class EndToEndTest {
       if (Files.exists(caseDir.resolve("sort-output"))) {
         stdout = sortLines(stdout);
       }
-      checkGoal(caseDir.resolve("expected-out"), stdout, "standard output", context);
-      checkGoal(
-          caseDir.resolve("expected-err"),
-          normalizeStderr(result.stderr(), home),
-          "standard error",
-          context);
+      checkStream(caseDir, "out", stdout, "standard output", context);
+      checkStream(
+          caseDir, "err", normalizeStderr(result.stderr(), home), "standard error", context);
       checkGoal(caseDir.resolve("expected-status"), result.status() + "\n", "exit status", context);
 
       Path postcheckScript = caseDir.resolve("postcheck.sh");
@@ -347,6 +361,28 @@ final class EndToEndTest {
         }
       }
     }
+  }
+
+  /**
+   * Returns the command that runs the program under test, without any of the program's arguments.
+   *
+   * @return the command that runs the program under test
+   */
+  private static List<String> programCommand() {
+    if (!externalCommand.equals("")) {
+      return whitespaceSeparated(externalCommand);
+    }
+    List<String> result = new ArrayList<>();
+    result.add(javaExecutable);
+    if (!jacocoArg.equals("")) {
+      result.add(jacocoArg);
+    }
+    result.add("-ea");
+    result.add("-Duser.home=" + userHomePlaceholder);
+    result.add("-cp");
+    result.add(classpath);
+    result.add(MultiVersionControl.class.getName());
+    return result;
   }
 
   /**
@@ -394,6 +430,38 @@ final class EndToEndTest {
     }
     assertEquals(
         expected, actual, () -> "Wrong " + what + "; goal file is " + goalFile + "\n" + context);
+  }
+
+  /**
+   * Compares one of the program's output streams against its goal file: {@code expected-STREAM} if
+   * there is no {@code expected-STREAM-prefix}, and otherwise {@code expected-STREAM-prefix}. If
+   * regenerating, writes {@code expected-STREAM} instead, unless there is an {@code
+   * expected-STREAM-prefix}. A prefix goal file is written by a person, who decides how much of the
+   * output to check, so regeneration never writes one; it still checks it.
+   *
+   * @param caseDir the test case directory
+   * @param stream which stream: "out" or "err"
+   * @param actual the program's actual output on the stream, normalized
+   * @param what a description of the stream, for the failure message
+   * @param context a description of the subprocess and its environment, for the failure message
+   * @throws IOException if a goal file cannot be read or written
+   */
+  private void checkStream(Path caseDir, String stream, String actual, String what, String context)
+      throws IOException {
+    Path prefixFile = caseDir.resolve("expected-" + stream + "-prefix");
+    if (!Files.exists(prefixFile)) {
+      checkGoal(caseDir.resolve("expected-" + stream), actual, what, context);
+      return;
+    }
+    String prefix = readFile(prefixFile);
+    if (!actual.startsWith(prefix)) {
+      // Compare against the same number of characters of the actual output, so that the failure
+      // message shows where the two differ.
+      assertEquals(
+          prefix,
+          actual.substring(0, Math.min(prefix.length(), actual.length())),
+          () -> "Wrong start of " + what + "; goal file is " + prefixFile + "\n" + context);
+    }
   }
 
   /**

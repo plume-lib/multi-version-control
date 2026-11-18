@@ -1,3 +1,4 @@
 A missing configuration file is reported on standard error, and the program continues with no
-clones.  The message contains the file name twice and no explanation, because it is the message of
-the underlying NoSuchFileException.
+clones.  The goal file checks only the beginning of the message, through the file name and the
+colon that follows it.  The rest of the message is the message of the underlying Java exception,
+NoSuchFileException, which is the file name again, with no explanation.

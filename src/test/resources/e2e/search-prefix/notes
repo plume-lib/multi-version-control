@@ -4,3 +4,5 @@ directory in the configuration file.
 The output is sorted before it is compared, because the program emits these clones in the order
 that File.listFiles returns them, which is the order of the underlying file system.  The program
 ought to sort them, as the --search code does.
+
+Bug report: https://github.com/plume-lib/multi-version-control/issues/623

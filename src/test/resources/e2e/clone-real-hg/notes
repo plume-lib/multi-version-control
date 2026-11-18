@@ -1,0 +1,2 @@
+This test actually clones, from a Mercurial repository on the local file system.  hg prints
+progress messages, which the program does not show, because hg succeeded.

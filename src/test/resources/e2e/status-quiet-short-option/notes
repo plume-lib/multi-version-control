@@ -1,0 +1,1 @@
+"-q" is a short name for "--quiet".  With -q=false, the program reports a missing directory.

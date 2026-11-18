@@ -1,0 +1,5 @@
+The program works around invalid certificates of Google Code's Mercurial hosting:  when a clone's
+default path, from .hg/hgrc, is an hg.codespot.com URL or a googlecode.com URL with two components
+before "googlecode.com" (which a "*.googlecode.com" wildcard certificate does not cover), "hg
+outgoing" is run with "--config web.cacerts=".  Only .hg/hgrc is consulted, not the configuration
+file.

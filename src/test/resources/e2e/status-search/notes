@@ -1,0 +1,2 @@
+--search works with "status", not just with "list":  the program reports the status of each clone
+that it finds.  A clone with nothing to report contributes no output.

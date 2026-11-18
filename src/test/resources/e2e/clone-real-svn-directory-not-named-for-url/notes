@@ -1,0 +1,7 @@
+The directory's base name, "my-project", differs from the last component of the repository URL,
+"trunk".  The program runs "svn checkout URL" without naming the directory, so svn checks out into
+"trunk" rather than into "my-project".  The goal files record the current (wrong) behavior:  the
+program should run "svn checkout URL my-project", as it does for git and Mercurial, and the
+postcheck should list "my-project".
+
+Bug report: https://github.com/plume-lib/multi-version-control/issues/611

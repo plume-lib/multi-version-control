@@ -1,0 +1,7 @@
+A non-integer value for an integer option is reported on standard output, followed by the usage
+message, and the exit status is 255, as for an unrecognized option.
+
+All of standard output, both the message about the value and the usage message, is written by the
+Java implementation's command-line parsing library, so standard output is not checked:  the goal
+file for its beginning is empty.  The test checks the exit status, and that standard error is
+empty.

@@ -1,0 +1,8 @@
+A section header is recognized only if it is exactly two words and the first word is spelled in
+upper case.  The header with an extra word and the header in lower case are instead treated as
+directory lines in the "GITROOT:" section:  each is a relative directory name followed by a module.
+"~/after" therefore belongs to the "GITROOT:" section.  The goal file records the current (wrong)
+behavior; a line that resembles a section header, but is not a valid one, should be reported as an
+error rather than silently treated as a directory.
+
+Bug report: https://github.com/plume-lib/multi-version-control/issues/613

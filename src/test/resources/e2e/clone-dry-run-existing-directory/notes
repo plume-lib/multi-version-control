@@ -1,0 +1,2 @@
+A dry run implies --redo-existing, so it shows the clone command even for a directory that already
+exists.  (Compare clone-skips-existing-directory, which is not a dry run.)

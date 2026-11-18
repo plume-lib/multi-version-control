@@ -1,0 +1,2 @@
+GIT ${HOME}/options https://github.com/plume-lib/options.git null
+CVS ${HOME}/cvs/mod :pserver:anonymous@cvs.example.com:/cvsroot mod

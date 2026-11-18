@@ -1,0 +1,6 @@
+# A comment
+GITREPOS: https://github.com/plume-lib/options.git
+~/options
+
+CVSROOT: :pserver:anonymous@cvs.example.com:/cvsroot
+~/cvs/mod mod

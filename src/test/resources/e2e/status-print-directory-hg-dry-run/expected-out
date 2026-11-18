@@ -1,0 +1,9 @@
+${HOME}/hg :
+  cd ${HOME}/hg
+  git config --get remote.origin.url
+  cd ${HOME}/hg
+  hg status
+  cd ${HOME}/hg
+  hg outgoing -l 1
+  cd ${HOME}/hg
+  hg shelve -l

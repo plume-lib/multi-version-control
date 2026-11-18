@@ -1,0 +1,7 @@
+--dry-run
+--cvs-arg=-z3
+--git-arg=--ignore-submodules
+--hg-arg=--color=never
+--svn-arg=--non-interactive
+--insecure
+status

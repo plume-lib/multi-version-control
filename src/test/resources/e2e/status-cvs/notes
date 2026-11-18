@@ -1,0 +1,8 @@
+The fake cvs program prints what "cvs diff" prints.  The program removes the details of each
+difference, keeping only the file name, and makes each file name absolute.
+
+The replacer for "cvs diff: cannot find FILE" inserts the directory without a "/" after it, so the
+directory and the file name run together.  The goal file records the current (wrong) behavior; the
+line should end with "${HOME}/mod/gone.txt".
+
+Bug report: https://github.com/plume-lib/multi-version-control/issues/615

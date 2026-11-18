@@ -5,3 +5,5 @@ The program also tries to delete the two lines "Please, commit your changes or s
 you can merge." and "Aborting", but git has not used that wording for years (it now says "Please
 commit your changes or stash them before you merge."), so those lines are not deleted.  The goal
 file records the current behavior.
+
+Bug report: https://github.com/plume-lib/multi-version-control/issues/622

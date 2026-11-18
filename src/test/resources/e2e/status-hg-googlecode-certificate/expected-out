@@ -1,0 +1,24 @@
+  cd ${HOME}/googlecode-subdomain
+  hg status
+  cd ${HOME}/googlecode-subdomain
+  hg outgoing -l 1 --config web.cacerts=
+  cd ${HOME}/googlecode-subdomain
+  hg shelve -l
+  cd ${HOME}/googlecode
+  hg status
+  cd ${HOME}/googlecode
+  hg outgoing -l 1
+  cd ${HOME}/googlecode
+  hg shelve -l
+  cd ${HOME}/codespot
+  hg status
+  cd ${HOME}/codespot
+  hg outgoing -l 1 --config web.cacerts=
+  cd ${HOME}/codespot
+  hg shelve -l
+  cd ${HOME}/other
+  hg status
+  cd ${HOME}/other
+  hg outgoing -l 1
+  cd ${HOME}/other
+  hg shelve -l

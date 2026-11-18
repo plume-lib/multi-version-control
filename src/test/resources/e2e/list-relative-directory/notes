@@ -1,0 +1,2 @@
+A directory name that is neither absolute nor starts with "~" is relative to the program's working
+directory, and is listed as written.

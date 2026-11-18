@@ -1,0 +1,4 @@
+A ${HOME}/clone/added.txt
+R ${HOME}/clone/removed.txt
+! ${HOME}/clone/missing.txt
+? ${HOME}/clone/untracked.txt
