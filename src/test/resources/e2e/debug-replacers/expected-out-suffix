@@ -1,0 +1,2 @@
+svn: W200000: a warning that no replacer matches, long enough that the absolute directory below starts after character 100
+M     ${HOME}/wc/file.txt

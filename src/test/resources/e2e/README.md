@@ -37,6 +37,16 @@ All of these are optional except `args`.
   implementation, such as the list of options in a usage message.  It is an
   error for both `expected-out` and `expected-out-prefix` to exist.
 - `expected-err-prefix`:  Like `expected-out-prefix`, but for standard error.
+- `expected-out-suffix`, `expected-err-suffix`:  Goal files for the end of
+  standard output or standard error.  The stream must end with the contents of
+  this file.
+- `expected-out-contains`, `expected-err-contains`:  Strings, one per line,
+  each of which must appear somewhere in standard output or standard error.
+  Blank lines are ignored.
+- A test case can have any combination of the prefix, suffix, and contains
+  files for a stream, which are called partial goal files, but none of them
+  together with the stream's full goal file (`expected-out` or
+  `expected-err`).
 - `expected-status`:  The expected exit status, as a decimal number followed by
   a line terminator.  If absent, the exit status must be 0.
 - `postcheck.sh`:  A bash script that prints information about the files that
@@ -78,8 +88,8 @@ path in the test case directory.
    from `args`.
 6. Compare the program's standard output, standard error, and exit status to
    the goal files, after normalizing them as described below.  For a stream
-   with a prefix goal file, compare only the beginning of the stream, whose
-   length is that of the prefix goal file.
+   with partial goal files, check only what those files specify:  the
+   beginning of the stream, its end, and strings that it contains.
 7. Run `bash postcheck.sh`, if it exists, and compare its normalized standard
    output to `expected-postcheck`.
 
@@ -166,6 +176,11 @@ case that records a bug whose current behavior is a Java stack trace; any
 correct implementation fails that test case, as it fails every test case that
 records a bug.
 
+The format of the debugging output that `--debug`, `--debug-replacers`, and
+`--debug-process-output` print is up to the implementation, so the `debug-*`
+test cases use suffix and contains goal files to check the output of the
+action and a few strings that the debugging output must mention.
+
 ## Adding a test case
 
 Create a directory with an `args` file and whatever inputs the test needs, then
@@ -176,10 +191,10 @@ run:
 ```
 
 That writes the goal files from the program's actual output, for all test cases.
-It does not write a prefix goal file (`expected-out-prefix` or
-`expected-err-prefix`), because a person chooses how much of the output a
-prefix goal file checks; regeneration leaves each prefix goal file unchanged and
-still compares the output against it.
+It does not write a partial goal file (such as `expected-out-prefix`), because
+a person chooses how much of the output a partial goal file checks;
+regeneration leaves each partial goal file unchanged and still compares the
+output against it.
 Inspect the diffs before committing them: a goal file should record what the
 program ought to print, not merely what it does print.  Where the program's
 current output is wrong, the test case has a `notes` file that says so.

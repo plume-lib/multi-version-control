@@ -1,2 +1,3 @@
 --debug prints how each line of the configuration file was parsed, and the set of clones, before
 performing the action.
+The format of the debugging output is up to the implementation, so the test checks only that it mentions each line of the configuration file, and that standard output ends with the output of the list action.

@@ -1,2 +1,3 @@
 --debug-replacers shows the output before and after each replacer, and then the character codes of
 the result, so that a user can see which replacer changed what.
+The format of the debugging output is up to the implementation, so the test checks only that it contains the command's output before the replacers run, and that standard output ends with the output of the status action.

@@ -1,2 +1,3 @@
 --debug reports which directories are searched, which are ignored, and how many clones the search
 added.
+The format of the debugging output is up to the implementation, so the test checks only that it mentions the ignored directory, and that standard output ends with the output of the list action.
