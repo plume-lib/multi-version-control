@@ -1,6 +1,0 @@
-preoutput=<<< M file.txt
->>>
-postoutput=<<< M ${HOME}/clone/file.txt
->>>
- M ${HOME}/clone/file.txt
-preoutput=<<<>>>

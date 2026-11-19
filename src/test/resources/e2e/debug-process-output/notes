@@ -1,2 +1,3 @@
 --debug-process-output shows each command's output before and after the replacers run, so that a
 user can tell whether a replacer is what suppressed some output.
+The format of the debugging output is up to the implementation, so the test checks only that standard output contains the command's output both before and after the replacers run.

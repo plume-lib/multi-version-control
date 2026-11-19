@@ -48,6 +48,16 @@ import org.junit.jupiter.api.TestFactory;
  *       stream must start with the file's contents, and anything can follow. Use one of these
  *       instead of {@code expected-out} or {@code expected-err} when the rest of the stream depends
  *       on the implementation, such as a usage message or an exception message.
+ *   <dt>{@code expected-out-suffix}, {@code expected-err-suffix}
+ *   <dd>Goal files for the end of the program's standard output and standard error. The stream must
+ *       end with the file's contents.
+ *   <dt>{@code expected-out-contains}, {@code expected-err-contains}
+ *   <dd>Strings, one per line, each of which must appear somewhere in the program's standard output
+ *       or standard error. Blank lines are ignored.
+ *   <dd>A test case can have any combination of the prefix, suffix, and contains files for a
+ *       stream, but none of them together with the stream's full goal file. Use them where only
+ *       part of the stream is the same for every implementation, such as diagnostic output whose
+ *       format is up to the implementation.
  *   <dt>{@code expected-status}
  *   <dd>The expected exit status; the default is 0.
  *   <dt>{@code postcheck.sh}, {@code expected-postcheck}
@@ -156,9 +166,13 @@ final class EndToEndTest {
       Set.of(
           "args",
           "expected-err",
+          "expected-err-contains",
           "expected-err-prefix",
+          "expected-err-suffix",
           "expected-out",
+          "expected-out-contains",
           "expected-out-prefix",
+          "expected-out-suffix",
           "expected-postcheck",
           "expected-status",
           "mvc-checkouts",
@@ -244,10 +258,20 @@ final class EndToEndTest {
           "Goal file `expected-postcheck`, but no `postcheck.sh`, in " + caseDir);
     }
     for (String stream : List.of("out", "err")) {
-      if (Files.exists(caseDir.resolve("expected-" + stream))
-          && Files.exists(caseDir.resolve("expected-" + stream + "-prefix"))) {
-        throw new AssertionError(
-            "Both `expected-" + stream + "` and `expected-" + stream + "-prefix` in " + caseDir);
+      if (Files.exists(caseDir.resolve("expected-" + stream))) {
+        for (String kind : partialGoalKinds) {
+          if (Files.exists(caseDir.resolve("expected-" + stream + "-" + kind))) {
+            throw new AssertionError(
+                "Both `expected-"
+                    + stream
+                    + "` and `expected-"
+                    + stream
+                    + "-"
+                    + kind
+                    + "` in "
+                    + caseDir);
+          }
+        }
       }
     }
   }
@@ -433,11 +457,17 @@ final class EndToEndTest {
   }
 
   /**
-   * Compares one of the program's output streams against its goal file: {@code expected-STREAM} if
-   * there is no {@code expected-STREAM-prefix}, and otherwise {@code expected-STREAM-prefix}. If
-   * regenerating, writes {@code expected-STREAM} instead, unless there is an {@code
-   * expected-STREAM-prefix}. A prefix goal file is written by a person, who decides how much of the
-   * output to check, so regeneration never writes one; it still checks it.
+   * The kinds of goal file that specify part of an output stream, as in {@code expected-out-KIND}.
+   */
+  private static final List<String> partialGoalKinds = List.of("prefix", "suffix", "contains");
+
+  /**
+   * Compares one of the program's output streams against its goal files: {@code expected-STREAM} if
+   * there is none of {@code expected-STREAM-prefix}, {@code expected-STREAM-suffix}, and {@code
+   * expected-STREAM-contains}, and otherwise each of those that exists. If regenerating, writes
+   * {@code expected-STREAM} instead, unless one of those partial goal files exists. A partial goal
+   * file is written by a person, who decides how much of the output to check, so regeneration never
+   * writes one; it still checks it.
    *
    * @param caseDir the test case directory
    * @param stream which stream: "out" or "err"
@@ -449,18 +479,54 @@ final class EndToEndTest {
   private void checkStream(Path caseDir, String stream, String actual, String what, String context)
       throws IOException {
     Path prefixFile = caseDir.resolve("expected-" + stream + "-prefix");
-    if (!Files.exists(prefixFile)) {
+    Path suffixFile = caseDir.resolve("expected-" + stream + "-suffix");
+    Path containsFile = caseDir.resolve("expected-" + stream + "-contains");
+    if (!Files.exists(prefixFile) && !Files.exists(suffixFile) && !Files.exists(containsFile)) {
       checkGoal(caseDir.resolve("expected-" + stream), actual, what, context);
       return;
     }
-    String prefix = readFile(prefixFile);
-    if (!actual.startsWith(prefix)) {
-      // Compare against the same number of characters of the actual output, so that the failure
-      // message shows where the two differ.
-      assertEquals(
-          prefix,
-          actual.substring(0, Math.min(prefix.length(), actual.length())),
-          () -> "Wrong start of " + what + "; goal file is " + prefixFile + "\n" + context);
+    if (Files.exists(prefixFile)) {
+      String prefix = readFile(prefixFile);
+      if (!actual.startsWith(prefix)) {
+        // Compare against the same number of characters of the actual output, so that the failure
+        // message shows where the two differ.
+        assertEquals(
+            prefix,
+            actual.substring(0, Math.min(prefix.length(), actual.length())),
+            () -> "Wrong start of " + what + "; goal file is " + prefixFile + "\n" + context);
+      }
+    }
+    if (Files.exists(suffixFile)) {
+      String suffix = readFile(suffixFile);
+      if (!actual.endsWith(suffix)) {
+        // Compare against the same number of characters of the actual output, so that the failure
+        // message shows where the two differ.
+        assertEquals(
+            suffix,
+            actual.length() < suffix.length()
+                ? actual
+                : actual.substring(actual.length() - suffix.length()),
+            () -> "Wrong end of " + what + "; goal file is " + suffixFile + "\n" + context);
+      }
+    }
+    if (Files.exists(containsFile)) {
+      for (String expected : readFile(containsFile).lines().toList()) {
+        if (!expected.isEmpty() && !actual.contains(expected)) {
+          throw new AssertionError(
+              "The "
+                  + what
+                  + " does not contain \""
+                  + expected
+                  + "\"; goal file is "
+                  + containsFile
+                  + "\nThe "
+                  + what
+                  + " is:\n"
+                  + actual
+                  + "\n"
+                  + context);
+        }
+      }
     }
   }
 
